@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-green: #0D1D14;
+  --color-brand-greenDark: #08120C;
+  --color-brand-greenLight: #1E3B2D;
+
+  --color-brand-gold: #C8A25D;
+  --color-brand-goldLight: #DFB875;
+  --color-brand-goldDark: #A6823F;
+  --color-brand-cream: #F8F5EF;
+  --color-brand-creamDark: #EEECE5;
+  --color-brand-ivory: #FDFAF6;
+  --color-brand-charcoal: #2A2A2A;
+  --color-brand-charcoalLight: #4A4A4A;
+
+  --font-serif: "Cinzel", "Playfair Display", Georgia, serif;
+  --font-sans: "Plus Jakarta Sans", "Inter", "system-ui", sans-serif;
+
+  --shadow-premium: 0 10px 30px -15px rgba(31, 59, 45, 0.1);
+  --shadow-premium-hover: 0 20px 40px -20px rgba(31, 59, 45, 0.2);
+  --shadow-gold-glow: 0 4px 14px 0 rgba(200, 162, 93, 0.3);
+}
+
+/* Custom premium scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F8F5EF;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #C8A25D;
+  border-radius: 9999px;
+  border: 2px solid #F8F5EF;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #1F3B2D;
+}
+
+/* Custom Utility Classes */
+.text-glow-gold {
+  text-shadow: 0 0 10px rgba(200, 162, 93, 0.2);
+}
+
+.bg-glass {
+  background-color: rgba(253, 250, 246, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.serif-header {
+  font-family: 'Cinzel', serif;
+  letter-spacing: 0.05em;
+}
