@@ -25,6 +25,10 @@ export default function Checkout() {
     });
   };
   const [showAddAddressForm, setShowAddAddressForm] = useState(false);
+  const [billingSameAsShipping, setBillingSameAsShipping] = useState(true);
+  const [billingAddr, setBillingAddr] = useState({
+    name: '', phone: '', line: '', city: '', state: '', zip: ''
+  });
 
   // Form State for new address
   const [newAddr, setNewAddr] = useState({
@@ -102,6 +106,7 @@ export default function Checkout() {
           deliveryCharge,
           total,
           address: selectedAddress,
+          billingAddress: billingSameAsShipping ? null : billingAddr,
           paymentMethod: 'COD',
           buyNowItem
         });
@@ -126,6 +131,7 @@ export default function Checkout() {
 
         const razorpayOrderData = await initializeRazorpayOrder({
           address: selectedAddress,
+          billingAddress: billingSameAsShipping ? null : billingAddr,
           buyNowItem
         });
 
@@ -382,6 +388,102 @@ export default function Checkout() {
               </form>
             )}
 
+          </div>
+
+          {/* 1.5 Billing Address */}
+          <div className="bg-brand-ivory border border-brand-gold/10 rounded-lg p-6 shadow-premium space-y-6">
+            <div className="flex justify-between items-center border-b border-brand-creamDark pb-3">
+              <h2 className="text-lg font-bold text-brand-green font-serif flex items-center space-x-2">
+                <MapPin className="w-5 h-5 text-brand-gold" />
+                <span>Billing Address</span>
+              </h2>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <input 
+                type="checkbox" 
+                id="billingSame" 
+                checked={billingSameAsShipping} 
+                onChange={(e) => setBillingSameAsShipping(e.target.checked)}
+                className="w-4 h-4 text-brand-green bg-brand-cream border-brand-gold focus:ring-brand-green rounded cursor-pointer"
+              />
+              <label htmlFor="billingSame" className="text-sm font-bold text-brand-green font-serif cursor-pointer">Billing address same as shipping address</label>
+            </div>
+
+            {!billingSameAsShipping && (
+              <div className="space-y-4 bg-white border border-brand-gold/15 p-5 rounded-lg mt-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-brand-green uppercase tracking-wider block">Full Name</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Nikhil Kumar"
+                      value={billingAddr.name}
+                      onChange={(e) => setBillingAddr({ ...billingAddr, name: e.target.value })}
+                      className="w-full bg-brand-cream/30 border border-brand-gold/30 rounded px-3 py-2 text-xs focus:outline-none focus:border-brand-gold"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-brand-green uppercase tracking-wider block">Phone Number</label>
+                    <input
+                      type="tel"
+                      required
+                      placeholder="e.g. +91 98765 43210"
+                      value={billingAddr.phone}
+                      onChange={(e) => setBillingAddr({ ...billingAddr, phone: e.target.value })}
+                      className="w-full bg-brand-cream/30 border border-brand-gold/30 rounded px-3 py-2 text-xs focus:outline-none focus:border-brand-gold"
+                    />
+                  </div>
+                  <div className="sm:col-span-2 space-y-1">
+                    <label className="text-[11px] font-bold text-brand-green uppercase tracking-wider block">Address Line</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Flat No, Apartment, Street"
+                      value={billingAddr.line}
+                      onChange={(e) => setBillingAddr({ ...billingAddr, line: e.target.value })}
+                      className="w-full bg-brand-cream/30 border border-brand-gold/30 rounded px-3 py-2 text-xs focus:outline-none focus:border-brand-gold"
+                    />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 sm:col-span-2">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-brand-green uppercase tracking-wider block">City</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Patna"
+                        value={billingAddr.city}
+                        onChange={(e) => setBillingAddr({ ...billingAddr, city: e.target.value })}
+                        className="w-full bg-brand-cream/30 border border-brand-gold/30 rounded px-3 py-2 text-xs focus:outline-none focus:border-brand-gold"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-brand-green uppercase tracking-wider block">State</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Bihar"
+                        value={billingAddr.state}
+                        onChange={(e) => setBillingAddr({ ...billingAddr, state: e.target.value })}
+                        className="w-full bg-brand-cream/30 border border-brand-gold/30 rounded px-3 py-2 text-xs focus:outline-none focus:border-brand-gold"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-brand-green uppercase tracking-wider block">PIN Code</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="800001"
+                        value={billingAddr.zip}
+                        onChange={(e) => setBillingAddr({ ...billingAddr, zip: e.target.value })}
+                        className="w-full bg-brand-cream/30 border border-brand-gold/30 rounded px-3 py-2 text-xs focus:outline-none focus:border-brand-gold"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* 2. Payment Method Selector */}

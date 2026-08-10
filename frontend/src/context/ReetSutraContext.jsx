@@ -523,6 +523,7 @@ export const ReetSutraProvider = ({ children }) => {
           state: orderData.address.state,
           zip: orderData.address.zip
         },
+        billingAddress: orderData.billingAddress || null,
         paymentMethod: orderData.paymentMethod || "COD"
       };
 
@@ -593,7 +594,8 @@ export const ReetSutraProvider = ({ children }) => {
           city: orderData.address.city,
           state: orderData.address.state,
           zip: orderData.address.zip
-        }
+        },
+        billingAddress: orderData.billingAddress || null
       };
 
       const response = await fetch("http://localhost:5000/api/orders/razorpay/create", {

@@ -295,9 +295,9 @@ export const DataProvider = ({ children }) => {
   };
 
   // Order Fulfillment
-  const updateOrderStatus = async (id, newStatus) => {
+  const updateOrderStatus = async (id, newStatus, extraFields = {}) => {
     try {
-      const updatedRaw = await apiRequest(`/orders/${id}/status`, "PUT", { orderStatus: newStatus });
+      const updatedRaw = await apiRequest(`/orders/${id}/status`, "PUT", { orderStatus: newStatus, ...extraFields });
       setOrders((prev) =>
         prev.map((o) => {
           if (o._id === id || o.id === id) {

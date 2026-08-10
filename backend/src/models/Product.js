@@ -86,6 +86,13 @@ const productSchema = new mongoose.Schema(
       min: 0,
       max: 100
     },
+    hsnCode: { type: String, trim: true, default: "" },
+    eanCode: { type: String, trim: true, default: "" },
+    size: { type: String, trim: true, default: "" },
+    length: { type: Number, default: null },
+    width: { type: Number, default: null },
+    height: { type: Number, default: null },
+    cessRate: { type: Number, default: 0, min: 0, max: 100 },
     rating: {
       type: Number,
       default: 5.0,

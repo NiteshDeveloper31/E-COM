@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Eye, Edit, Clock, MapPin, CreditCard, ShoppingBag, AlertTriangle } from "lucide-react";
+import { Eye, Edit, Clock, MapPin, CreditCard, ShoppingBag, AlertTriangle, Download } from "lucide-react";
+import * as XLSX from "xlsx";
 import { useData } from "../context/DataContext";
 import { DataTable } from "../components/DataTable";
 import { Drawer } from "../components/Drawer";
@@ -8,6 +9,9 @@ export const Orders = () => {
   const { orders, updateOrderStatus } = useData();
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [shippingCourier, setShippingCourier] = useState("");
+  const [trackingNumber, setTrackingNumber] = useState("");
+  const [packetNumber, setPacketNumber] = useState("");
 
   const formatINR = (value) => {
     return new Intl.NumberFormat("en-IN", {
@@ -21,6 +25,7 @@ export const Orders = () => {
     const styles = {
       Pending: "bg-amber-50 text-amber-700 border-amber-200",
       Processing: "bg-blue-50 text-blue-700 border-blue-200",
+      "On Hold": "bg-purple-50 text-purple-700 border-purple-200",
       Shipped: "bg-indigo-50 text-indigo-700 border-indigo-200",
       Delivered: "bg-emerald-50 text-emerald-700 border-emerald-200",
       Cancelled: "bg-rose-50 text-rose-700 border-rose-200"
@@ -55,13 +60,20 @@ export const Orders = () => {
 
   const handleOpenDrawer = (order) => {
     setSelectedOrder(order);
+    setShippingCourier(order.shippingCourier || "");
+    setTrackingNumber(order.trackingNumber || "");
+    setPacketNumber(order.packetNumber || "");
     setIsDrawerOpen(true);
   };
 
   const handleStatusChange = (e) => {
     const newStatus = e.target.value;
     if (selectedOrder) {
-      updateOrderStatus(selectedOrder.id, newStatus);
+      updateOrderStatus(selectedOrder.id, newStatus, {
+        shippingCourier,
+        trackingNumber,
+        packetNumber
+      });
       
       // Update local state to reflect the status change instantly in drawer
       setSelectedOrder((prev) => {
@@ -83,10 +95,160 @@ export const Orders = () => {
     }
   };
 
+  // --- Download Sales Report as Excel ---
+  const handleDownloadReport = () => {
+    if (!orders || orders.length === 0) return;
+
+    const rows = [];
+
+    orders.forEach((order) => {
+      const items = order.items || [];
+      const tb = order.taxBreakdown || {};
+
+      const buildRow = (item, idx) => {
+        const product = item?.productId && typeof item.productId === "object" ? item.productId : {};
+        const isFirst = idx === 0;
+
+        return {
+          // --- ORDER INFO ---
+          "Sale Order Item Code": item?.saleOrderItemCode || "",
+          "Order Code": order.orderCode || "",
+          "Order ID": order.id,
+          "Order Date": order.date || "",
+          "Order Status": order.orderStatus || "",
+          "On Hold": order.orderStatus === "On Hold" ? "Yes" : "No",
+          "Invoice Code": order.invoiceCode || "",
+          "Invoice Date": order.invoiceDate
+            ? new Date(order.invoiceDate).toLocaleString("en-IN")
+            : "",
+          "Channel Name": order.channelName || "Website",
+          "Payment Method": order.paymentMethod || "",
+          "Payment Status": order.paymentStatus || "",
+          "COD": order.paymentMethod === "COD" ? "Yes" : "No",
+
+          // --- CUSTOMER ---
+          "Customer Name": order.customerName || "",
+          "Customer Email": order.customerEmail || "",
+          "Customer Phone": order.customerPhone || "",
+
+          // --- SHIPPING ADDRESS ---
+          "Shipping Name": order.shippingAddress?.name || "",
+          "Shipping Phone": order.shippingAddress?.phone || "",
+          "Shipping Address": order.shippingAddress?.line || "",
+          "Shipping City": order.shippingAddress?.city || "",
+          "Shipping State": order.shippingAddress?.state || "",
+          "Shipping Country": order.shippingAddress?.country || "India",
+          "Shipping Pincode": order.shippingAddress?.zip || "",
+
+          // --- BILLING ADDRESS ---
+          "Billing Name": order.billingAddress?.name || order.shippingAddress?.name || "",
+          "Billing City": order.billingAddress?.city || order.shippingAddress?.city || "",
+          "Billing State": order.billingAddress?.state || order.shippingAddress?.state || "",
+          "Billing Pincode": order.billingAddress?.zip || order.shippingAddress?.zip || "",
+
+          // --- ITEM / PRODUCT DETAILS ---
+          "Product Name": item?.productName || product.name || "",
+          "Item SKU Code": product.sku || "",
+          "Item Category": product.category?.name || "",
+          "Item Size": product.size || "",
+          "Item Brand": product.brand || "",
+          "HSN Code": product.hsnCode || "",
+          "EAN Code": product.eanCode || "",
+          "MRP (₹)": product.price || item?.price || "",
+          "Item Weight": product.weight || "",
+          "Length (cm)": product.length || "",
+          "Width (cm)": product.width || "",
+          "Height (cm)": product.height || "",
+          "Shelf Life / Expiry": product.expiryDate
+            ? new Date(product.expiryDate).toLocaleDateString("en-IN")
+            : "",
+
+          // --- PRICING ---
+          "Selling Price (₹)": item?.price || 0,
+          "Quantity": item?.quantity || 0,
+          "Item Total (₹)": (item?.price || 0) * (item?.quantity || 0),
+          "Subtotal (₹)": isFirst ? (order.subtotal || 0) : "",
+          "Discount (₹)": isFirst ? (order.discount || 0) : "",
+          "Voucher Code": isFirst ? (order.voucherCode || "") : "",
+
+          // --- TAX BREAKUP ---
+          "GST %": product.gst != null ? product.gst : "",
+          "CGST (₹)": isFirst ? (tb.cgst || 0) : "",
+          "CGST Rate (%)": isFirst ? (tb.cgstRate || "") : "",
+          "SGST (₹)": isFirst ? (tb.sgst || 0) : "",
+          "SGST Rate (%)": isFirst ? (tb.sgstRate || "") : "",
+          "IGST (₹)": isFirst ? (tb.igst || 0) : "",
+          "IGST Rate (%)": isFirst ? (tb.igstRate || "") : "",
+          "UTGST (₹)": isFirst ? (tb.utgst || 0) : "",
+          "UTGST Rate (%)": isFirst ? (tb.utgstRate || "") : "",
+          "CESS (₹)": isFirst ? (tb.cess || 0) : "",
+          "CESS Rate (%)": isFirst ? (tb.cessRate || product.cessRate || "") : "",
+          "TCS Rate (%)": isFirst ? (tb.tcsRate || "") : "",
+          "TCS Amount (₹)": isFirst ? (tb.tcsAmount || 0) : "",
+          "Tax Total (₹)": isFirst ? (order.tax || 0) : "",
+
+          // --- SHIPPING & LOGISTICS ---
+          "Shipping Charges (₹)": isFirst ? (order.shipping || 0) : "",
+          "Shipping Method Charges (₹)": isFirst ? (order.shippingMethodCharges || 0) : "",
+          "COD Service Charge (₹)": isFirst ? (order.codServiceCharge || 0) : "",
+          "Gift Wrap Charges (₹)": isFirst ? (order.giftWrapCharges || 0) : "",
+          "Grand Total (₹)": isFirst ? (order.total || 0) : "",
+          "Packet Number": isFirst ? (order.packetNumber || "") : "",
+          "Shipping Courier": isFirst ? (order.shippingCourier || "") : "",
+          "Tracking Number": isFirst ? (order.trackingNumber || "") : "",
+
+          // --- INVENTORY ---
+          "Current Stock": product.stock != null ? product.stock : "",
+        };
+      };
+
+      if (items.length === 0) {
+        rows.push(buildRow(null, 0));
+      } else {
+        items.forEach((item, idx) => {
+          rows.push(buildRow(item, idx));
+        });
+      }
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+
+    // Auto-fit column widths
+    const colWidths = Object.keys(rows[0] || {}).map((key) => {
+      const maxLen = Math.max(
+        key.length,
+        ...rows.map((r) => String(r[key] ?? "").length)
+      );
+      return { wch: Math.min(maxLen + 2, 40) };
+    });
+    worksheet["!cols"] = colWidths;
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Sales Report");
+
+    const today = new Date().toISOString().slice(0, 10);
+    const fileName = `Sales_Report_${today}.xlsx`;
+
+    // Write workbook to array buffer and download as Blob for reliable .xlsx output
+    const wbOut = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+    const blob = new Blob([wbOut], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   // Setup options for status filtering in table
   const filterOptions = [
     { value: "Pending", label: "Pending" },
     { value: "Processing", label: "Processing" },
+    { value: "On Hold", label: "On Hold" },
     { value: "Shipped", label: "Shipped" },
     { value: "Delivered", label: "Delivered" },
     { value: "Cancelled", label: "Cancelled" }
@@ -147,6 +309,24 @@ export const Orders = () => {
       render: (row) => <span className="text-xs text-charcoal-light font-semibold">{row.date}</span>
     },
     {
+      key: "qty",
+      header: "Qty",
+      render: (row) => {
+        const totalQty = (row.items || []).reduce((sum, item) => sum + (item.quantity || 0), 0);
+        return <span className="text-xs font-bold text-charcoal">{totalQty}</span>;
+      }
+    },
+    {
+      key: "shippingCity",
+      header: "Ship To",
+      render: (row) => (
+        <div>
+          <span className="text-xs font-semibold text-charcoal block">{row.shippingAddress?.city || "—"}</span>
+          <span className="text-[10px] text-charcoal-light font-medium">{row.shippingAddress?.state || ""}</span>
+        </div>
+      )
+    },
+    {
       key: "total",
       header: "Total Value",
       render: (row) => (
@@ -170,13 +350,23 @@ export const Orders = () => {
 
   return (
     <>
-      <div>
-        <h1 className="font-display font-bold text-2xl text-primary leading-tight">
-          Order Management
-        </h1>
-        <p className="text-sm text-charcoal-light font-medium">
-          Track customer transactions, update shipping fulfillment progress, and audit payments.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="font-display font-bold text-2xl text-primary leading-tight">
+            Order Management
+          </h1>
+          <p className="text-sm text-charcoal-light font-medium">
+            Track customer transactions, update shipping fulfillment progress, and audit payments.
+          </p>
+        </div>
+
+        <button
+          onClick={handleDownloadReport}
+          disabled={!orders || orders.length === 0}
+          className="flex items-center gap-1.5 px-4.5 py-2.5 bg-primary text-secondary rounded-lg font-display font-bold text-sm shadow-md hover:bg-primary-light transition-all duration-200 cursor-pointer self-start sm:self-center disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Download size={16} /> Download Sales Report
+        </button>
       </div>
 
       {/* Orders Data Table */}
@@ -222,11 +412,47 @@ export const Orders = () => {
                 >
                   <option value="Pending">Pending</option>
                   <option value="Processing">Processing</option>
+                  <option value="On Hold">On Hold</option>
                   <option value="Shipped">Shipped</option>
                   <option value="Delivered">Delivered</option>
                   <option value="Cancelled">Cancelled</option>
                 </select>
               </div>
+            </div>
+
+            {/* Courier & Tracking details */}
+            <div className="bg-background/80 border border-primary/5 p-4 rounded-xl flex flex-col gap-4">
+              <div>
+                <p className="text-[10px] font-bold text-charcoal-light uppercase tracking-wider">Fulfillment Details</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="text-xs text-charcoal-light font-medium block mb-1">Courier</label>
+                  <input type="text" value={shippingCourier} onChange={(e) => setShippingCourier(e.target.value)} className="w-full px-3 py-1.5 border border-primary/10 rounded-lg text-xs bg-white text-primary focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary" placeholder="e.g. BlueDart" />
+                </div>
+                <div>
+                  <label className="text-xs text-charcoal-light font-medium block mb-1">Tracking No.</label>
+                  <input type="text" value={trackingNumber} onChange={(e) => setTrackingNumber(e.target.value)} className="w-full px-3 py-1.5 border border-primary/10 rounded-lg text-xs bg-white text-primary focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary" placeholder="e.g. 123456789" />
+                </div>
+                <div>
+                  <label className="text-xs text-charcoal-light font-medium block mb-1">Packet No.</label>
+                  <input type="text" value={packetNumber} onChange={(e) => setPacketNumber(e.target.value)} className="w-full px-3 py-1.5 border border-primary/10 rounded-lg text-xs bg-white text-primary focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary" placeholder="e.g. PKT-001" />
+                </div>
+              </div>
+              <button 
+                onClick={() => {
+                  if (selectedOrder) {
+                    updateOrderStatus(selectedOrder.id, selectedOrder.orderStatus, {
+                      shippingCourier,
+                      trackingNumber,
+                      packetNumber
+                    });
+                  }
+                }}
+                className="mt-2 self-end px-4 py-1.5 bg-primary text-secondary rounded-lg font-bold text-xs hover:bg-primary/90 transition-colors"
+              >
+                Save Details
+              </button>
             </div>
 
             {/* Core Info panels */}

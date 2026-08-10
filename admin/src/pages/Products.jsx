@@ -32,6 +32,13 @@ export const Products = () => {
   const [formBrand, setFormBrand] = useState("");
   const [formGst, setFormGst] = useState("");
   const [formExpiryDate, setFormExpiryDate] = useState("");
+  const [formHsnCode, setFormHsnCode] = useState("");
+  const [formEanCode, setFormEanCode] = useState("");
+  const [formSize, setFormSize] = useState("");
+  const [formLength, setFormLength] = useState("");
+  const [formWidth, setFormWidth] = useState("");
+  const [formHeight, setFormHeight] = useState("");
+  const [formCessRate, setFormCessRate] = useState("");
   const [formError, setFormError] = useState("");
 
   const formatINR = (value) => {
@@ -63,6 +70,13 @@ export const Products = () => {
     setFormBrand("");
     setFormGst("");
     setFormExpiryDate("");
+    setFormHsnCode("");
+    setFormEanCode("");
+    setFormSize("");
+    setFormLength("");
+    setFormWidth("");
+    setFormHeight("");
+    setFormCessRate("");
     setFormError("");
     setIsAddEditOpen(true);
   };
@@ -112,6 +126,13 @@ export const Products = () => {
     setFormExpiryDate(
       product.expiryDate ? new Date(product.expiryDate).toISOString().split("T")[0] : ""
     );
+    setFormHsnCode(product.hsnCode || "");
+    setFormEanCode(product.eanCode || "");
+    setFormSize(product.size || "");
+    setFormLength(product.length != null ? String(product.length) : "");
+    setFormWidth(product.width != null ? String(product.width) : "");
+    setFormHeight(product.height != null ? String(product.height) : "");
+    setFormCessRate(product.cessRate != null ? String(product.cessRate) : "");
 
     setFormError("");
     setIsAddEditOpen(true);
@@ -238,7 +259,14 @@ export const Products = () => {
       sku: formSkuCode || undefined,
       brand: formBrand,
       gst: formGst ? parseFloat(formGst) : 0,
-      expiryDate: formExpiryDate || null
+      expiryDate: formExpiryDate || null,
+      hsnCode: formHsnCode,
+      eanCode: formEanCode,
+      size: formSize,
+      length: formLength ? parseFloat(formLength) : null,
+      width: formWidth ? parseFloat(formWidth) : null,
+      height: formHeight ? parseFloat(formHeight) : null,
+      cessRate: formCessRate ? parseFloat(formCessRate) : 0
     };
 
     if (currentProduct) {
@@ -574,6 +602,101 @@ export const Products = () => {
                     type="date"
                     value={formExpiryDate}
                     onChange={(e) => setFormExpiryDate(e.target.value)}
+                    className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background placeholder-charcoal-light focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-primary mb-1">
+                    HSN Code
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="HSN Code"
+                    value={formHsnCode}
+                    onChange={(e) => setFormHsnCode(e.target.value)}
+                    className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background placeholder-charcoal-light focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-primary mb-1">
+                    EAN Code
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="EAN Code"
+                    value={formEanCode}
+                    onChange={(e) => setFormEanCode(e.target.value)}
+                    className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background placeholder-charcoal-light focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-primary mb-1">
+                    Size
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Size"
+                    value={formSize}
+                    onChange={(e) => setFormSize(e.target.value)}
+                    className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background placeholder-charcoal-light focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-primary mb-1">
+                    CESS Rate (%)
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 5"
+                    min="0"
+                    max="100"
+                    value={formCessRate}
+                    onChange={(e) => setFormCessRate(e.target.value)}
+                    className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background placeholder-charcoal-light focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-primary mb-1">
+                    Length (cm)
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    value={formLength}
+                    onChange={(e) => setFormLength(e.target.value)}
+                    className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background placeholder-charcoal-light focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-primary mb-1">
+                    Width (cm)
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    value={formWidth}
+                    onChange={(e) => setFormWidth(e.target.value)}
+                    className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background placeholder-charcoal-light focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-primary mb-1">
+                    Height (cm)
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    value={formHeight}
+                    onChange={(e) => setFormHeight(e.target.value)}
                     className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background placeholder-charcoal-light focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
                   />
                 </div>

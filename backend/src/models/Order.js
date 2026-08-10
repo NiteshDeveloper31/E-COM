@@ -7,8 +7,13 @@ const orderSchema = new mongoose.Schema(
       ref: "User",
       required: true
     },
+    orderCode: { type: String, unique: true, trim: true },
+    invoiceCode: { type: String, unique: true, sparse: true, trim: true },
+    invoiceDate: { type: Date, default: null },
+    channelName: { type: String, default: "Website" },
     items: [
       {
+        saleOrderItemCode: { type: String },
         productId: {
           type: mongoose.Schema.Types.ObjectId,
           ref: "Product",
@@ -76,7 +81,7 @@ const orderSchema = new mongoose.Schema(
     },
     orderStatus: {
       type: String,
-      enum: ["Pending", "Processing", "Shipped", "Delivered", "Cancelled"],
+      enum: ["Pending", "Processing", "On Hold", "Shipped", "Delivered", "Cancelled"],
       default: "Pending"
     },
     shippingAddress: {
@@ -85,8 +90,40 @@ const orderSchema = new mongoose.Schema(
       line: { type: String, required: true },
       city: { type: String, required: true },
       state: { type: String, required: true },
-      zip: { type: String, required: true }
+      zip: { type: String, required: true },
+      country: { type: String, default: "India" }
     },
+    billingAddress: {
+      name: { type: String },
+      phone: { type: String },
+      line: { type: String },
+      city: { type: String },
+      state: { type: String },
+      zip: { type: String },
+      country: { type: String, default: "India" }
+    },
+    discount: { type: Number, default: 0, min: 0 },
+    voucherCode: { type: String, default: "" },
+    codServiceCharge: { type: Number, default: 0, min: 0 },
+    giftWrapCharges: { type: Number, default: 0, min: 0 },
+    shippingMethodCharges: { type: Number, default: 0, min: 0 },
+    taxBreakdown: {
+      cgst: { type: Number, default: 0 },
+      cgstRate: { type: Number, default: 0 },
+      sgst: { type: Number, default: 0 },
+      sgstRate: { type: Number, default: 0 },
+      igst: { type: Number, default: 0 },
+      igstRate: { type: Number, default: 0 },
+      utgst: { type: Number, default: 0 },
+      utgstRate: { type: Number, default: 0 },
+      cess: { type: Number, default: 0 },
+      cessRate: { type: Number, default: 0 },
+      tcsRate: { type: Number, default: 0 },
+      tcsAmount: { type: Number, default: 0 }
+    },
+    packetNumber: { type: String, default: "" },
+    shippingCourier: { type: String, default: "" },
+    trackingNumber: { type: String, default: "" },
     timeline: [
       {
         status: { type: String, required: true },

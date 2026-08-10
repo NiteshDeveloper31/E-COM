@@ -27,6 +27,14 @@ export const createOrder = async (req, res, next) => {
     let subtotal = 0;
     const processedItems = [];
 
+    // Auto-generate Order Code: ORD-YYYYMMDD-XXXX
+    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const orderCode = `ORD-${dateStr}-${randomSuffix}`;
+
+    // Auto-generate Invoice Code
+    const invoiceCode = `INV-${dateStr}-${randomSuffix}`;
+
     for (const item of items) {
       const product = await Product.findById(item.productId);
       if (!product) {
@@ -49,6 +57,7 @@ export const createOrder = async (req, res, next) => {
       subtotal += itemCost;
 
       processedItems.push({
+        saleOrderItemCode: `${orderCode}-ITEM-${processedItems.length + 1}`,
         productId: product._id,
         productName: product.name,
         price: product.price,
@@ -58,13 +67,61 @@ export const createOrder = async (req, res, next) => {
     }
 
     // Calculations
-    const taxRate = 0.05; // 5% GST
-    const tax = Math.round(subtotal * taxRate);
+    const SELLER_STATE = "Bihar";
+    const UNION_TERRITORIES = ["Andaman and Nicobar Islands", "Chandigarh", "Dadra and Nagar Haveli and Daman and Diu", "Delhi", "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry"];
+
+    const buyerState = shippingAddress.state || "";
+    const isSameState = buyerState.toLowerCase() === SELLER_STATE.toLowerCase();
+    const isUnionTerritory = UNION_TERRITORIES.some(ut => ut.toLowerCase() === buyerState.toLowerCase());
+
+    // Calculate weighted average GST rate from items
+    let totalGstAmount = 0;
+    let totalCessAmount = 0;
+    for (const item of processedItems) {
+      const product = await Product.findById(item.productId);
+      const itemTotal = item.price * item.quantity;
+      const gstRate = product?.gst || 0;
+      const cessRate = product?.cessRate || 0;
+      totalGstAmount += Math.round(itemTotal * gstRate / 100);
+      totalCessAmount += Math.round(itemTotal * cessRate / 100);
+    }
+
+    let taxBreakdown = {
+      cgst: 0, cgstRate: 0,
+      sgst: 0, sgstRate: 0,
+      igst: 0, igstRate: 0,
+      utgst: 0, utgstRate: 0,
+      cess: totalCessAmount, cessRate: 0,
+      tcsRate: 0, tcsAmount: 0
+    };
+
+    if (isSameState) {
+      taxBreakdown.cgst = Math.round(totalGstAmount / 2);
+      taxBreakdown.sgst = Math.round(totalGstAmount / 2);
+    } else if (isUnionTerritory) {
+      taxBreakdown.cgst = Math.round(totalGstAmount / 2);
+      taxBreakdown.utgst = Math.round(totalGstAmount / 2);
+    } else {
+      taxBreakdown.igst = totalGstAmount;
+    }
+
+    const tax = totalGstAmount + totalCessAmount;
     const shipping = subtotal >= 1000 ? 0 : 50; // Free shipping over ₹1000, else ₹50
     const total = subtotal + tax + shipping;
 
     const newOrder = await Order.create({
       userId: req.user._id,
+      orderCode,
+      invoiceCode,
+      invoiceDate: new Date(),
+      channelName: "Website",
+      billingAddress: req.body.billingAddress || shippingAddress,
+      discount: req.body.discount || 0,
+      voucherCode: req.body.voucherCode || "",
+      codServiceCharge: paymentMethod === "COD" ? 0 : 0,
+      giftWrapCharges: 0,
+      shippingMethodCharges: 0,
+      taxBreakdown,
       items: processedItems,
       subtotal,
       tax,
@@ -115,7 +172,13 @@ export const getUserOrders = async (req, res, next) => {
 export const getOrderById = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const order = await Order.findById(id).populate("userId", "name email phone");
+    const order = await Order.findById(id)
+      .populate("userId", "name email phone")
+      .populate({
+        path: "items.productId",
+        select: "sku brand gst weight expiryDate category name hsnCode eanCode size length width height cessRate",
+        populate: { path: "category", select: "name" }
+      });
     
     if (!order) {
       return sendError(res, "Order not found.", 404);
@@ -150,7 +213,12 @@ export const getAllOrders = async (req, res, next) => {
       .sort({ createdAt: -1 })
       .skip(pagination.skip)
       .limit(pagination.limit)
-      .populate("userId", "name email phone");
+      .populate("userId", "name email phone")
+      .populate({
+        path: "items.productId",
+        select: "sku brand gst weight expiryDate category name hsnCode eanCode size length width height cessRate",
+        populate: { path: "category", select: "name" }
+      });
 
     return sendSuccess(res, "All orders fetched successfully.", { orders, pagination });
   } catch (error) {
@@ -168,6 +236,11 @@ export const updateOrderStatus = async (req, res, next) => {
 
     if (!orderStatus) {
       return sendError(res, "Please specify new order status.", 400);
+    }
+
+    const validStatuses = ["Pending", "Processing", "On Hold", "Shipped", "Delivered", "Cancelled"];
+    if (!validStatuses.includes(orderStatus)) {
+      return sendError(res, "Invalid order status.", 400);
     }
 
     const order = await Order.findById(id);
@@ -195,6 +268,10 @@ export const updateOrderStatus = async (req, res, next) => {
     if (orderStatus === "Delivered") {
       order.paymentStatus = "Paid";
     }
+
+    if (req.body.shippingCourier !== undefined) order.shippingCourier = req.body.shippingCourier;
+    if (req.body.trackingNumber !== undefined) order.trackingNumber = req.body.trackingNumber;
+    if (req.body.packetNumber !== undefined) order.packetNumber = req.body.packetNumber;
 
     order.orderStatus = orderStatus;
     order.timeline.push({

@@ -18,7 +18,7 @@ export const addProduct = async (req, res, next) => {
       return sendError(res, `Required field missing: ${missing}`, 400);
     }
 
-    const { name, sku, description, price, compareAtPrice, category, stock, status, image, images, video, weight, shortDescription, ingredients, benefits, expiryDate, brand, gst } = req.body;
+    const { name, sku, description, price, compareAtPrice, category, stock, status, image, images, video, weight, shortDescription, ingredients, benefits, expiryDate, brand, gst, hsnCode, eanCode, size, length, width, height, cessRate } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(category)) {
       return sendError(res, "Invalid category selected.", 400);
@@ -54,7 +54,14 @@ export const addProduct = async (req, res, next) => {
       benefits: benefits || [],
       expiryDate: expiryDate || null,
       brand: brand || "",
-      gst: gst ? parseFloat(gst) : 0
+      gst: gst ? parseFloat(gst) : 0,
+      hsnCode: hsnCode || "",
+      eanCode: eanCode || "",
+      size: size || "",
+      length: length ? parseFloat(length) : null,
+      width: width ? parseFloat(width) : null,
+      height: height ? parseFloat(height) : null,
+      cessRate: cessRate ? parseFloat(cessRate) : 0
     });
 
     await newProduct.populate(CATEGORY_POPULATE);
@@ -94,7 +101,14 @@ export const editProduct = async (req, res, next) => {
       "benefits",
       "expiryDate",
       "brand",
-      "gst"
+      "gst",
+      "hsnCode",
+      "eanCode",
+      "size",
+      "length",
+      "width",
+      "height",
+      "cessRate"
     ];
 
     if (req.body.category !== undefined) {
@@ -109,7 +123,7 @@ export const editProduct = async (req, res, next) => {
 
     fieldsToUpdate.forEach((field) => {
       if (req.body[field] !== undefined) {
-        if (field === "price" || field === "compareAtPrice" || field === "gst") {
+        if (field === "price" || field === "compareAtPrice" || field === "gst" || field === "length" || field === "width" || field === "height" || field === "cessRate") {
           product[field] = req.body[field] ? parseFloat(req.body[field]) : null;
         } else if (field === "stock") {
           product[field] = parseInt(req.body[field]);
