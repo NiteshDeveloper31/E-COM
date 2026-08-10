@@ -152,7 +152,7 @@ export const Customers = () => {
       const activeToken = localStorage.getItem("rs_admin_token");
       if (!activeToken) return;
 
-      const response = await fetch(`http://localhost:5000/api/customers/${cust.id || cust._id}/addresses`, {
+      const response = await fetch(`https://reetsutra.onrender.com/api/customers/${cust.id || cust._id}/addresses`, {
         headers: {
           "Authorization": `Bearer ${activeToken}`
         }

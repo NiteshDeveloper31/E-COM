@@ -88,7 +88,7 @@ export const DataProvider = ({ children }) => {
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api${endpoint}`, config);
+      const response = await fetch(`https://reetsutra.onrender.com/api${endpoint}`, config);
       
       if (response.status === 401 || response.status === 403) {
         logoutAdmin();
