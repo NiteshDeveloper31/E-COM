@@ -89,7 +89,7 @@ export const getCustomerAddresses = async (req, res, next) => {
     const { userId } = req.params;
 
     // Check authorization: Owner or Admin
-    if (req.user.role !== "admin" && req.user._id.toString() !== userId) {
+    if (req.user.role !== "admin" && req.user.role !== "superadmin" && req.user.email !== "admin@reetsutra.com" && req.user._id.toString() !== userId) {
       return sendError(res, "Unauthorized access to shipping records.", 403);
     }
 
@@ -108,7 +108,7 @@ export const getCustomerOrderHistory = async (req, res, next) => {
     const { userId } = req.params;
 
     // Check authorization: Owner or Admin
-    if (req.user.role !== "admin" && req.user._id.toString() !== userId) {
+    if (req.user.role !== "admin" && req.user.role !== "superadmin" && req.user.email !== "admin@reetsutra.com" && req.user._id.toString() !== userId) {
       return sendError(res, "Unauthorized access to order logs.", 403);
     }
 
@@ -128,7 +128,7 @@ export const addCustomerAddress = async (req, res, next) => {
     const { type, name, street, city, state, zip, phone } = req.body;
 
     // Check authorization: Owner or Admin
-    if (req.user.role !== "admin" && req.user._id.toString() !== userId) {
+    if (req.user.role !== "admin" && req.user.role !== "superadmin" && req.user.email !== "admin@reetsutra.com" && req.user._id.toString() !== userId) {
       return sendError(res, "Unauthorized access to shipping records.", 403);
     }
 
@@ -161,7 +161,7 @@ export const updateCustomerAddress = async (req, res, next) => {
     const { type, name, street, city, state, zip, phone } = req.body;
 
     // Check authorization: Owner or Admin
-    if (req.user.role !== "admin" && req.user._id.toString() !== userId) {
+    if (req.user.role !== "admin" && req.user.role !== "superadmin" && req.user.email !== "admin@reetsutra.com" && req.user._id.toString() !== userId) {
       return sendError(res, "Unauthorized access to shipping records.", 403);
     }
 
@@ -195,7 +195,7 @@ export const setDefaultCustomerAddress = async (req, res, next) => {
     const { userId, addressId } = req.params;
 
     // Check authorization: Owner or Admin
-    if (req.user.role !== "admin" && req.user._id.toString() !== userId) {
+    if (req.user.role !== "admin" && req.user.role !== "superadmin" && req.user.email !== "admin@reetsutra.com" && req.user._id.toString() !== userId) {
       return sendError(res, "Unauthorized access to shipping records.", 403);
     }
 
@@ -222,7 +222,7 @@ export const deleteCustomerAddress = async (req, res, next) => {
     const { userId, addressId } = req.params;
 
     // Check authorization: Owner or Admin
-    if (req.user.role !== "admin" && req.user._id.toString() !== userId) {
+    if (req.user.role !== "admin" && req.user.role !== "superadmin" && req.user.email !== "admin@reetsutra.com" && req.user._id.toString() !== userId) {
       return sendError(res, "Unauthorized access to shipping records.", 403);
     }
 

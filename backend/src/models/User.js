@@ -20,8 +20,12 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["admin", "customer"],
+      enum: ["superadmin", "admin", "customer"],
       default: "customer"
+    },
+    permissions: {
+      type: [String],
+      default: ["dashboard", "products", "inventory", "categories", "orders", "customers", "banners", "analytics", "settings", "profile"]
     },
     avatar: {
       type: String,
@@ -29,7 +33,8 @@ const userSchema = new mongoose.Schema(
     },
     phone: {
       type: String,
-      trim: true
+      trim: true,
+      default: ""
     }
   },
   {

@@ -7,7 +7,7 @@ import jwt from "jsonwebtoken";
  */
 export const generateToken = (payload) => {
   const secret = process.env.JWT_SECRET || "reetsutra_secret_key_123_abc";
-  const expiry = process.env.JWT_EXPIRE || "7d";
+  const expiry = process.env.JWT_EXPIRE || "60d";
   return jwt.sign(payload, secret, { expiresIn: expiry });
 };
 

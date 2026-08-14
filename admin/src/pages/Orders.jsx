@@ -95,6 +95,20 @@ export const Orders = () => {
     }
   };
 
+  // Helper for formatting date as dd/mm/yyyy hh:MM:ss
+  const formatDateAsDDMMYYYYHHMMSS = (dateInput) => {
+    if (!dateInput) return "";
+    const d = new Date(dateInput);
+    if (isNaN(d.getTime())) return String(dateInput);
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    const hours = String(d.getHours()).padStart(2, "0");
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    const seconds = String(d.getSeconds()).padStart(2, "0");
+    return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+  };
+
   // --- Download Sales Report as Excel ---
   const handleDownloadReport = () => {
     if (!orders || orders.length === 0) return;
@@ -110,95 +124,65 @@ export const Orders = () => {
         const isFirst = idx === 0;
 
         return {
-          // --- ORDER INFO ---
           "Sale Order Item Code": item?.saleOrderItemCode || "",
-          "Order Code": order.orderCode || "",
-          "Order ID": order.id,
-          "Order Date": order.date || "",
-          "Order Status": order.orderStatus || "",
-          "On Hold": order.orderStatus === "On Hold" ? "Yes" : "No",
-          "Invoice Code": order.invoiceCode || "",
-          "Invoice Date": order.invoiceDate
-            ? new Date(order.invoiceDate).toLocaleString("en-IN")
-            : "",
-          "Channel Name": order.channelName || "Website",
-          "Payment Method": order.paymentMethod || "",
-          "Payment Status": order.paymentStatus || "",
+          "Display Order Code": order.orderCode || order.id || "",
+          "Notification Email": order.customerEmail || "",
+          "Notification Mobile": order.customerPhone || "",
           "COD": order.paymentMethod === "COD" ? "Yes" : "No",
-
-          // --- CUSTOMER ---
-          "Customer Name": order.customerName || "",
-          "Customer Email": order.customerEmail || "",
-          "Customer Phone": order.customerPhone || "",
-
-          // --- SHIPPING ADDRESS ---
-          "Shipping Name": order.shippingAddress?.name || "",
-          "Shipping Phone": order.shippingAddress?.phone || "",
-          "Shipping Address": order.shippingAddress?.line || "",
-          "Shipping City": order.shippingAddress?.city || "",
-          "Shipping State": order.shippingAddress?.state || "",
-          "Shipping Country": order.shippingAddress?.country || "India",
-          "Shipping Pincode": order.shippingAddress?.zip || "",
-
-          // --- BILLING ADDRESS ---
-          "Billing Name": order.billingAddress?.name || order.shippingAddress?.name || "",
-          "Billing City": order.billingAddress?.city || order.shippingAddress?.city || "",
-          "Billing State": order.billingAddress?.state || order.shippingAddress?.state || "",
-          "Billing Pincode": order.billingAddress?.zip || order.shippingAddress?.zip || "",
-
-          // --- ITEM / PRODUCT DETAILS ---
-          "Product Name": item?.productName || product.name || "",
-          "Item SKU Code": product.sku || "",
-          "Item Category": product.category?.name || "",
-          "Item Size": product.size || "",
-          "Item Brand": product.brand || "",
-          "HSN Code": product.hsnCode || "",
-          "EAN Code": product.eanCode || "",
-          "MRP (₹)": product.price || item?.price || "",
-          "Item Weight": product.weight || "",
-          "Length (cm)": product.length || "",
-          "Width (cm)": product.width || "",
-          "Height (cm)": product.height || "",
-          "Shelf Life / Expiry": product.expiryDate
-            ? new Date(product.expiryDate).toLocaleDateString("en-IN")
+          "Invoice Code": order.invoiceCode || "",
+          "Invoice Code Date/Time": order.invoiceDate
+            ? formatDateAsDDMMYYYYHHMMSS(order.invoiceDate)
             : "",
-
-          // --- PRICING ---
-          "Selling Price (₹)": item?.price || 0,
-          "Quantity": item?.quantity || 0,
-          "Item Total (₹)": (item?.price || 0) * (item?.quantity || 0),
-          "Subtotal (₹)": isFirst ? (order.subtotal || 0) : "",
-          "Discount (₹)": isFirst ? (order.discount || 0) : "",
+          "Shipping Address Name": order.shippingAddress?.name || "",
+          "Shipping Address Line 1": order.shippingAddress?.line || "",
+          "Shipping Address Line 2": order.shippingAddress?.line2 || "",
+          "Shipping Address City": order.shippingAddress?.city || "",
+          "Shipping Address State": order.shippingAddress?.state || "",
+          "Shipping Address Country": order.shippingAddress?.country || "India",
+          "Shipping Address Pincode": order.shippingAddress?.zip || "",
+          "Billing Address Name": order.billingAddress?.name || order.shippingAddress?.name || "",
+          "Billing Address Line 1": order.billingAddress?.line || order.shippingAddress?.line || "",
+          "Billing Address Line 2": order.billingAddress?.line2 || "",
+          "Billing Address City": order.billingAddress?.city || order.shippingAddress?.city || "",
+          "Billing Address State": order.billingAddress?.state || order.shippingAddress?.state || "",
+          "Billing Address Country": order.billingAddress?.country || order.shippingAddress?.country || "India",
+          "Billing Address Pincode": order.billingAddress?.zip || order.shippingAddress?.zip || "",
+          "Item SKU Code": product.sku || "",
+          "Item Type Name": product.category?.name || item?.productName || "",
+          "Item Type Size": product.size || product.weight || "",
+          "Item Type Brand": product.brand || "",
+          "Channel Name": order.channelName || "Website",
+          "HSN Code": product.hsnCode || "",
+          "MRP": product.price || item?.price || 0,
+          "Total Price": (item?.price || 0) * (item?.quantity || 0),
+          "Selling Price": item?.price || 0,
+          "Subtotal": isFirst ? (order.subtotal || 0) : "",
+          "Discount": isFirst ? (order.discount || 0) : "",
+          "CGST": isFirst ? (tb.cgst || 0) : "",
+          "IGST": isFirst ? (tb.igst || 0) : "",
+          "SGST": isFirst ? (tb.sgst || 0) : "",
+          "UTGST": isFirst ? (tb.utgst || 0) : "",
+          "CESS": isFirst ? (tb.cess || 0) : "",
+          "CGST Rate": isFirst ? (tb.cgstRate || 0) : "",
+          "IGST Rate": isFirst ? (tb.igstRate || 0) : "",
+          "SGST Rate": isFirst ? (tb.sgstRate || 0) : "",
+          "UTGST Rate": isFirst ? (tb.utgstRate || 0) : "",
+          "CESS Rate": isFirst ? (tb.cessRate || product.cessRate || 0) : "",
+          "TCS Amount": isFirst ? (tb.tcsAmount || 0) : "",
+          "Tax %": product.gst != null ? product.gst : 0,
+          "Tax Value": isFirst ? (order.tax || 0) : "",
           "Voucher Code": isFirst ? (order.voucherCode || "") : "",
-
-          // --- TAX BREAKUP ---
-          "GST %": product.gst != null ? product.gst : "",
-          "CGST (₹)": isFirst ? (tb.cgst || 0) : "",
-          "CGST Rate (%)": isFirst ? (tb.cgstRate || "") : "",
-          "SGST (₹)": isFirst ? (tb.sgst || 0) : "",
-          "SGST Rate (%)": isFirst ? (tb.sgstRate || "") : "",
-          "IGST (₹)": isFirst ? (tb.igst || 0) : "",
-          "IGST Rate (%)": isFirst ? (tb.igstRate || "") : "",
-          "UTGST (₹)": isFirst ? (tb.utgst || 0) : "",
-          "UTGST Rate (%)": isFirst ? (tb.utgstRate || "") : "",
-          "CESS (₹)": isFirst ? (tb.cess || 0) : "",
-          "CESS Rate (%)": isFirst ? (tb.cessRate || product.cessRate || "") : "",
-          "TCS Rate (%)": isFirst ? (tb.tcsRate || "") : "",
-          "TCS Amount (₹)": isFirst ? (tb.tcsAmount || 0) : "",
-          "Tax Total (₹)": isFirst ? (order.tax || 0) : "",
-
-          // --- SHIPPING & LOGISTICS ---
-          "Shipping Charges (₹)": isFirst ? (order.shipping || 0) : "",
-          "Shipping Method Charges (₹)": isFirst ? (order.shippingMethodCharges || 0) : "",
-          "COD Service Charge (₹)": isFirst ? (order.codServiceCharge || 0) : "",
-          "Gift Wrap Charges (₹)": isFirst ? (order.giftWrapCharges || 0) : "",
-          "Grand Total (₹)": isFirst ? (order.total || 0) : "",
+          "Shipping Charges": isFirst ? (order.shipping || 0) : "",
+          "Shipping Method Charges": isFirst ? (order.shippingMethodCharges || 0) : "",
+          "COD Service Charges": isFirst ? (order.codServiceCharge || 0) : "",
+          "Gift Wrap Charges": isFirst ? (order.giftWrapCharges || 0) : "",
           "Packet Number": isFirst ? (order.packetNumber || "") : "",
+          "Order Date as dd/mm/yyyy hh:MM:ss": formatDateAsDDMMYYYYHHMMSS(order.createdAt || order.date),
+          "Sale Order Code": order.orderCode || order.id || "",
+          "On Hold": order.orderStatus === "On Hold" ? "Yes" : "No",
+          "Sale Order Status": order.orderStatus || "",
           "Shipping Courier": isFirst ? (order.shippingCourier || "") : "",
-          "Tracking Number": isFirst ? (order.trackingNumber || "") : "",
-
-          // --- INVENTORY ---
-          "Current Stock": product.stock != null ? product.stock : "",
+          "Tracking Number": isFirst ? (order.trackingNumber || "") : ""
         };
       };
 

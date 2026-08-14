@@ -320,35 +320,85 @@ export const Banners = () => {
             </div>
 
             <div className="space-y-3">
+              {/* Image Input Selection Mode */}
               <div>
-                <label className="block text-xs font-bold text-primary mb-1">
-                  Banner Image URL *
-                </label>
-                <input
-                  type="text"
-                  placeholder="Paste Image URL (Unsplash, etc.)"
-                  value={formImage}
-                  onChange={(e) => setFormImage(e.target.value)}
-                  className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background placeholder-charcoal-light focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
-                />
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-bold text-primary">
+                    Banner Image Source *
+                  </label>
+                  <span className="text-[10px] text-charcoal-light font-medium">
+                    Supports JPG, PNG, WEBP, SVG
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  {/* File Upload Box */}
+                  <label className="flex flex-col items-center justify-center border-2 border-dashed border-secondary/40 hover:border-secondary bg-primary-dark/5 hover:bg-primary-dark/10 p-3 rounded-xl cursor-pointer transition-all">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          if (file.size > 10 * 1024 * 1024) {
+                            showToast("Image file size should be less than 10MB");
+                            return;
+                          }
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            setFormImage(reader.result);
+                            showToast("Desktop image loaded successfully!", "success");
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                      className="hidden"
+                    />
+                    <div className="flex items-center gap-2 text-primary font-bold text-xs">
+                      <span className="bg-secondary text-primary px-2.5 py-1 rounded-md text-[11px] shadow-xs">
+                        📁 Choose Image from Desktop
+                      </span>
+                      <span className="text-[10px] text-charcoal-light">or Drag & Drop</span>
+                    </div>
+                  </label>
+
+                  {/* Or Paste URL Option */}
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Or Paste Image URL (https://...)"
+                      value={formImage.startsWith('data:') ? '[Desktop File Selected]' : formImage}
+                      onChange={(e) => setFormImage(e.target.value)}
+                      className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-xs bg-background placeholder-charcoal-light focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all font-mono"
+                    />
+                    {formImage && (
+                      <button
+                        type="button"
+                        onClick={() => setFormImage("")}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-rose-600 hover:underline px-1"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* Image Preview Window */}
-              <div className="h-28 border border-dashed border-primary/15 bg-background rounded-lg flex items-center justify-center overflow-hidden">
+              <div className="h-32 border border-dashed border-primary/20 bg-background rounded-xl flex items-center justify-center overflow-hidden relative shadow-inner">
                 {formImage ? (
                   <img
                     src={formImage}
                     alt="Preview"
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      e.target.src = "";
-                      showToast("Invalid image URL.");
+                      showToast("Invalid image preview.");
                     }}
                   />
                 ) : (
-                  <div className="text-center p-2 text-charcoal-light">
-                    <span className="text-[10px] block font-semibold uppercase">No Image Loaded</span>
-                    <span className="text-[9px] block">URL preview displays here</span>
+                  <div className="text-center p-2 text-charcoal-light space-y-1">
+                    <span className="text-[10px] block font-bold uppercase text-primary">No Image Selected</span>
+                    <span className="text-[9px] block text-charcoal-light">Upload desktop image file or paste URL above</span>
                   </div>
                 )}
               </div>

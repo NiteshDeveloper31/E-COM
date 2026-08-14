@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useReetSutra } from '../context/ReetSutraContext';
 import { 
   Mail, 
   Phone, 
@@ -9,6 +10,54 @@ import {
   Star,
   Truck
 } from 'lucide-react';
+
+const InstagramIcon = () => (
+  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+  </svg>
+);
+
+const FacebookIcon = () => (
+  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
+  </svg>
+);
+
+const YoutubeIcon = () => (
+  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"></path>
+    <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon>
+  </svg>
+);
+
+const TelegramIcon = () => (
+  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="22" y1="2" x2="11" y2="13"></line>
+    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+  </svg>
+);
+
+const WhatsappIcon = () => (
+  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+  </svg>
+);
+
+const XTwitterIcon = () => (
+  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+  </svg>
+);
+
+const LinkedinIcon = () => (
+  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path>
+    <rect x="2" y="9" width="4" height="12"></rect>
+    <circle cx="4" cy="4" r="2"></circle>
+  </svg>
+);
 
 const GooglePlaySVG = () => (
   <svg className="w-5 h-5 text-white shrink-0" viewBox="0 0 16 16" fill="currentColor">
@@ -23,6 +72,7 @@ const AppStoreSVG = () => (
 );
 
 export default function Footer() {
+  const { settings } = useReetSutra();
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
 
@@ -34,6 +84,16 @@ export default function Footer() {
       setTimeout(() => setSubscribed(false), 5000);
     }
   };
+
+  const socialLinks = [
+    { label: "Instagram", href: settings?.socialInstagram || "https://instagram.com/reetsutra", icon: <InstagramIcon /> },
+    { label: "Facebook", href: settings?.socialFacebook || "https://facebook.com/reetsutra", icon: <FacebookIcon /> },
+    { label: "YouTube", href: settings?.socialYoutube || "https://youtube.com/@reetsutra", icon: <YoutubeIcon /> },
+    { label: "Telegram", href: settings?.socialTelegram || "https://t.me/reetsutra", icon: <TelegramIcon /> },
+    { label: "WhatsApp", href: settings?.socialWhatsapp || "https://wa.me/919123456789", icon: <WhatsappIcon /> },
+    { label: "X (Twitter)", href: settings?.socialTwitter || "https://x.com/reetsutra", icon: <XTwitterIcon /> },
+    { label: "LinkedIn", href: settings?.socialLinkedin || "https://linkedin.com/company/reetsutra", icon: <LinkedinIcon /> }
+  ].filter(soc => Boolean(soc.href));
 
   return (
     <footer className="bg-brand-green text-brand-cream border-t-2 border-brand-gold/30 pt-12 pb-8">
@@ -51,14 +111,17 @@ export default function Footer() {
             Celebrating the rich culinary heritage of Bihar with authentic, handmade recipes made by local women collectives.
           </p>
           {/* Socials */}
-          <div className="flex space-x-3 pt-2">
-            {[
-              { label: "Instagram", icon: <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg> },
-              { label: "Facebook", icon: <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg> },
-              { label: "Twitter", icon: <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"></path></svg> },
-              { label: "Youtube", icon: <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon></svg> }
-            ].map((soc, i) => (
-              <a key={i} href="#" className="p-2 bg-brand-greenDark rounded border border-brand-gold/15 hover:border-brand-gold hover:text-brand-gold transition-colors" aria-label={soc.label}>
+          <div className="flex flex-wrap gap-2 pt-2">
+            {socialLinks.map((soc, i) => (
+              <a
+                key={i}
+                href={soc.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 bg-brand-greenDark rounded border border-brand-gold/15 hover:border-brand-gold hover:text-brand-gold transition-all duration-200 hover:scale-110"
+                aria-label={soc.label}
+                title={soc.label}
+              >
                 {soc.icon}
               </a>
             ))}
@@ -133,7 +196,7 @@ export default function Footer() {
               <div className="flex items-center space-x-2.5">
                 <Star className="w-5 h-5 text-brand-gold fill-current shrink-0" />
                 <div>
-                  <h5 className="font-bold text-xs text-brand-cream font-sans tracking-wide">4.8 / 5</h5>
+                  <h5 className="font-bold text-xs text-brand-cream font-sans tracking-wide">4.9 / 5</h5>
                   <p className="text-[10px] text-brand-cream/60">Average Rating</p>
                 </div>
               </div>
@@ -186,34 +249,47 @@ export default function Footer() {
           {/* Right Column: App Downloads */}
           <div className="space-y-4 text-left">
             <div>
-              <h4 className="serif-header text-sm font-bold text-brand-gold tracking-wider">Download Our App</h4>
-              <p className="text-xs text-brand-cream/75 font-sans">Get exclusive offers & seamless ordering on App.</p>
+              <div className="flex items-center gap-2">
+                <h4 className="serif-header text-sm font-bold text-brand-gold tracking-wider">DOWNLOAD OUR APP</h4>
+                <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-brand-gold/20 text-brand-gold border border-brand-gold/40 shadow-xs animate-pulse">
+                  Live Soon
+                </span>
+              </div>
+              <p className="text-xs text-brand-cream/75 font-sans mt-1">Mobile App launching soon on Android & iOS!</p>
             </div>
             
             <div className="flex flex-wrap gap-3 pt-1">
               {/* Google Play Button */}
-              <a 
-                href="#" 
-                className="bg-black hover:bg-zinc-900 text-white flex items-center space-x-2.5 px-3.5 py-1.5 rounded border border-zinc-800 transition-all duration-300 hover:scale-[1.02] shadow-md shrink-0 cursor-pointer"
-              >
-                <GooglePlaySVG />
-                <div className="flex flex-col items-start text-left leading-none">
-                  <span className="text-[8px] uppercase tracking-wider text-zinc-400 font-sans">GET IT ON</span>
-                  <span className="text-[11px] font-bold font-sans text-white mt-0.5">Google Play</span>
-                </div>
-              </a>
+              <div className="relative group">
+                <a 
+                  href="#" 
+                  onClick={(e) => e.preventDefault()}
+                  className="bg-black/90 text-white flex items-center space-x-2.5 px-3.5 py-1.5 rounded border border-brand-gold/30 opacity-85 cursor-not-allowed shadow-md shrink-0 transition-all"
+                  title="ReetSutra Android App Coming Soon"
+                >
+                  <GooglePlaySVG />
+                  <div className="flex flex-col items-start text-left leading-none">
+                    <span className="text-[8px] uppercase tracking-wider text-brand-gold font-bold font-sans">COMING SOON</span>
+                    <span className="text-[11px] font-bold font-sans text-white/90 mt-0.5">Google Play</span>
+                  </div>
+                </a>
+              </div>
 
               {/* App Store Button */}
-              <a 
-                href="#" 
-                className="bg-black hover:bg-zinc-900 text-white flex items-center space-x-2.5 px-3.5 py-1.5 rounded border border-zinc-800 transition-all duration-300 hover:scale-[1.02] shadow-md shrink-0 cursor-pointer"
-              >
-                <AppStoreSVG />
-                <div className="flex flex-col items-start text-left leading-none">
-                  <span className="text-[8px] uppercase tracking-wider text-zinc-400 font-sans">Download on the</span>
-                  <span className="text-[11px] font-bold font-sans text-white mt-0.5">App Store</span>
-                </div>
-              </a>
+              <div className="relative group">
+                <a 
+                  href="#" 
+                  onClick={(e) => e.preventDefault()}
+                  className="bg-black/90 text-white flex items-center space-x-2.5 px-3.5 py-1.5 rounded border border-brand-gold/30 opacity-85 cursor-not-allowed shadow-md shrink-0 transition-all"
+                  title="ReetSutra iOS App Coming Soon"
+                >
+                  <AppStoreSVG />
+                  <div className="flex flex-col items-start text-left leading-none">
+                    <span className="text-[8px] uppercase tracking-wider text-brand-gold font-bold font-sans">COMING SOON</span>
+                    <span className="text-[11px] font-bold font-sans text-white/90 mt-0.5">App Store</span>
+                  </div>
+                </a>
+              </div>
             </div>
           </div>
 

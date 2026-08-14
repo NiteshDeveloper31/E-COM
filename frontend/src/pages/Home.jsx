@@ -32,6 +32,108 @@ const PickleJarIcon = () => (
   </svg>
 );
 
+// 100% Pixel-Perfect SVG Icons matching the reference image
+const SmallBatchesIcon = () => (
+  <svg className="w-8 h-8 sm:w-10 sm:h-10 text-[#C8A25D] shrink-0" viewBox="0 0 44 44" fill="none">
+    {/* Knob */}
+    <ellipse cx="22" cy="7.5" rx="2.5" ry="2" fill="#C8A25D" />
+    {/* Lid dome */}
+    <path d="M14 13.5c1.5-3.5 5.5-4.5 8-4.5s6.5 1 8 4.5H14z" fill="#C8A25D" />
+    {/* Neck rim */}
+    <rect x="12" y="13.5" width="20" height="2.5" rx="1" fill="#A8823D" />
+    {/* Body */}
+    <path d="M13 16c-5 3.5-5.5 12.5-0.5 16.5C15.5 35 28.5 35 31.5 32.5c5-4 4.5-13-0.5-16.5H13z" fill="#C8A25D" />
+    {/* Pot shadow & highlight lines */}
+    <path d="M15 22c3.5 2 10.5 2 14 0" stroke="#FAF6EF" strokeWidth="1.2" strokeLinecap="round" opacity="0.6" />
+    <path d="M17 33h10" stroke="#A8823D" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+);
+
+const BiharRecipesIcon = () => (
+  <svg className="w-8 h-8 sm:w-10 sm:h-10 text-[#C8A25D] shrink-0" viewBox="0 0 44 44" fill="none">
+    {/* Central Stem */}
+    <path d="M22 36V16" stroke="#C8A25D" strokeWidth="2.2" strokeLinecap="round" />
+    {/* Top Center Leaf */}
+    <path d="M22 17C22 8 16 6 13 11c-1.5 4.5 3 9 9 6z" fill="#C8A25D" />
+    <path d="M22 17c0-9 6-11 9-6 1.5 4.5-3 9-9 6z" fill="#C8A25D" />
+    {/* Left Leaf */}
+    <path d="M22 25c-7-2-11-8-7-12 4.5-2.5 9.5 3 7 12z" fill="#C8A25D" />
+    {/* Right Leaf */}
+    <path d="M22 25c7-2 11-8 7-12-4.5-2.5-9.5 3-7 12z" fill="#C8A25D" />
+  </svg>
+);
+
+const PremiumIngredientsIcon = () => (
+  <svg className="w-8 h-8 sm:w-10 sm:h-10 text-[#C8A25D] shrink-0" viewBox="0 0 44 44" fill="none" stroke="#C8A25D" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    {/* Stem */}
+    <path d="M22 36V10" strokeWidth="2" />
+    {/* Top Leaf */}
+    <path d="M22 10c-3.5-5 0-8 3.5-7 1 4.5-1 6.5-3.5 7z" fill="#C8A25D" fillOpacity="0.25" />
+    <path d="M22 6v4" strokeWidth="1" />
+    {/* Upper Left Leaf */}
+    <path d="M22 16c-5-4-9-2-7 3 2.5 4 6 2.5 7-3z" fill="#C8A25D" fillOpacity="0.25" />
+    <path d="M17 14.5l5 1.5" strokeWidth="1" />
+    {/* Upper Right Leaf */}
+    <path d="M22 16c5-4 9-2 7 3-2.5 4-6 2.5-7-3z" fill="#C8A25D" fillOpacity="0.25" />
+    <path d="M27 14.5l-5 1.5" strokeWidth="1" />
+    {/* Lower Left Leaf */}
+    <path d="M22 24c-6-4-10-1-8 4 3 4.5 7 2 8-4z" fill="#C8A25D" fillOpacity="0.25" />
+    <path d="M16 22l6 2" strokeWidth="1" />
+    {/* Lower Right Leaf */}
+    <path d="M22 24c6-4 10-1 8 4-3 4.5-7 2-8-4z" fill="#C8A25D" fillOpacity="0.25" />
+    <path d="M28 22l-6 2" strokeWidth="1" />
+  </svg>
+);
+
+const NoPreservativesIcon = () => (
+  <svg className="w-8 h-8 sm:w-10 sm:h-10 text-[#C8A25D] shrink-0" viewBox="0 0 44 44" fill="none" stroke="#C8A25D" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    {/* Outer Circle */}
+    <circle cx="22" cy="22" r="16" strokeWidth="1.8" />
+    {/* Slash */}
+    <line x1="11" y1="33" x2="33" y2="11" strokeWidth="2" />
+    {/* Crossed Flask/Drop inside */}
+    <path d="M22 14c-3 4-4.5 6.5-4.5 9.5a4.5 4.5 0 0 0 9 0c0-3-1.5-5.5-4.5-9.5z" strokeWidth="1.3" opacity="0.8" />
+  </svg>
+);
+
+const PrideInBiharIcon = () => (
+  <svg className="w-9 h-9 sm:w-10 sm:h-10 text-[#C8A25D] shrink-0" viewBox="0 0 44 44" fill="none" stroke="#C8A25D" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    {/* Geographic Bihar Map Outline */}
+    <path
+      d="M 9 16 
+         L 14 13.5 
+         L 19 15 
+         L 24 13 
+         L 31 14.5 
+         L 35 18 
+         L 33 22 
+         L 36 26 
+         L 34 31 
+         L 28 30 
+         L 25 33 
+         L 19 32 
+         L 15 34 
+         L 11 30 
+         L 12 24 
+         L 8 21 
+         Z"
+      fill="#C8A25D"
+      fillOpacity="0.12"
+      strokeWidth="1.8"
+    />
+    <path d="M 9 22 C 16 23, 24 21, 35 23" stroke="#C8A25D" strokeWidth="1" strokeDasharray="1.5 1.5" opacity="0.6" />
+  </svg>
+);
+
+const FreshShieldIcon = () => (
+  <svg className="w-8 h-8 sm:w-10 sm:h-10 text-[#C8A25D] shrink-0" viewBox="0 0 44 44" fill="none" stroke="#C8A25D" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    {/* Shield Outer */}
+    <path d="M22 6l13 5v11c0 10-8 16-13 18C14 38 6 32 6 22V11l13-5z" fill="#C8A25D" fillOpacity="0.12" strokeWidth="1.8" />
+    {/* Inner Leaf & Checkmark */}
+    <path d="M15 22.5l5 5L29 16" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 export default function Home() {
   const { products } = useReetSutra();
   const [quickViewProduct, setQuickViewProduct] = useState(null);
@@ -41,6 +143,7 @@ export default function Home() {
 
   const [heroBanners, setHeroBanners] = useState([]);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+  const [showFloatingBanner, setShowFloatingBanner] = useState(true);
 
   useEffect(() => {
     const fetchBanners = async () => {
@@ -48,7 +151,7 @@ export default function Home() {
         const response = await fetch("http://localhost:5000/api/banners");
         const resJson = await response.json();
         if (response.ok && resJson.success) {
-          const active = resJson.data.filter(b => b.status === "Active" && b.placement.toLowerCase() === "main hero");
+          const active = resJson.data.filter(b => b.status === "Active");
           setHeroBanners(active || []);
         }
       } catch (err) {
@@ -58,14 +161,25 @@ export default function Home() {
     fetchBanners();
   }, []);
 
-  const displayBanners = [{ isDefault: true }, ...heroBanners];
-  const currentBanner = displayBanners[currentSlideIndex];
+  // Main Default Hero + All Active Admin Banners
+  const displayBanners = [
+    {
+      isDefault: true,
+      title: "The True Taste of Bihar,\nNow at Your Home",
+      subtitle: "Pure Ingredients. Traditional Recipes.\nMade with Love.",
+      image: heroBg
+    },
+    ...heroBanners
+  ];
+  
+  const currentBanner = displayBanners[currentSlideIndex % displayBanners.length];
 
+  // Auto-slide every 3.5 seconds
   useEffect(() => {
     if (displayBanners.length <= 1) return;
     const timer = setInterval(() => {
       setCurrentSlideIndex(prev => (prev + 1) % displayBanners.length);
-    }, 6000);
+    }, 3500);
     return () => clearInterval(timer);
   }, [displayBanners.length]);
 
@@ -78,7 +192,7 @@ export default function Home() {
 
   const getBannerImage = (banner) => {
     if (!banner || banner.isDefault || !banner.image) return heroBg;
-    if (banner.image.startsWith("http://") || banner.image.startsWith("https://")) {
+    if (banner.image.startsWith("data:") || banner.image.startsWith("http://") || banner.image.startsWith("https://")) {
       return banner.image;
     }
     return `http://localhost:5000${banner.image.startsWith("/") ? "" : "/"}${banner.image}`;
@@ -155,14 +269,44 @@ export default function Home() {
     }
   ];
 
-  // Instagram items
-  const instagramGems = [
-    'https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?auto=format&fit=crop&w=400&q=80',
-    'https://images.unsplash.com/photo-1586444248902-2f64eddc13df?auto=format&fit=crop&w=400&q=80',
-    'https://images.unsplash.com/photo-1541832676-9b763b0239ab?auto=format&fit=crop&w=400&q=80',
-    'https://images.unsplash.com/photo-1608686207856-001b95cf60ca?auto=format&fit=crop&w=400&q=80',
-    'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=400&q=80',
-    'https://images.unsplash.com/photo-1587314168485-3236d6710814?auto=format&fit=crop&w=400&q=80'
+  // Instagram Social Gallery items with real product images & category links
+  const socialGalleryItems = [
+    {
+      image: '/images/desi_cow_ghee.jpg',
+      title: 'Pure A2 Cow Ghee',
+      category: 'Ghee',
+      link: '/shop?category=Ghee'
+    },
+    {
+      image: '/images/mango_pickle.jpg',
+      title: 'Traditional Mango Pickle',
+      category: 'Pickles',
+      link: '/shop?category=Pickles'
+    },
+    {
+      image: '/images/thekua.jpg',
+      title: 'Homemade Bihari Thekua',
+      category: 'Thekua',
+      link: '/shop?category=Thekua'
+    },
+    {
+      image: '/images/makhana.jpg',
+      title: 'Mithila Roasted Makhana',
+      category: 'Makhana',
+      link: '/shop?category=Makhana'
+    },
+    {
+      image: '/images/premium_combo_box.jpg',
+      title: 'Festive Gift Collection',
+      category: 'Gift Boxes',
+      link: '/shop?category=Gift Boxes'
+    },
+    {
+      image: '/images/sattu.jpg',
+      title: 'Authentic Chana Sattu',
+      category: 'Sattu',
+      link: '/shop?category=Sattu'
+    }
   ];
 
   return (
@@ -194,7 +338,7 @@ export default function Home() {
             <div className="lg:col-span-7 space-y-3 lg:space-y-2.5 xl:space-y-3.5 flex flex-col items-center text-center max-w-xl mx-auto lg:mx-0 relative z-10">
               {/* Sunburst radial glow spotlight */}
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.75)_0%,rgba(255,255,255,0)_70%)] pointer-events-none -z-10 scale-[1.6] blur-xl" />
-              
+
               <AnimatePresence mode="wait">
                 <motion.div
                   key={currentSlideIndex}
@@ -312,35 +456,38 @@ export default function Home() {
             {/* Left Chevron Button */}
             <button
               onClick={prevSlide}
-              className="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white/20 hover:bg-white/45 text-[#1E3926] flex items-center justify-center transition-all cursor-pointer backdrop-blur-xs shadow-xs"
+              className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 z-30 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#1E3926]/80 hover:bg-[#1E3926] text-[#C8A25D] border border-[#C8A25D]/40 flex items-center justify-center transition-all duration-300 cursor-pointer backdrop-blur-md shadow-xl hover:scale-110"
               aria-label="Previous Slide"
             >
-              <ChevronLeft className="w-5 h-5" />
+              <ChevronLeft className="w-6 h-6 text-[#C8A25D]" />
             </button>
 
             {/* Right Chevron Button */}
             <button
               onClick={nextSlide}
-              className="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white/20 hover:bg-white/45 text-[#1E3926] flex items-center justify-center transition-all cursor-pointer backdrop-blur-xs shadow-xs"
+              className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 z-30 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#1E3926]/80 hover:bg-[#1E3926] text-[#C8A25D] border border-[#C8A25D]/40 flex items-center justify-center transition-all duration-300 cursor-pointer backdrop-blur-md shadow-xl hover:scale-110"
               aria-label="Next Slide"
             >
-              <ChevronRight className="w-5 h-5" />
+              <ChevronRight className="w-6 h-6 text-[#C8A25D]" />
             </button>
 
-            {/* Bottom Indicator Dots */}
-            <div className="absolute bottom-16 sm:bottom-18 lg:bottom-20 left-1/2 -translate-x-1/2 z-20 flex space-x-1.5">
+            {/* Bottom Indicator Dots & Slide Counter */}
+            <div className="absolute bottom-2.5 right-6 sm:right-12 z-30 flex items-center space-x-2 bg-[#1E3926]/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-[#C8A25D]/30 shadow-md">
               {displayBanners.map((_, idx) => (
                 <button
                   key={idx}
                   onClick={() => setCurrentSlideIndex(idx)}
-                  className={`w-2 h-2 rounded-full transition-all duration-300 cursor-pointer ${
-                    idx === currentSlideIndex 
-                      ? 'bg-[#1E3926] scale-110' 
-                      : 'bg-[#1E3926]/20 hover:bg-[#1E3926]/40'
+                  className={`h-2 transition-all duration-300 cursor-pointer rounded-full ${
+                    idx === currentSlideIndex % displayBanners.length
+                      ? 'w-6 bg-[#C8A25D]'
+                      : 'w-2 bg-white/40 hover:bg-white/70'
                   }`}
                   aria-label={`Go to slide ${idx + 1}`}
                 />
               ))}
+              <span className="text-[10px] font-mono font-bold text-[#C8A25D] pl-1">
+                {(currentSlideIndex % displayBanners.length) + 1}/{displayBanners.length}
+              </span>
             </div>
           </>
         )}
@@ -370,28 +517,68 @@ export default function Home() {
 
 
 
-      {/* 1.3 Under-Hero 6-Feature Bar - Light cream background, dark green text */}
-      <section className="bg-[#FAF7F2] border-b border-brand-gold/15 py-5 px-4">
+      {/* 1.3 Under-Hero 6-Feature Bar - Light ivory cream background, gold dividers, matching reference image */}
+      <section className="bg-[#FAF6EF] border-y border-[#B8934E]/20 py-4 sm:py-5 px-3 sm:px-6">
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 text-center lg:text-left">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-y-4 sm:gap-y-0">
             {[
-              { icon: ShieldCheck, title: "PURE & AUTHENTIC", desc: "Made with Natural Ingredients" },
-              { icon: Award, title: "TRADITIONAL RECIPES", desc: "From Bihar's Heritage" },
-              { icon: Leaf, title: "NO PRESERVATIVES", desc: "100% Chemical Free" },
-              { icon: Map, title: "SECURE PACKAGING", desc: "Hygienic & Fresh" },
-              { icon: Truck, title: "FAST DELIVERY", desc: "Across India" },
-              { icon: RotateCcw, title: "EASY RETURNS", desc: "Customer Friendly" }
-            ].map((feat, idx) => (
-              <div key={idx} className="flex flex-col lg:flex-row items-center lg:items-start gap-2.5 justify-center lg:justify-start">
-                <div className="w-7.5 h-7.5 rounded-full bg-brand-green/5 text-brand-gold flex items-center justify-center shrink-0">
-                  <feat.icon className="w-3.5 h-3.5" />
+              {
+                icon: SmallBatchesIcon,
+                title1: "HANDMADE",
+                title2: "IN SMALL BATCHES",
+                subtitle: "Made with Love"
+              },
+              {
+                icon: BiharRecipesIcon,
+                title1: "TRADITIONAL",
+                title2: "BIHAR RECIPES",
+                subtitle: "Passed Down Generations"
+              },
+              {
+                icon: PremiumIngredientsIcon,
+                title1: "PREMIUM",
+                title2: "INGREDIENTS",
+                subtitle: "Finest Quality"
+              },
+              {
+                icon: NoPreservativesIcon,
+                title1: "NO ARTIFICIAL",
+                title2: "PRESERVATIVES",
+                subtitle: "100% Natural"
+              },
+              {
+                icon: PrideInBiharIcon,
+                title1: "MADE WITH PRIDE",
+                title2: "IN BIHAR",
+                subtitle: "From Our Roots to You"
+              },
+              {
+                icon: FreshShieldIcon,
+                title1: "FRESHLY",
+                title2: "PACKED",
+                subtitle: "For Purity & Taste"
+              }
+            ].map((feat, idx, arr) => {
+              const IconComp = feat.icon;
+              return (
+                <div
+                  key={idx}
+                  className={`flex items-center justify-center gap-2.5 sm:gap-3 py-2 px-2 text-left ${idx !== arr.length - 1 ? 'lg:border-r lg:border-[#B8934E]/25' : ''
+                    }`}
+                >
+                  <IconComp />
+                  <div className="flex flex-col justify-center">
+                    <h4 className="font-extrabold text-[10px] sm:text-[11px] text-[#1E3926] tracking-wider uppercase leading-tight font-sans">
+                      {feat.title1}
+                      <span className="block">{feat.title2}</span>
+                    </h4>
+                    <p className="text-[9px] sm:text-[9.5px] text-[#8C6D34] font-serif italic mt-0.5 leading-none">
+                      {feat.subtitle}
+                    </p>
+                  </div>
                 </div>
-                <div className="space-y-0.5 text-center lg:text-left">
-                  <h4 className="font-bold text-[10px] text-brand-green tracking-wider uppercase">{feat.title}</h4>
-                  <p className="text-[9px] text-brand-charcoalLight font-sans leading-snug">{feat.desc}</p>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
@@ -661,7 +848,7 @@ export default function Home() {
 
               <div className="w-44 h-44 md:w-52 md:h-52 shrink-0 relative rounded-lg overflow-hidden border border-brand-gold/15 bg-white shadow-md">
                 <img
-                  src="https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=400&q=80"
+                  src="/images/premium_combo_box.jpg"
                   alt="Premium Gift Box"
                   className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
                 />
@@ -686,56 +873,59 @@ export default function Home() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
 
-            {/* Heritage Item 1 */}
-            <div className="space-y-4">
-              <div className="aspect-[4/3] rounded overflow-hidden shadow-md border border-brand-gold/15">
+            {/* Heritage Item 1: Traditional Thekua */}
+            <Link to="/shop?category=Thekua" className="group space-y-4 text-left block cursor-pointer">
+              <div className="aspect-[4/3] rounded overflow-hidden shadow-md border border-brand-gold/15 bg-white group-hover:border-brand-gold transition-all duration-300">
                 <img
-                  src="https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?auto=format&fit=crop&w=500&q=80"
-                  alt="Gaya Tilkut pounding"
-                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                  src="/images/thekua.jpg"
+                  alt="Authentic Bihar Thekua"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
               </div>
-              <h3 className="text-lg font-bold text-brand-green font-serif">
-                Gaya Hand-Pounded Tilkut
+              <h3 className="text-lg font-bold text-brand-green font-serif group-hover:text-brand-gold transition-colors flex items-center justify-between">
+                <span>Authentic Bihar Thekua & Sweets</span>
+                <ArrowRight className="w-4 h-4 text-brand-gold opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
               </h3>
               <p className="text-xs md:text-sm text-brand-charcoalLight leading-relaxed font-sans">
-                Gaya's winter Tilkut is legendary. The flakiness is achieved only when toasted white sesame seeds and hot jaggery are pounded in heavy iron mortars. Our chefs preserve this delicate manual labor.
+                Handmade traditional Bihari Thekua prepared using pure organic jaggery (gur), whole wheat, cardamoms, and fried in pure desi ghee using traditional carved wooden molds (Saancha).
               </p>
-            </div>
+            </Link>
 
-            {/* Heritage Item 2 */}
-            <div className="space-y-4">
-              <div className="aspect-[4/3] rounded overflow-hidden shadow-md border border-brand-gold/15">
+            {/* Heritage Item 2: Pure Desi Cow Ghee */}
+            <Link to="/shop?category=Ghee" className="group space-y-4 text-left block cursor-pointer">
+              <div className="aspect-[4/3] rounded overflow-hidden shadow-md border border-brand-gold/15 bg-white group-hover:border-brand-gold transition-all duration-300">
                 <img
-                  src="https://images.unsplash.com/photo-1587314168485-3236d6710814?auto=format&fit=crop&w=500&q=80"
-                  alt="Silaao Khaja folding"
-                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                  src="/images/desi_cow_ghee.jpg"
+                  alt="Pure A2 Bilona Cow Ghee"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
               </div>
-              <h3 className="text-lg font-bold text-brand-green font-serif">
-                Silaao GI-Tagged Layered Khaja
+              <h3 className="text-lg font-bold text-brand-green font-serif group-hover:text-brand-gold transition-colors flex items-center justify-between">
+                <span>Pure A2 Bilona Cow Ghee</span>
+                <ArrowRight className="w-4 h-4 text-brand-gold opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
               </h3>
               <p className="text-xs md:text-sm text-brand-charcoalLight leading-relaxed font-sans">
-                Hailing from the historic regions of Nalanda and Rajgir, this sweet pastry requires rolling dough into multiple paper-thin sheets, folding them 52 times, and deep frying in clean A2 cow ghee.
+                Crafted from grass-fed cow milk using the ancient Vedic Bilona method. Rich granular texture, natural aroma, and essential healthy fats handed down through traditional Indian kitchen heritage.
               </p>
-            </div>
+            </Link>
 
-            {/* Heritage Item 3 */}
-            <div className="space-y-4">
-              <div className="aspect-[4/3] rounded overflow-hidden shadow-md border border-brand-gold/15">
+            {/* Heritage Item 3: Mithila Premium Makhana */}
+            <Link to="/shop?category=Makhana" className="group space-y-4 text-left block cursor-pointer">
+              <div className="aspect-[4/3] rounded overflow-hidden shadow-md border border-brand-gold/15 bg-white group-hover:border-brand-gold transition-all duration-300">
                 <img
-                  src="https://images.unsplash.com/photo-1586444248902-2f64eddc13df?auto=format&fit=crop&w=500&q=80"
-                  alt="Mithila Makhana Harvesting"
-                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                  src="/images/makhana.jpg"
+                  alt="Mithila Premium Fox Nuts"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
               </div>
-              <h3 className="text-lg font-bold text-brand-green font-serif">
-                Mithila Premium Fox Nuts
+              <h3 className="text-lg font-bold text-brand-green font-serif group-hover:text-brand-gold transition-colors flex items-center justify-between">
+                <span>Mithila Premium Fox Nuts (Makhana)</span>
+                <ArrowRight className="w-4 h-4 text-brand-gold opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
               </h3>
               <p className="text-xs md:text-sm text-brand-charcoalLight leading-relaxed font-sans">
-                Mithila produces over 85% of the world's makhana. Sourced from organic water lily farms, the seeds are harvested, sun-dried, and hand-popped on heavy wood fire pans to create large, crunchy puff snacks.
+                Mithila produces over 85% of the world's makhana. Sourced from organic water lily farms, the seeds are harvested, sun-dried, and hand-popped on wood fire pans to create large, crunchy puff snacks.
               </p>
-            </div>
+            </Link>
 
           </div>
 
@@ -806,28 +996,92 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {instagramGems.map((imgUrl, i) => (
-              <div
+            {socialGalleryItems.map((item, i) => (
+              <Link
                 key={i}
-                className="relative aspect-square overflow-hidden rounded border border-brand-gold/10 group shadow-sm hover:shadow-premium"
+                to={item.link}
+                className="relative aspect-square overflow-hidden rounded-lg border border-brand-gold/15 group shadow-sm hover:shadow-premium block cursor-pointer bg-white"
               >
                 <img
-                  src={imgUrl}
-                  alt="Heritage food setup"
+                  src={item.image}
+                  alt={item.title}
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
-                <div className="absolute inset-0 bg-brand-green/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                  <span className="text-brand-cream text-xs font-bold uppercase tracking-wider font-sans border border-brand-cream px-3 py-1 bg-brand-green/30 backdrop-blur-xs">
+                <div className="absolute inset-0 bg-brand-green/70 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center p-2 text-center">
+                  <span className="text-brand-gold text-[10px] font-bold tracking-widest uppercase mb-1">
+                    {item.category}
+                  </span>
+                  <span className="text-brand-cream text-[11px] font-bold uppercase tracking-wider font-sans border border-brand-gold/40 px-3 py-1 bg-brand-green/40 backdrop-blur-xs rounded shadow-xs">
                     View Post
                   </span>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
 
         </section>
 
       </div>
+
+      {/* Animated Floating Promotional Offer Banner */}
+      <AnimatePresence>
+        {showFloatingBanner && heroBanners.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: [0, -8, 0], scale: 1 }}
+            exit={{ opacity: 0, y: 50, scale: 0.9 }}
+            transition={{
+              y: { repeat: Infinity, duration: 2.5, ease: "easeInOut" },
+              opacity: { duration: 0.4 }
+            }}
+            className="fixed bottom-6 left-6 z-[9999] max-w-xs sm:max-w-sm w-full bg-[#1E3926] text-white p-4 rounded-2xl border-2 border-[#C8A25D] shadow-2xl overflow-hidden"
+          >
+            {/* Glowing Accent Top Bar */}
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#C8A25D] via-[#FAF7F2] to-[#C8A25D]" />
+
+            <button
+              onClick={() => setShowFloatingBanner(false)}
+              className="absolute top-2.5 right-2.5 text-[#C8A25D] hover:text-white bg-black/30 hover:bg-black/60 rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold transition-all cursor-pointer z-10"
+              title="Close Banner"
+            >
+              ✕
+            </button>
+
+            <div className="flex items-center space-x-3.5">
+              {/* Banner Image Thumbnail */}
+              {currentBanner?.image && (
+                <div className="w-16 h-16 rounded-xl overflow-hidden border border-[#C8A25D]/40 shrink-0 bg-black/20">
+                  <img
+                    src={getBannerImage(currentBanner)}
+                    alt={currentBanner.title}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
+
+              <div className="flex-1 min-w-0 pr-3 space-y-1">
+                <span className="inline-block text-[9px] font-extrabold text-[#1E3926] bg-[#C8A25D] px-2 py-0.5 rounded uppercase tracking-widest shadow-xs">
+                  ⚡ FESTIVE OFFER
+                </span>
+                <h4 className="font-serif font-extrabold text-xs text-white truncate leading-tight">
+                  {currentBanner?.title || 'Special Heritage Discount'}
+                </h4>
+                <p className="text-[10px] text-[#FAF7F2]/80 line-clamp-1 font-sans">
+                  {currentBanner?.subtitle || 'Order now and enjoy fresh Bihari delicacies!'}
+                </p>
+                <Link
+                  to={currentBanner?.buttonLink || '/shop'}
+                  onClick={() => setShowFloatingBanner(false)}
+                  className="inline-flex items-center space-x-1 text-[10px] font-extrabold text-[#C8A25D] hover:underline uppercase tracking-wider pt-0.5"
+                >
+                  <span>{currentBanner?.buttonText || 'Shop Now'}</span>
+                  <ArrowRight size={11} />
+                </Link>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Quick View Modal Overlay */}
       {quickViewProduct && (

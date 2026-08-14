@@ -96,9 +96,9 @@ export const DataTable = ({
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-primary/5 border-b border-primary/10">
-              {columns.map((col) => (
+              {columns.map((col, colIndex) => (
                 <th
-                  key={col.key}
+                  key={col.key || col.header || colIndex}
                   className={`px-6 py-3.5 text-xs font-display font-semibold uppercase tracking-wider text-primary ${col.className || ""}`}
                 >
                   {col.header}
@@ -115,15 +115,15 @@ export const DataTable = ({
             {paginatedData.length > 0 ? (
               paginatedData.map((row, rowIndex) => (
                 <tr
-                  key={row.id || rowIndex}
+                  key={row._id || row.id || rowIndex}
                   className="hover:bg-background/30 transition-colors"
                 >
-                  {columns.map((col) => (
+                  {columns.map((col, colIndex) => (
                     <td
-                      key={col.key}
+                      key={col.key || col.header || colIndex}
                       className={`px-6 py-4 text-sm text-charcoal font-medium ${col.className || ""}`}
                     >
-                      {col.render ? col.render(row) : row[col.key]}
+                      {col.render ? col.render(row) : col.accessor ? col.accessor(row) : row[col.key]}
                     </td>
                   ))}
                   {renderActions && (

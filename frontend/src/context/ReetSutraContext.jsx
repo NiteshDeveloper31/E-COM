@@ -104,17 +104,43 @@ export const ReetSutraProvider = ({ children }) => {
     }
   }, []);
 
-  // Fetch initially and set up 1-minute polling for products catalog
+  const [settings, setSettings] = useState({
+    contactEmail: "hello@reetsutra.com",
+    contactPhone: "+91 91234 56789",
+    contactAddress: "Patna, Bihar, India",
+    socialInstagram: "https://instagram.com/reetsutra",
+    socialFacebook: "https://facebook.com/reetsutra",
+    socialYoutube: "https://youtube.com/@reetsutra",
+    socialTelegram: "https://t.me/reetsutra",
+    socialWhatsapp: "https://wa.me/919123456789",
+    socialTwitter: "https://twitter.com/reetsutra",
+    socialLinkedin: "https://linkedin.com/company/reetsutra"
+  });
+
+  const fetchSettings = useCallback(async () => {
+    try {
+      const response = await fetch("http://localhost:5000/api/settings");
+      const resJson = await response.json();
+      if (response.ok && resJson.success && resJson.data) {
+        setSettings(resJson.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch settings in frontend:", err);
+    }
+  }, []);
+
+  // Fetch initially and set up 1-minute polling for products catalog & settings
   useEffect(() => {
     fetchProducts();
+    fetchSettings();
 
     const interval = setInterval(() => {
-      console.log("[POLLING FRONTEND] Syncing products catalog...");
       fetchProducts();
+      fetchSettings();
     }, 60000);
 
     return () => clearInterval(interval);
-  }, [fetchProducts]);
+  }, [fetchProducts, fetchSettings]);
 
   // Fetch Customer Addresses
   const fetchAddresses = useCallback(async (activeToken) => {
@@ -491,6 +517,145 @@ export const ReetSutraProvider = ({ children }) => {
     }
   };
 
+  const sendOTP = async (phone, password = null, isLogin = false) => {
+    try {
+      const response = await fetch("http://localhost:5000/api/auth/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone, password, isLogin })
+      });
+      const resJson = await response.json();
+      if (!response.ok) {
+        throw new Error(resJson.message || "Failed to send OTP.");
+      }
+      showToast(resJson.message, "success");
+      return resJson.data;
+    } catch (err) {
+      showToast(err.message);
+      return null;
+    }
+  };
+
+  const verifyOTPLogin = async (phone, otp) => {
+    try {
+      const response = await fetch("http://localhost:5000/api/auth/verify-otp-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone, otp })
+      });
+      const resJson = await response.json();
+      if (!response.ok) {
+        throw new Error(resJson.message || "OTP Verification failed.");
+      }
+
+      const { token: newToken, user: userProfile } = resJson.data;
+
+      localStorage.setItem("rs_token", newToken);
+      localStorage.setItem("reetsutra_user", JSON.stringify({ ...userProfile, isLoggedIn: true }));
+
+      setToken(newToken);
+      setUser({ ...userProfile, isLoggedIn: true });
+      showToast("Welcome back! Login successful.", "success");
+      return true;
+    } catch (err) {
+      showToast(err.message);
+      return false;
+    }
+  };
+
+  const registerWithOTP = async (name, email, phone, password, otp, address) => {
+    try {
+      const response = await fetch("http://localhost:5000/api/auth/verify-otp-register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, phone, password, otp, address })
+      });
+      const resJson = await response.json();
+      if (!response.ok) {
+        throw new Error(resJson.message || "Registration failed.");
+      }
+
+      const { token: newToken, user: userProfile } = resJson.data;
+
+      localStorage.setItem("rs_token", newToken);
+      localStorage.setItem("reetsutra_user", JSON.stringify({ ...userProfile, isLoggedIn: true }));
+
+      setToken(newToken);
+      setUser({ ...userProfile, isLoggedIn: true });
+      showToast("Registration completed & logged in automatically!", "success");
+      return true;
+    } catch (err) {
+      showToast(err.message);
+      return false;
+    }
+  };
+
+  const changePhoneWithOTP = async (newPhone, otp) => {
+    const activeToken = localStorage.getItem("rs_token");
+    if (!activeToken) return false;
+
+    try {
+      const response = await fetch("http://localhost:5000/api/auth/change-phone", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${activeToken}`
+        },
+        body: JSON.stringify({ newPhone, otp })
+      });
+      const resJson = await response.json();
+      if (!response.ok) {
+        throw new Error(resJson.message || "Failed to update phone number.");
+      }
+
+      const updatedUser = {
+        ...user,
+        ...resJson.data.user,
+        isLoggedIn: true
+      };
+      setUser(updatedUser);
+      localStorage.setItem("reetsutra_user", JSON.stringify(updatedUser));
+      showToast("Mobile number verified and updated successfully!", "success");
+      return true;
+    } catch (err) {
+      showToast(err.message);
+      return false;
+    }
+  };
+
+  const changeEmailWithOTP = async (newEmail, otp) => {
+    const activeToken = localStorage.getItem("rs_token");
+    if (!activeToken) return false;
+
+    try {
+      const response = await fetch("http://localhost:5000/api/auth/change-email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${activeToken}`
+        },
+        body: JSON.stringify({ newEmail, otp })
+      });
+      const resJson = await response.json();
+      if (!response.ok) {
+        throw new Error(resJson.message || "Failed to update email address.");
+      }
+
+      const updatedUser = {
+        ...user,
+        ...resJson.data.user,
+        isLoggedIn: true
+      };
+      setUser(updatedUser);
+      localStorage.setItem("reetsutra_user", JSON.stringify(updatedUser));
+      showToast("Email address verified and updated successfully!", "success");
+      return true;
+    } catch (err) {
+      showToast(err.message);
+      return false;
+    }
+  };
+
   // Orders Checkout Handler (POST /api/orders)
   const placeOrder = async (orderData) => {
     const activeToken = localStorage.getItem("rs_token");
@@ -672,6 +837,7 @@ export const ReetSutraProvider = ({ children }) => {
     <ReetSutraContext.Provider value={{
       products,
       fetchProducts,
+      settings,
       cart,
       wishlist,
       user,
@@ -694,6 +860,11 @@ export const ReetSutraProvider = ({ children }) => {
       login,
       logout,
       register,
+      sendOTP,
+      verifyOTPLogin,
+      registerWithOTP,
+      changePhoneWithOTP,
+      changeEmailWithOTP,
       placeOrder,
       initializeRazorpayOrder,
       verifyRazorpayPayment,

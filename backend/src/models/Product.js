@@ -93,6 +93,9 @@ const productSchema = new mongoose.Schema(
     width: { type: Number, default: null },
     height: { type: Number, default: null },
     cessRate: { type: Number, default: 0, min: 0, max: 100 },
+    facility: { type: String, trim: true, default: "Main Warehouse" },
+    badInventory: { type: Number, default: 0, min: 0 },
+    shelfLife: { type: String, trim: true, default: "" },
     rating: {
       type: Number,
       default: 5.0,

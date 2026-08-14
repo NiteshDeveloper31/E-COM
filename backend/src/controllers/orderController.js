@@ -185,7 +185,7 @@ export const getOrderById = async (req, res, next) => {
     }
 
     // Authorization: User must own the order or be admin
-    if (req.user.role !== "admin" && order.userId._id.toString() !== req.user._id.toString()) {
+    if (req.user.role !== "admin" && req.user.role !== "superadmin" && req.user.email !== "admin@reetsutra.com" && order.userId._id.toString() !== req.user._id.toString()) {
       return sendError(res, "Unauthorized access to order logs.", 403);
     }
 
@@ -300,7 +300,7 @@ export const cancelOrder = async (req, res, next) => {
     }
 
     // Authorization: User must own the order or be admin
-    if (req.user.role !== "admin" && order.userId.toString() !== req.user._id.toString()) {
+    if (req.user.role !== "admin" && req.user.role !== "superadmin" && req.user.email !== "admin@reetsutra.com" && order.userId.toString() !== req.user._id.toString()) {
       return sendError(res, "Unauthorized access to cancel this order.", 403);
     }
 

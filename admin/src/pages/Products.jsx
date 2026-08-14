@@ -1,17 +1,23 @@
 import React, { useState } from "react";
-import { Plus, Edit2, Trash2, Loader, Eye, AlertTriangle } from "lucide-react";
+import { Plus, Edit2, Trash2, Loader, Eye, AlertTriangle, Upload, FileSpreadsheet, Download } from "lucide-react";
 import { useData } from "../context/DataContext";
 import { DataTable } from "../components/DataTable";
 import { Modal } from "../components/Modal";
+import * as XLSX from "xlsx";
 
 export const Products = () => {
-  const { products, categories, addProduct, updateProduct, deleteProduct, loading, showToast } = useData();
+  const { products, categories, addProduct, bulkImportProducts, updateProduct, deleteProduct, loading, showToast } = useData();
 
   // Modals state
   const [isAddEditOpen, setIsAddEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [currentProduct, setCurrentProduct] = useState(null); // Null for add, product object for edit
   const [deleteProductId, setDeleteProductId] = useState(null);
+
+  // Import Excel Modal state
+  const [isImportOpen, setIsImportOpen] = useState(false);
+  const [importRows, setImportRows] = useState([]);
+  const [isImporting, setIsImporting] = useState(false);
 
   // Form states
   const [formName, setFormName] = useState("");
@@ -39,6 +45,9 @@ export const Products = () => {
   const [formWidth, setFormWidth] = useState("");
   const [formHeight, setFormHeight] = useState("");
   const [formCessRate, setFormCessRate] = useState("");
+  const [formFacility, setFormFacility] = useState("Main Warehouse");
+  const [formBadInventory, setFormBadInventory] = useState("");
+  const [formShelfLife, setFormShelfLife] = useState("");
   const [formError, setFormError] = useState("");
 
   const formatINR = (value) => {
@@ -47,6 +56,57 @@ export const Products = () => {
       currency: "INR",
       maximumFractionDigits: 0
     }).format(value);
+  };
+
+  // Direct Export / Download Products as Excel
+  const handleExportProductsExcel = () => {
+    if (!products || products.length === 0) {
+      handleDownloadSampleTemplate();
+      return;
+    }
+
+    const exportRows = products.map((p, idx) => ({
+      "S.No": idx + 1,
+      "EAN Code": p.eanCode || "",
+      "Product SKU": p.sku || "",
+      "Product Name": p.name || "",
+      "Category Name": p.category?.name || (typeof p.category === "string" ? p.category : "Uncategorized"),
+      "Brand": p.brand || "",
+      "MRP (₹)": p.price || 0,
+      "GST (%)": p.gst != null ? p.gst : 0,
+      "HSN Code": p.hsnCode || "",
+      "Shelf Life": p.shelfLife || "",
+      "Length (mm)": p.length != null ? p.length : "",
+      "Width (mm)": p.width != null ? p.width : "",
+      "Height (mm)": p.height != null ? p.height : "",
+      "Weight (gms)": p.weight || "",
+      "Stock": p.stock != null ? p.stock : 0,
+      "Facility": p.facility || "Main Warehouse",
+      "Status": p.status || "Active",
+      "Description": p.description || ""
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(exportRows);
+    ws["!cols"] = Object.keys(exportRows[0] || {}).map(k => ({ wch: Math.max(k.length + 3, 16) }));
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Products Export");
+
+    const today = new Date().toISOString().slice(0, 10);
+    const fileName = `Products_Export_${today}.xlsx`;
+
+    const wbOut = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    const blob = new Blob([wbOut], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    showToast("Products report downloaded successfully!");
   };
 
   // Open add modal
@@ -77,6 +137,9 @@ export const Products = () => {
     setFormWidth("");
     setFormHeight("");
     setFormCessRate("");
+    setFormFacility("Main Warehouse");
+    setFormBadInventory("");
+    setFormShelfLife("");
     setFormError("");
     setIsAddEditOpen(true);
   };
@@ -133,9 +196,147 @@ export const Products = () => {
     setFormWidth(product.width != null ? String(product.width) : "");
     setFormHeight(product.height != null ? String(product.height) : "");
     setFormCessRate(product.cessRate != null ? String(product.cessRate) : "");
+    setFormFacility(product.facility || "Main Warehouse");
+    setFormBadInventory(product.badInventory !== undefined && product.badInventory !== null ? String(product.badInventory) : "0");
+    setFormShelfLife(product.shelfLife || "");
 
     setFormError("");
     setIsAddEditOpen(true);
+  };
+
+  // --- Bulk Import Handlers ---
+  const handleDownloadSampleTemplate = () => {
+    const sampleRows = [
+      {
+        "EAN Code": "8901234567890",
+        "Product Name": "Special Desi Ghee",
+        "Category Name": "Ghee",
+        "Length (mm)": 120,
+        "Width (mm)": 120,
+        "Height (mm)": 180,
+        "Weight (gms)": 500,
+        "Brand": "ReetSutra",
+        "MRP": 599,
+        "HSN Code": "04059020",
+        "Shelf Life (Days)": 1080,
+        "Stock": 150,
+        "Image URL": "https://images.unsplash.com/photo-1589927986076-25584897f1f9",
+        "Description": "Pure Cow Ghee traditional preparation."
+      },
+      {
+        "EAN Code": "8901234567891",
+        "Product Name": "Traditional Thekua",
+        "Category Name": "Snacks",
+        "Length (mm)": 100,
+        "Width (mm)": 100,
+        "Height (mm)": 150,
+        "Weight (gms)": 250,
+        "Brand": "ReetSutra",
+        "MRP": 299,
+        "HSN Code": "19059090",
+        "Shelf Life (Days)": 180,
+        "Stock": 200,
+        "Image URL": "https://images.unsplash.com/photo-1599490659213-e2b9527bd087",
+        "Description": "Authentic Bihari Thekua made with Jaggery."
+      }
+    ];
+
+    const ws = XLSX.utils.json_to_sheet(sampleRows);
+    ws["!cols"] = Object.keys(sampleRows[0]).map(k => ({ wch: Math.max(k.length + 3, 18) }));
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Products Import Template");
+
+    const wbOut = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    const blob = new Blob([wbOut], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "Products_Import_Template.xlsx";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const bstr = evt.target.result;
+        const wb = XLSX.read(bstr, { type: "binary" });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const rawData = XLSX.utils.sheet_to_json(ws);
+
+        if (rawData.length === 0) {
+          showToast("Selected file is empty.");
+          return;
+        }
+
+        const mapped = rawData.map((row) => {
+          const name = row["Product Name"] || row["Name"] || row["name"] || "";
+          const eanCode = row["EAN Code"] || row["EAN CODE"] || row["eanCode"] || "";
+          const length = row["Length (mm)"] || row["length"] || null;
+          const width = row["Width (mm)"] || row["width"] || null;
+          const height = row["Height (mm)"] || row["height"] || null;
+          const weight = row["Weight (gms)"] || row["Weight"] || row["weight"] || "";
+          const brand = row["Brand"] || row["brand"] || "";
+          const mrp = row["MRP"] || row["mrp"] || row["Price"] || row["price"] || 299;
+          const hsnCode = row["HSN Code"] || row["HSN"] || row["hsnCode"] || "";
+          const shelfLife = row["Shelf Life (Days)"] || row["Shelf Life"] || row["shelfLife"] || "";
+          const category = row["Category Name"] || row["Category"] || row["category"] || "";
+          const stock = row["Stock"] || row["stock"] || 100;
+          const image = row["Image URL"] || row["Image"] || row["image"] || "";
+          const description = row["Description"] || row["description"] || "";
+
+          return {
+            name,
+            eanCode: String(eanCode).trim(),
+            length: length ? parseFloat(length) : null,
+            width: width ? parseFloat(width) : null,
+            height: height ? parseFloat(height) : null,
+            weight: weight ? String(weight).trim() : "",
+            brand: String(brand).trim(),
+            mrp: mrp ? parseFloat(mrp) : 299,
+            hsnCode: String(hsnCode).trim(),
+            shelfLife: shelfLife ? String(shelfLife).trim() : "",
+            category,
+            stock: stock ? parseInt(stock) : 100,
+            image,
+            description
+          };
+        });
+
+        setImportRows(mapped);
+      } catch (err) {
+        console.error("Excel parse error:", err);
+        showToast("Failed to parse Excel file. Please use the sample template.");
+      }
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  const handleConfirmImport = async () => {
+    if (importRows.length === 0) {
+      showToast("No products to import.");
+      return;
+    }
+
+    setIsImporting(true);
+    try {
+      await bulkImportProducts(importRows);
+      showToast(`Successfully imported ${importRows.length} products!`, "success");
+      setIsImportOpen(false);
+      setImportRows([]);
+    } catch (err) {
+      console.error("Import error:", err);
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   // Open delete confirmation
@@ -266,7 +467,10 @@ export const Products = () => {
       length: formLength ? parseFloat(formLength) : null,
       width: formWidth ? parseFloat(formWidth) : null,
       height: formHeight ? parseFloat(formHeight) : null,
-      cessRate: formCessRate ? parseFloat(formCessRate) : 0
+      cessRate: formCessRate ? parseFloat(formCessRate) : 0,
+      facility: formFacility || "Main Warehouse",
+      badInventory: formBadInventory ? parseInt(formBadInventory) : 0,
+      shelfLife: formShelfLife || ""
     };
 
     if (currentProduct) {
@@ -351,30 +555,6 @@ export const Products = () => {
       )
     },
     {
-      key: "stock",
-      header: "Inventory",
-      render: (row) => {
-        let textClass = "text-emerald-700 bg-emerald-50 border-emerald-200";
-        if (row.stock <= 50) {
-          textClass = "text-rose-700 bg-rose-50 border-rose-200";
-        } else if (row.stock <= 100) {
-          textClass = "text-amber-700 bg-amber-50 border-amber-200";
-        }
-        return (
-          <div className="flex flex-col gap-1 items-start">
-            <span className={`px-2 py-0.5 text-xs font-bold rounded-sm border ${textClass}`}>
-              {row.stock} units
-            </span>
-            {row.stock <= 50 && (
-              <span className="text-[9px] text-rose-500 font-bold flex items-center gap-0.5">
-                <AlertTriangle size={10} /> Low stock
-              </span>
-            )}
-          </div>
-        );
-      }
-    },
-    {
       key: "status",
       header: "Status",
       render: (row) => (
@@ -402,12 +582,20 @@ export const Products = () => {
           </p>
         </div>
 
-        <button
-          onClick={handleOpenAdd}
-          className="flex items-center gap-1.5 px-4.5 py-2.5 bg-primary text-secondary rounded-lg font-display font-bold text-sm shadow-md hover:bg-primary-light transition-all duration-200 cursor-pointer self-start sm:self-center"
-        >
-          <Plus size={16} /> Add Product
-        </button>
+        <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-center">
+          <button
+            onClick={handleExportProductsExcel}
+            className="flex items-center gap-1.5 px-4.5 py-2.5 bg-primary text-secondary rounded-lg font-display font-bold text-sm shadow-md hover:bg-primary-light transition-all duration-200 cursor-pointer"
+          >
+            <Download size={16} /> Download Products Report
+          </button>
+          <button
+            onClick={handleOpenAdd}
+            className="flex items-center gap-1.5 px-4.5 py-2.5 bg-primary text-secondary rounded-lg font-display font-bold text-sm shadow-md hover:bg-primary-light transition-all duration-200 cursor-pointer"
+          >
+            <Plus size={16} /> Add Product
+          </button>
+        </div>
       </div>
 
       {/* Main product data table */}
@@ -704,6 +892,19 @@ export const Products = () => {
 
               <div>
                 <label className="block text-xs font-bold text-primary mb-1">
+                  Shelf Life (Days)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 1080 Days, 180 Days"
+                  value={formShelfLife}
+                  onChange={(e) => setFormShelfLife(e.target.value)}
+                  className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background placeholder-charcoal-light focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-primary mb-1">
                   Ingredients (comma separated)
                 </label>
                 <textarea
@@ -938,6 +1139,100 @@ export const Products = () => {
               className="px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow-sm transition-colors cursor-pointer"
             >
               Yes, Delete Product
+            </button>
+          </div>
+        </div>
+      </Modal>
+      {/* Import Products Modal */}
+      <Modal
+        isOpen={isImportOpen}
+        onClose={() => {
+          setIsImportOpen(false);
+          setImportRows([]);
+        }}
+        title="Bulk Import Products via Excel"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div className="bg-primary/5 border border-primary/10 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <h4 className="text-xs font-bold text-primary flex items-center gap-1.5">
+                <FileSpreadsheet size={16} className="text-secondary" /> Download Excel Sample Template
+              </h4>
+              <p className="text-[11px] text-charcoal-light font-medium mt-0.5">
+                Use our pre-formatted Excel template with headers: EAN Code, Product Name, Category Name, Dimensions (L/W/H), Weight, Brand, MRP, HSN Code, Shelf Life (Days), Stock.
+              </p>
+            </div>
+            <button
+              onClick={handleDownloadSampleTemplate}
+              className="px-3.5 py-2 bg-secondary text-primary rounded-lg text-xs font-bold shadow-xs hover:bg-secondary-light transition-colors shrink-0 cursor-pointer"
+            >
+              Download Template
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-xs font-bold text-primary">
+              Upload Products Excel File (.xlsx / .csv)
+            </label>
+            <input
+              type="file"
+              accept=".xlsx, .xls, .csv"
+              onChange={handleFileUpload}
+              className="w-full px-3.5 py-2 border border-primary/15 rounded-lg text-xs bg-background file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-primary file:text-secondary hover:file:bg-primary-light cursor-pointer"
+            />
+          </div>
+
+          {importRows.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-emerald-700">
+                  ✓ Parsed {importRows.length} product(s) ready to import:
+                </span>
+                <button
+                  onClick={() => setImportRows([])}
+                  className="text-[10px] font-bold text-rose-600 hover:underline cursor-pointer"
+                >
+                  Clear Selection
+                </button>
+              </div>
+
+              <div className="max-h-48 overflow-y-auto border border-primary/10 rounded-lg bg-white divide-y divide-primary/5">
+                {importRows.map((r, idx) => (
+                  <div key={idx} className="p-2.5 text-xs flex items-center justify-between gap-2">
+                    <div>
+                      <span className="font-bold text-primary block">{idx + 1}. {r.name || "Untitled Product"}</span>
+                      <span className="text-[10px] text-charcoal-light block">
+                        EAN: {r.eanCode || "—"} | Category: {r.category || "General"} | Brand: {r.brand || "—"} | MRP: ₹{r.mrp} | Shelf Life: {r.shelfLife || "—"}
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-bold bg-primary/5 px-2 py-0.5 rounded text-charcoal shrink-0">
+                      Stock: {r.stock}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="border-t border-primary/5 pt-4 flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setIsImportOpen(false);
+                setImportRows([]);
+              }}
+              className="px-4 py-2 text-xs font-bold text-charcoal-light hover:bg-primary/5 hover:text-primary rounded-lg transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={importRows.length === 0 || isImporting}
+              onClick={handleConfirmImport}
+              className="px-4.5 py-2 text-xs font-display font-bold text-secondary bg-primary hover:bg-primary-light rounded-lg shadow-sm transition-colors cursor-pointer disabled:opacity-50"
+            >
+              {isImporting ? "Importing..." : `Import ${importRows.length} Product(s)`}
             </button>
           </div>
         </div>

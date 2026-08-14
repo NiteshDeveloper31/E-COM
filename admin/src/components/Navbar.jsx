@@ -5,7 +5,7 @@ import { Menu, Search, Bell, ChevronDown, User, Settings, LogOut, CheckCircle2 }
 import { useData } from "../context/DataContext";
 
 export const Navbar = ({ onMenuClick }) => {
-  const { adminProfile, notifications, markAllNotificationsRead, showToast } = useData();
+  const { adminProfile, notifications, markAllNotificationsRead, logoutAdmin, showToast } = useData();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   
@@ -126,7 +126,9 @@ export const Navbar = ({ onMenuClick }) => {
             />
             <div className="text-left hidden sm:block">
               <p className="text-xs font-bold text-primary">{adminProfile.name}</p>
-              <p className="text-[10px] text-charcoal-light -mt-0.5">{adminProfile.role}</p>
+              <p className="text-[10px] font-bold text-emerald-700 -mt-0.5">
+                {adminProfile.role === "superadmin" || adminProfile.email === "admin@reetsutra.com" ? "👑 Super Admin" : "🛡️ Sub-Admin"}
+              </p>
             </div>
             <ChevronDown size={14} className="text-charcoal-light hidden sm:block" />
           </button>
@@ -168,7 +170,7 @@ export const Navbar = ({ onMenuClick }) => {
                 <button
                   onClick={() => {
                     setShowProfileDropdown(false);
-                    showToast("Mock Logout: In a full project, this would clear authentication sessions.", "info");
+                    logoutAdmin();
                   }}
                   className="flex items-center gap-2 w-full text-left px-4 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
                 >

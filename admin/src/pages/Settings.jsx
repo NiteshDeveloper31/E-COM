@@ -16,21 +16,40 @@ export const Settings = () => {
   const [taxRate, setTaxRate] = useState(settings.taxRate);
   const [orderPrefix, setOrderPrefix] = useState(settings.orderPrefix);
 
-  const [contactEmail, setContactEmail] = useState(settings.contactEmail);
-  const [contactPhone, setContactPhone] = useState(settings.contactPhone);
-  const [contactAddress, setContactAddress] = useState(settings.contactAddress);
+  const [contactEmail, setContactEmail] = useState(settings?.contactEmail || "hello@reetsutra.com");
+  const [contactPhone, setContactPhone] = useState(settings?.contactPhone || "+91 91234 56789");
+  const [contactAddress, setContactAddress] = useState(settings?.contactAddress || "Patna, Bihar, India");
 
-  const [socialFacebook, setSocialFacebook] = useState(settings.socialFacebook);
-  const [socialInstagram, setSocialInstagram] = useState(settings.socialInstagram);
-  const [socialYoutube, setSocialYoutube] = useState(settings.socialYoutube);
-  const [socialPinterest, setSocialPinterest] = useState(settings.socialPinterest);
+  const [socialInstagram, setSocialInstagram] = useState(settings?.socialInstagram || "https://instagram.com/reetsutra");
+  const [socialFacebook, setSocialFacebook] = useState(settings?.socialFacebook || "https://facebook.com/reetsutra");
+  const [socialYoutube, setSocialYoutube] = useState(settings?.socialYoutube || "https://youtube.com/@reetsutra");
+  const [socialTelegram, setSocialTelegram] = useState(settings?.socialTelegram || "https://t.me/reetsutra");
+  const [socialWhatsapp, setSocialWhatsapp] = useState(settings?.socialWhatsapp || "https://wa.me/919123456789");
+  const [socialTwitter, setSocialTwitter] = useState(settings?.socialTwitter || "https://twitter.com/reetsutra");
+  const [socialLinkedin, setSocialLinkedin] = useState(settings?.socialLinkedin || "https://linkedin.com/company/reetsutra");
 
-  const [seoTitle, setSeoTitle] = useState(settings.seoTitle);
-  const [seoMetaDescription, setSeoMetaDescription] = useState(settings.seoMetaDescription);
-  const [seoKeywords, setSeoKeywords] = useState(settings.seoKeywords);
-  const [robotsTxt, setRobotsTxt] = useState(settings.robotsTxt);
+  const [seoTitle, setSeoTitle] = useState(settings?.seoTitle || "");
+  const [seoMetaDescription, setSeoMetaDescription] = useState(settings?.seoMetaDescription || "");
+  const [seoKeywords, setSeoKeywords] = useState(settings?.seoKeywords || "");
+  const [robotsTxt, setRobotsTxt] = useState(settings?.robotsTxt || "User-agent: *\nAllow: /");
 
-  const handleSave = (e) => {
+  React.useEffect(() => {
+    if (settings) {
+      if (settings.storeName) setStoreName(settings.storeName);
+      if (settings.contactEmail) setContactEmail(settings.contactEmail);
+      if (settings.contactPhone) setContactPhone(settings.contactPhone);
+      if (settings.contactAddress) setContactAddress(settings.contactAddress);
+      if (settings.socialInstagram) setSocialInstagram(settings.socialInstagram);
+      if (settings.socialFacebook) setSocialFacebook(settings.socialFacebook);
+      if (settings.socialYoutube) setSocialYoutube(settings.socialYoutube);
+      if (settings.socialTelegram) setSocialTelegram(settings.socialTelegram);
+      if (settings.socialWhatsapp) setSocialWhatsapp(settings.socialWhatsapp);
+      if (settings.socialTwitter) setSocialTwitter(settings.socialTwitter);
+      if (settings.socialLinkedin) setSocialLinkedin(settings.socialLinkedin);
+    }
+  }, [settings]);
+
+  const handleSave = async (e) => {
     e.preventDefault();
     const payload = {
       storeName,
@@ -43,25 +62,27 @@ export const Settings = () => {
       contactEmail,
       contactPhone,
       contactAddress,
-      socialFacebook,
       socialInstagram,
+      socialFacebook,
       socialYoutube,
-      socialPinterest,
+      socialTelegram,
+      socialWhatsapp,
+      socialTwitter,
+      socialLinkedin,
       seoTitle,
       seoMetaDescription,
       seoKeywords,
       robotsTxt
     };
 
-    updateSettings(payload);
+    await updateSettings(payload);
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 3000);
   };
 
   const tabs = [
     { id: "general", label: "General & Branding", icon: SettingsIcon },
-    { id: "contact", label: "Contact & Socials", icon: Phone },
-    { id: "seo", label: "SEO & Robots.txt", icon: Globe }
+    { id: "contact", label: "Contact & Socials", icon: Phone }
   ];
 
   return (
@@ -157,9 +178,20 @@ export const Settings = () => {
                     </div>
                     
                     {/* Logo Preview box */}
-                    <div className="flex items-center gap-3 p-3 bg-background border border-primary/5 rounded-lg self-end h-10">
+                    <div className="flex items-center gap-3 p-3 bg-background border border-primary/10 rounded-lg self-end h-10">
                       <span className="text-[10px] font-bold text-charcoal-light uppercase">Branding Preview:</span>
-                      <img src={storeLogo} alt="Logo" className="w-8 h-8 rounded-md border border-secondary object-cover" />
+                      {storeLogo?.trim() ? (
+                        <img
+                          src={storeLogo}
+                          alt="Logo"
+                          className="w-7 h-7 rounded-md border border-secondary object-cover"
+                          onError={(e) => { e.target.style.display = 'none'; }}
+                        />
+                      ) : (
+                        <div className="w-7 h-7 rounded-md bg-primary text-secondary font-bold text-xs flex items-center justify-center border border-secondary/30 shadow-2xs">
+                          R
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -274,21 +306,11 @@ export const Settings = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-primary mb-1">
-                        Facebook Page Link
-                      </label>
-                      <input
-                        type="text"
-                        value={socialFacebook}
-                        onChange={(e) => setSocialFacebook(e.target.value)}
-                        className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-primary mb-1">
                         Instagram Profile Link
                       </label>
                       <input
                         type="text"
+                        placeholder="https://instagram.com/yourhandle"
                         value={socialInstagram}
                         onChange={(e) => setSocialInstagram(e.target.value)}
                         className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
@@ -296,10 +318,23 @@ export const Settings = () => {
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-primary mb-1">
-                        YouTube Channel
+                        Facebook Page Link
                       </label>
                       <input
                         type="text"
+                        placeholder="https://facebook.com/yourpage"
+                        value={socialFacebook}
+                        onChange={(e) => setSocialFacebook(e.target.value)}
+                        className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-primary mb-1">
+                        YouTube Channel Link
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="https://youtube.com/@yourchannel"
                         value={socialYoutube}
                         onChange={(e) => setSocialYoutube(e.target.value)}
                         className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
@@ -307,79 +342,52 @@ export const Settings = () => {
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-primary mb-1">
-                        Pinterest Account
+                        Telegram Channel / Group Link
                       </label>
                       <input
                         type="text"
-                        value={socialPinterest}
-                        onChange={(e) => setSocialPinterest(e.target.value)}
+                        placeholder="https://t.me/yourchannel"
+                        value={socialTelegram}
+                        onChange={(e) => setSocialTelegram(e.target.value)}
                         className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
                       />
                     </div>
-                  </div>
-                </div>
-              )}
-
-              {/* --- SEO SETTINGS --- */}
-              {activeTab === "seo" && (
-                <div className="space-y-4">
-                  <h3 className="font-display font-semibold text-base text-primary border-b border-primary/5 pb-2">
-                    Search Engine Optimization (SEO)
-                  </h3>
-
-                  <div>
-                    <label className="block text-xs font-bold text-primary mb-1">
-                      Meta Title Tag
-                    </label>
-                    <input
-                      type="text"
-                      value={seoTitle}
-                      onChange={(e) => setSeoTitle(e.target.value)}
-                      className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-primary mb-1">
-                      Meta Description Tag
-                    </label>
-                    <textarea
-                      rows={2}
-                      value={seoMetaDescription}
-                      onChange={(e) => setSeoMetaDescription(e.target.value)}
-                      className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all resize-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-primary mb-1">
-                      Focus Keywords (Comma-separated)
-                    </label>
-                    <input
-                      type="text"
-                      value={seoKeywords}
-                      onChange={(e) => setSeoKeywords(e.target.value)}
-                      className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
-                    />
-                  </div>
-
-                  <h3 className="font-display font-semibold text-base text-primary border-b border-primary/5 pb-2 pt-2">
-                    Logistics / Search Indexing
-                  </h3>
-
-                  <div>
-                    <label className="block text-xs font-bold text-primary mb-1 flex items-center gap-1">
-                      Robots.txt Editor
-                      <span className="text-charcoal-light font-medium flex items-center gap-0.5 text-[9px] lowercase bg-background border border-primary/5 px-1 py-0.5 rounded-sm">
-                        <Info size={10} /> server index rules
-                      </span>
-                    </label>
-                    <textarea
-                      rows={4}
-                      value={robotsTxt}
-                      onChange={(e) => setRobotsTxt(e.target.value)}
-                      className="w-full font-mono px-3.5 py-2 border border-primary/10 rounded-lg text-xs bg-primary-dark/5 text-primary focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all resize-none"
-                    />
+                    <div>
+                      <label className="block text-xs font-bold text-primary mb-1">
+                        WhatsApp Link / Number
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="https://wa.me/919123456789"
+                        value={socialWhatsapp}
+                        onChange={(e) => setSocialWhatsapp(e.target.value)}
+                        className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-primary mb-1">
+                        X (Twitter) Profile Link
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="https://x.com/yourhandle"
+                        value={socialTwitter}
+                        onChange={(e) => setSocialTwitter(e.target.value)}
+                        className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-bold text-primary mb-1">
+                        LinkedIn Page Link
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="https://linkedin.com/company/yourcompany"
+                        value={socialLinkedin}
+                        onChange={(e) => setSocialLinkedin(e.target.value)}
+                        className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
+                      />
+                    </div>
                   </div>
                 </div>
               )}

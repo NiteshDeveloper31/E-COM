@@ -4,7 +4,8 @@ import {
   editProduct,
   deleteProduct,
   getProducts,
-  getProductById
+  getProductById,
+  bulkImportProducts
 } from "../controllers/productController.js";
 import {
   getProductReviews,
@@ -26,6 +27,7 @@ router.post("/:productId/reviews", authMiddleware, addProductReview);
 router.delete("/reviews/:reviewId", authMiddleware, deleteProductReview);
 
 // Admin only routes
+router.post("/bulk-import", authMiddleware, adminMiddleware, bulkImportProducts);
 router.post("/", authMiddleware, adminMiddleware, addProduct);
 router.put("/:id", authMiddleware, adminMiddleware, editProduct);
 router.delete("/:id", authMiddleware, adminMiddleware, deleteProduct);

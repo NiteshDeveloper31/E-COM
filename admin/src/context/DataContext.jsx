@@ -37,6 +37,8 @@ export const DataProvider = ({ children }) => {
   const [orders, setOrders] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [banners, setBanners] = useState([]);
+  const [subAdmins, setSubAdmins] = useState([]);
+  const [grnLogs, setGrnLogs] = useState([]);
   const [dashboardStats, setDashboardStats] = useState(null);
   
   const [loading, setLoading] = useState(false);
@@ -88,7 +90,7 @@ export const DataProvider = ({ children }) => {
     }
 
     try {
-      const response = await fetch(`https://reetsutra.onrender.com/api${endpoint}`, config);
+      const response = await fetch(`http://localhost:5000/api${endpoint}`, config);
       
       if (response.status === 401 || response.status === 403) {
         logoutAdmin();
@@ -187,6 +189,18 @@ export const DataProvider = ({ children }) => {
     }
   }, [apiRequest]);
 
+  const fetchCurrentProfile = useCallback(async () => {
+    try {
+      const res = await apiRequest("/auth/profile");
+      if (res && res.user) {
+        setAdminProfile(res.user);
+        localStorage.setItem("rs_admin_profile", JSON.stringify(res.user));
+      }
+    } catch (err) {
+      console.error("Failed to fetch latest admin profile:", err);
+    }
+  }, [apiRequest]);
+
   // Initial Load & 30s Polling Hook
   useEffect(() => {
     if (!token) return;
@@ -194,24 +208,26 @@ export const DataProvider = ({ children }) => {
     // Load initial datasets
     setLoading(true);
     Promise.all([
+      fetchCurrentProfile(),
       fetchProducts(),
       fetchCategories(),
       fetchOrders(),
       fetchCustomers(),
       fetchBanners(),
-      fetchDashboardStats()
+      fetchDashboardStats(),
+      fetchSettings()
     ]).finally(() => setLoading(false));
 
-    // Setup 30s Polling for admin metrics
+    // Setup 30s Polling for admin metrics & permissions sync
     const pollingInterval = setInterval(() => {
-      console.log("[POLLING] Fetching latest metrics...");
+      fetchCurrentProfile();
       fetchDashboardStats();
       fetchOrders();
       fetchCustomers();
     }, 30000);
 
     return () => clearInterval(pollingInterval);
-  }, [token, fetchProducts, fetchCategories, fetchOrders, fetchCustomers, fetchBanners, fetchDashboardStats]);
+  }, [token, fetchCurrentProfile, fetchProducts, fetchCategories, fetchOrders, fetchCustomers, fetchBanners, fetchDashboardStats]);
 
   // --- CRUD HANDLERS ---
 
@@ -372,27 +388,115 @@ export const DataProvider = ({ children }) => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   };
 
-  // Mock Settings configuration stored locally in admin panel
-  const [settings, setSettings] = useState(() => {
-    const saved = localStorage.getItem("rs_admin_settings");
-    return saved ? JSON.parse(saved) : {
-      storeName: "ReetSutra Traditional Foods",
-      storeTagline: "Savor the Legacy of Taste and Health",
-      storeLogo: "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=100&q=80",
-      currency: "INR (₹)",
-      timezone: "IST (UTC+05:30)",
-      taxRate: 5,
-      orderPrefix: "ORD-",
-      seoTitle: "ReetSutra | Authentic Traditional Sweets & Healthy Indian Roasted Snacks",
-      seoMetaDescription: "Shop authentic handcrafted Indian traditional foods.",
-      seoKeywords: "Thekua, Sattu, Khaja",
-      robotsTxt: "User-agent: *\nAllow: /"
-    };
+  const fetchSettings = useCallback(async () => {
+    try {
+      const data = await apiRequest("/settings");
+      if (data) setSettings(data);
+    } catch (err) {
+      console.error("Failed to fetch settings:", err);
+    }
+  }, [apiRequest]);
+
+  const [settings, setSettings] = useState({
+    storeName: "ReetSutra Traditional Foods",
+    storeTagline: "रीत हमारी, स्वाद हमारा, साथ अपनों का",
+    contactEmail: "hello@reetsutra.com",
+    contactPhone: "+91 91234 56789",
+    contactAddress: "Patna, Bihar, India",
+    socialInstagram: "https://instagram.com/reetsutra",
+    socialFacebook: "https://facebook.com/reetsutra",
+    socialYoutube: "https://youtube.com/@reetsutra",
+    socialTelegram: "https://t.me/reetsutra",
+    socialWhatsapp: "https://wa.me/919123456789",
+    socialTwitter: "https://twitter.com/reetsutra",
+    socialLinkedin: "https://linkedin.com/company/reetsutra"
   });
 
-  const updateSettings = (newSettings) => {
-    localStorage.setItem("rs_admin_settings", JSON.stringify(newSettings));
-    setSettings(newSettings);
+  const updateSettings = async (newSettings) => {
+    try {
+      const updated = await apiRequest("/settings", "PUT", newSettings);
+      setSettings(updated);
+      showToast("Settings & Social Media links saved successfully!", "success");
+    } catch (err) {
+      showToast(`Failed to save settings: ${err.message}`);
+    }
+  };
+
+  const fetchSubAdmins = useCallback(async () => {
+    try {
+      const data = await apiRequest("/auth/subadmins");
+      if (Array.isArray(data)) setSubAdmins(data);
+    } catch (err) {
+      console.error("Failed to fetch sub-admins:", err);
+    }
+  }, [apiRequest]);
+
+  const createSubAdmin = async (adminData) => {
+    try {
+      const created = await apiRequest("/auth/subadmins", "POST", adminData);
+      setSubAdmins(prev => [created, ...prev]);
+      showToast(`Admin ${created.name} created successfully!`, "success");
+      return created;
+    } catch (err) {
+      showToast(`Failed to create admin: ${err.message}`);
+      throw err;
+    }
+  };
+
+  const updateSubAdmin = async (id, updatedData) => {
+    try {
+      const updated = await apiRequest(`/auth/subadmins/${id}`, "PUT", updatedData);
+      setSubAdmins(prev => prev.map(a => (a._id === id || a.id === id ? updated : a)));
+      showToast("Admin permissions updated successfully!", "success");
+      return updated;
+    } catch (err) {
+      showToast(`Failed to update admin: ${err.message}`);
+      throw err;
+    }
+  };
+
+  const deleteSubAdmin = async (id) => {
+    try {
+      await apiRequest(`/auth/subadmins/${id}`, "DELETE");
+      setSubAdmins(prev => prev.filter(a => a._id !== id && a.id !== id));
+      showToast("Admin account deleted successfully.", "success");
+    } catch (err) {
+      showToast(`Failed to delete admin: ${err.message}`);
+      throw err;
+    }
+  };
+
+  const bulkImportProducts = async (productsArray) => {
+    try {
+      const res = await apiRequest("/products/bulk-import", "POST", { products: productsArray });
+      await fetchProducts();
+      showToast(`${productsArray.length} products imported successfully!`, "success");
+      return res;
+    } catch (err) {
+      showToast(`Failed to import products: ${err.message}`);
+      throw err;
+    }
+  };
+
+  const fetchGRNLogs = useCallback(async () => {
+    try {
+      const data = await apiRequest("/grn");
+      if (Array.isArray(data)) setGrnLogs(data);
+    } catch (err) {
+      console.error("Failed to fetch GRN logs:", err);
+    }
+  }, [apiRequest]);
+
+  const submitGRN = async (grnPayload) => {
+    try {
+      const res = await apiRequest("/grn", "POST", grnPayload);
+      await Promise.all([fetchProducts(), fetchGRNLogs()]);
+      showToast(`GRN Entry Created! Live Stock Updated (+${grnPayload.goodQty} Good Items)`, "success");
+      return res;
+    } catch (err) {
+      showToast(`Failed to submit GRN: ${err.message}`);
+      throw err;
+    }
   };
 
   return (
@@ -405,13 +509,22 @@ export const DataProvider = ({ children }) => {
         orders,
         customers,
         banners,
+        subAdmins,
+        grnLogs,
         dashboardStats,
         loading,
         settings,
         notifications,
         loginAdmin,
         logoutAdmin,
+        fetchSubAdmins,
+        createSubAdmin,
+        updateSubAdmin,
+        deleteSubAdmin,
+        fetchGRNLogs,
+        submitGRN,
         addProduct,
+        bulkImportProducts,
         updateProduct,
         deleteProduct,
         addCategory,
