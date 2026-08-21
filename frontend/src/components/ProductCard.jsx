@@ -92,16 +92,7 @@ export default function ProductCard({ product, onQuickView }) {
 
         </div>
 
-        {/* Quick Add To Cart on Mobile (visible bottom bar) */}
-        <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/50 to-transparent lg:hidden">
-          <button
-            onClick={handleAddToCart}
-            className="w-full py-2 bg-brand-green hover:bg-brand-gold text-brand-cream hover:text-brand-green text-xs font-bold uppercase tracking-widest rounded flex items-center justify-center space-x-1 transition-colors duration-300"
-          >
-            <ShoppingCart className="w-3.5 h-3.5" />
-            <span>Add to Cart</span>
-          </button>
-        </div>
+
 
       </div>
 
