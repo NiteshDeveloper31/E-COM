@@ -5,7 +5,8 @@ import {
   deleteProduct,
   getProducts,
   getProductById,
-  bulkImportProducts
+  bulkImportProducts,
+  subscribeStockNotification
 } from "../controllers/productController.js";
 import {
   getProductReviews,
@@ -20,6 +21,7 @@ const router = express.Router();
 // Public routes
 router.get("/", getProducts);
 router.get("/:id", getProductById);
+router.post("/:id/notify", subscribeStockNotification);
 
 // Reviews sub-resource routes
 router.get("/:productId/reviews", getProductReviews);

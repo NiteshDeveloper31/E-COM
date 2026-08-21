@@ -17,14 +17,18 @@ import grnRoutes from "./routes/grnRoutes.js";
 import couponRoutes from "./routes/couponRoutes.js";
 
 import User from "./models/User.js";
+import Category from "./models/Category.js";
 import { hashPassword } from "./utils/password.js";
 
 // Load Environment variables
 dotenv.config();
 
-// Connect to MongoDB & auto-seed admin
+// Connect to MongoDB & auto-seed admin & categories
 connectDB().then(async () => {
   try {
+    // Drop legacy unique index on username if present in database
+    await User.collection.dropIndex("username_1").catch(() => {});
+
     const adminExists = await User.findOne({ email: "admin@reetsutra.com" });
     if (!adminExists) {
       const hashedPassword = await hashPassword("admin123");
@@ -42,8 +46,25 @@ connectDB().then(async () => {
       await adminExists.save();
       console.log("✅ Updated admin@reetsutra.com role to superadmin");
     }
+
+    // Seed default categories if empty
+    const catCount = await Category.countDocuments();
+    if (catCount === 0) {
+      const defaultCategories = [
+        { name: 'Pickles', displayName: 'Pickle', image: '/images/mango_pickle.jpg', description: 'Traditional Bihari pickles made with authentic spices', slug: 'pickles' },
+        { name: 'Ghee', displayName: 'Ghee', image: '/images/desi_cow_ghee.jpg', description: 'Pure A2 Bilona Cow Ghee', slug: 'ghee' },
+        { name: 'Makhana', displayName: 'Makhana', image: '/images/makhana.jpg', description: 'Light & crunchy roasted makhana', slug: 'makhana' },
+        { name: 'Thekua', displayName: 'Thekua', image: '/images/thekua.jpg', description: 'Authentic Bihari cookie made with jaggery & ghee', slug: 'thekua' },
+        { name: 'Honey', displayName: 'Theney', image: '/images/honey.jpg', description: 'Pure natural wild forest honey', slug: 'honey' },
+        { name: 'Sattu', displayName: 'Sattu', image: '/images/sattu.jpg', description: 'Traditional roasted chana sattu flour', slug: 'sattu' },
+        { name: 'Snacks', displayName: 'Snacks', image: '/images/snacks.jpg', description: 'Authentic Bihari savory snacks', slug: 'snacks' },
+        { name: 'Gift Boxes', displayName: 'Gift Boxes', image: '/images/premium_combo_box.jpg', description: 'Curated premium gift boxes', slug: 'gift-boxes' }
+      ];
+      await Category.insertMany(defaultCategories);
+      console.log("✅ Default 8 categories seeded successfully");
+    }
   } catch (err) {
-    console.error("Admin seed check failed:", err.message);
+    console.error("Seed check failed:", err.message);
   }
 });
 

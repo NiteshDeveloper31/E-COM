@@ -309,7 +309,7 @@ export default function Footer() {
       {/* Bottom Copyright bar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-brand-gold/10 pt-4">
         <div className="flex flex-col md:flex-row items-center justify-between text-xs text-brand-cream/60 font-sans gap-4">
-          <p>© {new Date().getFullYear()} ReetSutra Organic Private Limited. All Rights Reserved.</p>
+          <p>© {new Date().getFullYear()} Vrindesha Private Limited. All Rights Reserved.</p>
           <p className="flex items-center space-x-4">
             <span>Made with ❤ in Bihar</span>
             <span>•</span>

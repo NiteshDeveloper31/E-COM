@@ -18,6 +18,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true
     },
+    username: {
+      type: String,
+      default: undefined
+    },
     role: {
       type: String,
       enum: ["superadmin", "admin", "customer"],
@@ -42,6 +46,17 @@ const userSchema = new mongoose.Schema(
   }
 );
 
+// Pre-save hook to ensure unique username for legacy MongoDB indexes
+userSchema.pre("save", function (next) {
+  if (!this.username) {
+    this.username = `usr_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
+  }
+  next();
+});
+
 const User = mongoose.model("User", userSchema);
+
+// Automatically drop legacy username_1 unique index on database if it exists
+User.collection.dropIndex("username_1").catch(() => {});
 
 export default User;

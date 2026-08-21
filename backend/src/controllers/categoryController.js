@@ -8,13 +8,13 @@ import { checkRequiredFields } from "../validations/validator.js";
  */
 export const addCategory = async (req, res, next) => {
   try {
-    const required = ["name"];
+    const required = ["name", "image"];
     const missing = checkRequiredFields(req.body, required);
     if (missing) {
-      return sendError(res, `Required field missing: ${missing}`, 400);
+      return sendError(res, `Required field missing: ${missing}. Category image is compulsory.`, 400);
     }
 
-    const { name, description, status } = req.body;
+    const { name, displayName, image, description, status } = req.body;
 
     const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
@@ -25,6 +25,8 @@ export const addCategory = async (req, res, next) => {
 
     const newCategory = await Category.create({
       name,
+      displayName: displayName || name,
+      image,
       description,
       status: status || "Active",
       slug
@@ -42,7 +44,7 @@ export const addCategory = async (req, res, next) => {
 export const editCategory = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, description, status } = req.body;
+    const { name, displayName, image, description, status } = req.body;
 
     const category = await Category.findById(id);
     if (!category) {
@@ -59,6 +61,13 @@ export const editCategory = async (req, res, next) => {
       category.slug = slug;
     }
 
+    if (displayName !== undefined) category.displayName = displayName;
+    if (image !== undefined) {
+      if (!image) {
+        return sendError(res, "Category image is compulsory.", 400);
+      }
+      category.image = image;
+    }
     if (description !== undefined) category.description = description;
     if (status !== undefined) category.status = status;
 
@@ -81,12 +90,6 @@ export const deleteCategory = async (req, res, next) => {
       return sendError(res, "Category not found.", 404);
     }
 
-    // Optional Check: Are there products assigned to this category?
-    const productsCount = await Product.countDocuments({ category: category._id });
-    if (productsCount > 0) {
-      return sendError(res, `Cannot delete. Category has ${productsCount} associated products.`, 400);
-    }
-
     await Category.findByIdAndDelete(id);
 
     return sendSuccess(res, "Category deleted successfully.", { id });
@@ -96,7 +99,7 @@ export const deleteCategory = async (req, res, next) => {
 };
 
 /**
- * Get Categories (Public).
+ * Get Categories (Public & Admin).
  */
 export const getCategories = async (req, res, next) => {
   try {
@@ -106,15 +109,23 @@ export const getCategories = async (req, res, next) => {
       query.status = status;
     }
 
-    const categories = await Category.find(query).sort({ name: 1 });
+    const categories = await Category.find(query).sort({ createdAt: -1 });
 
-    // Inject Product Counts dynamically to match frontend expectations
+    // Inject Product Counts dynamically safely using ObjectId
     const categoriesWithCount = await Promise.all(
       categories.map(async (cat) => {
-        const count = await Product.countDocuments({ category: cat._id });
+        let count = 0;
+        try {
+          count = await Product.countDocuments({ category: cat._id });
+        } catch (e) {
+          count = 0;
+        }
         return {
           id: cat._id,
+          _id: cat._id,
           name: cat.name,
+          displayName: cat.displayName || cat.name,
+          image: cat.image,
           description: cat.description,
           status: cat.status,
           slug: cat.slug,

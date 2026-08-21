@@ -1,6 +1,7 @@
 import GRN from "../models/GRN.js";
 import Product from "../models/Product.js";
 import { sendSuccess, sendError } from "../utils/response.js";
+import { notifySubscribersIfStockRestocked } from "./productController.js";
 
 /**
  * Process new GRN Stock Entry and update inventory stock live.
@@ -37,6 +38,11 @@ export const createGRN = async (req, res, next) => {
     product.stock = newStock;
     product.badInventory = (product.badInventory || 0) + badQtyNum;
     await product.save();
+
+    // Trigger Restock Email Notification if product was restocked
+    if (newStock > 0 && previousStock <= 0) {
+      await notifySubscribersIfStockRestocked(product);
+    }
 
     // Create GRN Audit Log Entry
     const grnRecord = await GRN.create({

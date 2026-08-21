@@ -212,63 +212,79 @@ export default function QuickViewModal({ product, onClose }) {
 
               </div>
 
-              {/* Purchase Actions */}
+              {/* Purchase Actions vs Notify Me */}
               <div className="pt-6 border-t border-brand-creamDark flex flex-col sm:flex-row gap-2 mt-6">
                 
-                {/* Quantity adjustment */}
-                <div className="flex items-center justify-between border border-brand-gold/30 rounded w-full sm:w-24 bg-white">
-                  <button 
-                    type="button"
-                    onClick={() => adjustQuantity(-1)}
-                    className="px-2.5 py-1.5 text-brand-green hover:bg-brand-cream text-base font-bold cursor-pointer"
-                  >
-                    -
-                  </button>
-                  <span className="text-xs font-bold text-brand-green">
-                    {quantity}
-                  </span>
-                  <button 
-                    type="button"
-                    onClick={() => adjustQuantity(1)}
-                    className="px-2.5 py-1.5 text-brand-green hover:bg-brand-cream text-base font-bold cursor-pointer"
-                  >
-                    +
-                  </button>
-                </div>
+                {!(product.stock <= 0 || product.status === "Inactive") ? (
+                  <>
+                    {/* Quantity adjustment */}
+                    <div className="flex items-center justify-between border border-brand-gold/30 rounded w-full sm:w-24 bg-white">
+                      <button 
+                        type="button"
+                        onClick={() => adjustQuantity(-1)}
+                        className="px-2.5 py-1.5 text-brand-green hover:bg-brand-cream text-base font-bold cursor-pointer"
+                      >
+                        -
+                      </button>
+                      <span className="text-xs font-bold text-brand-green">
+                        {quantity}
+                      </span>
+                      <button 
+                        type="button"
+                        onClick={() => adjustQuantity(1)}
+                        className="px-2.5 py-1.5 text-brand-green hover:bg-brand-cream text-base font-bold cursor-pointer"
+                      >
+                        +
+                      </button>
+                    </div>
 
-                {/* Add to Cart button */}
-                <button
-                  type="button"
-                  onClick={handleAddToCart}
-                  className="flex-1 bg-brand-green hover:bg-brand-greenDark text-brand-cream py-2.5 px-3 rounded font-sans text-[11px] font-bold tracking-wider uppercase transition-colors flex items-center justify-center space-x-1.5 shadow-gold-glow cursor-pointer"
-                >
-                  <ShoppingBag className="w-3.5 h-3.5" />
-                  <span>Add To Cart</span>
-                </button>
+                    {/* Add to Cart button */}
+                    <button
+                      type="button"
+                      onClick={handleAddToCart}
+                      className="flex-1 bg-brand-green hover:bg-brand-greenDark text-brand-cream py-2.5 px-3 rounded font-sans text-[11px] font-bold tracking-wider uppercase transition-colors flex items-center justify-center space-x-1.5 shadow-gold-glow cursor-pointer"
+                    >
+                      <ShoppingBag className="w-3.5 h-3.5" />
+                      <span>Add To Cart</span>
+                    </button>
 
-                {/* Buy Now button */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    onClose();
-                    if (!user || !user.isLoggedIn) {
-                      showToast('Please login to complete your purchase.');
-                      navigate('/login');
-                    } else {
-                      navigate('/checkout', {
-                        state: {
-                          buyNowItem: {
-                            product,
-                            quantity
-                          }
+                    {/* Buy Now button */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        if (!user || !user.isLoggedIn) {
+                          showToast('Please login to complete your purchase.');
+                          navigate('/login');
+                        } else {
+                          navigate('/checkout', {
+                            state: {
+                              buyNowItem: {
+                                product,
+                                quantity
+                              }
+                            }
+                          });
                         }
-                      });
-                    }
-                  }}
-                  className="flex-1 bg-brand-gold hover:bg-brand-goldDark text-brand-green py-2.5 px-3 rounded font-sans text-[11px] font-bold tracking-wider uppercase transition-colors flex items-center justify-center space-x-1.5 shadow-gold-glow cursor-pointer"
-                >
-                  <span>Buy Now</span>
-                </button>
+                      }}
+                      className="flex-1 bg-brand-gold hover:bg-brand-goldDark text-brand-green py-2.5 px-3 rounded font-sans text-[11px] font-bold tracking-wider uppercase transition-colors flex items-center justify-center space-x-1.5 shadow-gold-glow cursor-pointer"
+                    >
+                      <span>Buy Now</span>
+                    </button>
+                  </>
+                ) : (
+                  /* NOTIFY ME BUTTON FOR OUT OF STOCK */
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      setIsNotifyOpen(true);
+                    }}
+                    className="w-full bg-[#143021] hover:bg-[#0E2317] text-[#C5972E] py-3 px-4 rounded-xl font-sans text-xs font-extrabold tracking-widest uppercase transition-all duration-300 flex items-center justify-center space-x-2 cursor-pointer shadow-md border border-[#C5972E]/40"
+                  >
+                    <span>NOTIFY ME WHEN BACK IN STOCK 🔔</span>
+                  </button>
+                )}
 
               </div>
 

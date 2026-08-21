@@ -149,6 +149,7 @@ export default function Home() {
   const scrollRef = useRef(null);
 
   const [heroBanners, setHeroBanners] = useState([]);
+  const [dynamicCategories, setDynamicCategories] = useState([]);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [showFloatingBanner, setShowFloatingBanner] = useState(true);
 
@@ -165,7 +166,21 @@ export default function Home() {
         console.error("Failed to fetch banners:", err);
       }
     };
+
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/categories?status=Active`);
+        const resJson = await response.json();
+        if (response.ok && resJson.success && Array.isArray(resJson.data) && resJson.data.length > 0) {
+          setDynamicCategories(resJson.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch categories:", err);
+      }
+    };
+
     fetchBanners();
+    fetchCategories();
   }, []);
 
   // Main Default Hero + All Active Admin Banners
@@ -236,8 +251,8 @@ export default function Home() {
     }
   };
 
-  // Categories list
-  const categories = [
+  // Default fallback categories
+  const defaultCategories = [
     { name: 'Pickles', displayName: 'Pickle', image: '/images/mango_pickle.jpg' },
     { name: 'Ghee', displayName: 'Ghee', image: '/images/desi_cow_ghee.jpg' },
     { name: 'Makhana', displayName: 'Makhana', image: '/images/makhana.jpg' },
@@ -247,6 +262,8 @@ export default function Home() {
     { name: 'Snacks', displayName: 'Snacks', image: '/images/snacks.jpg' },
     { name: 'Gift Boxes', displayName: 'Gift Boxes', image: '/images/premium_combo_box.jpg' }
   ];
+
+  const categories = dynamicCategories.length > 0 ? dynamicCategories : defaultCategories;
 
   // Testimonials
   const testimonials = [
@@ -421,22 +438,22 @@ export default function Home() {
             className="w-full h-auto object-contain block"
           />
 
-          {/* Overlay Buttons for Default Desktop Banner positioned vertically stacked in empty space to the left of the red chilis bowl */}
+          {/* Overlay Buttons for Default Desktop Banner positioned 20px higher up */}
           {currentBanner.isDefault && (
-            <div className="absolute left-[8.5%] lg:left-[9.5%] xl:left-[10.5%] bottom-[7.5%] lg:bottom-[8.5%] xl:bottom-[9.5%] z-20 flex flex-col items-start space-y-2.5 xl:space-y-3">
-              {/* SHOP NOW Button (Top): Deep Forest Green (#143021) background, Gold text (#C5972E) with Leaf icon */}
+            <div className="absolute left-[7.5%] lg:left-[8.5%] xl:left-[9.5%] bottom-[4.3%] lg:bottom-[4.5%] xl:bottom-[5%] z-20 flex flex-row items-center space-x-3 xl:space-x-4">
+              {/* SHOP NOW Button */}
               <Link
                 to={currentBanner.buttonLink || "/shop"}
-                className="bg-[#143021] hover:bg-[#0E2317] text-[#C5972E] font-extrabold text-[12px] xl:text-[13px] tracking-[0.16em] uppercase py-2.5 lg:py-3 px-6 xl:px-7 rounded-lg shadow-lg hover:shadow-xl hover:scale-[1.03] transition-all duration-300 flex items-center justify-center space-x-2 border border-[#C5972E]/40 cursor-pointer active:scale-95 w-[220px] xl:w-[245px]"
+                className="bg-[#143021] hover:bg-[#0E2317] text-[#C5972E] font-extrabold text-[11px] lg:text-[12px] xl:text-[13px] tracking-[0.14em] uppercase py-2 lg:py-2.5 px-5 xl:px-6 rounded-lg shadow-lg hover:shadow-xl hover:scale-[1.03] transition-all duration-300 flex items-center justify-center space-x-2 border border-[#C5972E]/40 cursor-pointer active:scale-95 min-w-[170px] lg:min-w-[190px] xl:min-w-[210px]"
               >
                 <span>{currentBanner.buttonText || "SHOP NOW"}</span>
-                <Leaf className="w-4 h-4 text-[#C5972E] fill-current" />
+                <Leaf className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-[#C5972E] fill-current" />
               </Link>
 
-              {/* EXPLORE COLLECTION Button (Bottom): Soft Ivory Cream (#FAF6EF) background, Deep Gold/Brown text (#7A5822), Gold border */}
+              {/* EXPLORE COLLECTION Button */}
               <Link
                 to="/shop"
-                className="bg-[#FAF6EF]/95 hover:bg-[#FAF6EF] text-[#7A5822] hover:text-[#5B4017] font-extrabold text-[12px] xl:text-[13px] tracking-[0.16em] uppercase py-2.5 lg:py-3 px-6 xl:px-7 rounded-lg shadow-md hover:shadow-lg hover:scale-[1.03] transition-all duration-300 flex items-center justify-center space-x-2 border border-[#C5972E]/70 cursor-pointer active:scale-95 w-[220px] xl:w-[245px]"
+                className="bg-[#FAF6EF]/95 hover:bg-[#FAF6EF] text-[#7A5822] hover:text-[#5B4017] font-extrabold text-[11px] lg:text-[12px] xl:text-[13px] tracking-[0.14em] uppercase py-2 lg:py-2.5 px-5 xl:px-6 rounded-lg shadow-md hover:shadow-lg hover:scale-[1.03] transition-all duration-300 flex items-center justify-center space-x-2 border border-[#C5972E]/70 cursor-pointer active:scale-95 min-w-[170px] lg:min-w-[190px] xl:min-w-[210px]"
               >
                 <span>EXPLORE COLLECTION</span>
               </Link>

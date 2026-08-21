@@ -12,11 +12,13 @@ import {
   Truck,
   MessageSquare,
   Sparkles,
-  Play
+  Play,
+  Bell
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 import { API_BASE_URL } from '../config';
+import NotifyMeModal from '../components/NotifyMeModal';
 
 export default function ProductDetails() {
   const navigate = useNavigate();
@@ -24,6 +26,7 @@ export default function ProductDetails() {
   const { products, addToCart, toggleWishlist, isInWishlist, user, fetchProducts, showToast } = useReetSutra();
   const [quantity, setQuantity] = useState(1);
   const [quickViewProduct, setQuickViewProduct] = useState(null);
+  const [isNotifyOpen, setIsNotifyOpen] = useState(false);
   
   // Reviews dynamic states
   const [reviews, setReviews] = useState([]);
@@ -348,56 +351,69 @@ export default function ProductDetails() {
             
             <div className="flex flex-col sm:flex-row gap-4">
               
-              {/* Quantity selector */}
-              <div className="flex items-center justify-between border border-brand-gold/30 rounded w-full sm:w-32 bg-white">
-                <button 
-                  onClick={() => adjustQuantity(-1)}
-                  className="px-4 py-3 text-brand-green hover:bg-brand-cream text-lg font-bold"
-                >
-                  -
-                </button>
-                <span className="text-sm font-bold text-brand-green">
-                  {quantity}
-                </span>
-                <button 
-                  onClick={() => adjustQuantity(1)}
-                  className="px-4 py-3 text-brand-green hover:bg-brand-cream text-lg font-bold"
-                >
-                  +
-                </button>
-              </div>
+              {!(product.stock <= 0 || product.status === "Inactive") ? (
+                <>
+                  {/* Quantity selector */}
+                  <div className="flex items-center justify-between border border-brand-gold/30 rounded w-full sm:w-32 bg-white">
+                    <button 
+                      onClick={() => adjustQuantity(-1)}
+                      className="px-4 py-3 text-brand-green hover:bg-brand-cream text-lg font-bold"
+                    >
+                      -
+                    </button>
+                    <span className="text-sm font-bold text-brand-green">
+                      {quantity}
+                    </span>
+                    <button 
+                      onClick={() => adjustQuantity(1)}
+                      className="px-4 py-3 text-brand-green hover:bg-brand-cream text-lg font-bold"
+                    >
+                      +
+                    </button>
+                  </div>
 
-              {/* Add To Cart CTA */}
-              <button
-                onClick={handleAddToCart}
-                className="flex-1 bg-brand-green hover:bg-brand-greenDark text-brand-cream py-3.5 px-4 rounded font-sans text-xs font-bold tracking-wider uppercase transition-colors flex items-center justify-center space-x-1.5 shadow-gold-glow cursor-pointer"
-              >
-                <ShoppingBag className="w-4.5 h-4.5" />
-                <span>Add To Cart</span>
-              </button>
+                  {/* Add To Cart CTA */}
+                  <button
+                    onClick={handleAddToCart}
+                    className="flex-1 bg-brand-green hover:bg-brand-greenDark text-brand-cream py-3.5 px-4 rounded font-sans text-xs font-bold tracking-wider uppercase transition-colors flex items-center justify-center space-x-1.5 shadow-gold-glow cursor-pointer"
+                  >
+                    <ShoppingBag className="w-4.5 h-4.5" />
+                    <span>Add To Cart</span>
+                  </button>
 
-              {/* Buy Now CTA */}
-              <button
-                onClick={() => {
-                  if (!user || !user.isLoggedIn) {
-                    showToast('Please login to complete your purchase.');
-                    navigate('/login');
-                  } else {
-                    navigate('/checkout', {
-                      state: {
-                        buyNowItem: {
-                          product,
-                          quantity
-                        }
+                  {/* Buy Now CTA */}
+                  <button
+                    onClick={() => {
+                      if (!user || !user.isLoggedIn) {
+                        showToast('Please login to complete your purchase.');
+                        navigate('/login');
+                      } else {
+                        navigate('/checkout', {
+                          state: {
+                            buyNowItem: {
+                              product,
+                              quantity
+                            }
+                          }
+                        });
                       }
-                    });
-                  }
-                }}
-                className="flex-1 bg-brand-gold hover:bg-brand-goldDark text-brand-green py-3.5 px-4 rounded font-sans text-xs font-bold tracking-wider uppercase transition-colors flex items-center justify-center space-x-1.5 shadow-gold-glow cursor-pointer"
-              >
-                <Sparkles className="w-4.5 h-4.5 fill-current" />
-                <span>Buy Now</span>
-              </button>
+                    }}
+                    className="flex-1 bg-brand-gold hover:bg-brand-goldDark text-brand-green py-3.5 px-4 rounded font-sans text-xs font-bold tracking-wider uppercase transition-colors flex items-center justify-center space-x-1.5 shadow-gold-glow cursor-pointer"
+                  >
+                    <Sparkles className="w-4.5 h-4.5 fill-current" />
+                    <span>Buy Now</span>
+                  </button>
+                </>
+              ) : (
+                /* OUT OF STOCK NOTIFY ME BUTTON */
+                <button
+                  onClick={() => setIsNotifyOpen(true)}
+                  className="flex-1 bg-[#143021] hover:bg-[#0E2317] text-[#C5972E] py-3.5 px-6 rounded-xl font-sans text-xs font-extrabold tracking-widest uppercase transition-all duration-300 flex items-center justify-center space-x-2 cursor-pointer shadow-md border border-[#C5972E]/40"
+                >
+                  <Bell className="w-4.5 h-4.5 text-[#C5972E] fill-current" />
+                  <span>NOTIFY ME WHEN BACK IN STOCK</span>
+                </button>
+              )}
 
               {/* Wishlist CTA */}
               <button
@@ -708,6 +724,13 @@ export default function ProductDetails() {
           onClose={() => setQuickViewProduct(null)}
         />
       )}
+
+      {/* Notify Me Modal */}
+      <NotifyMeModal
+        isOpen={isNotifyOpen}
+        onClose={() => setIsNotifyOpen(false)}
+        product={product}
+      />
 
     </div>
   );

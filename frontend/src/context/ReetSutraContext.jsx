@@ -834,6 +834,35 @@ export const ReetSutraProvider = ({ children }) => {
     }
   };
 
+  const subscribeStockNotification = useCallback(async (productId, emailInput) => {
+    try {
+      const targetEmail = emailInput || user.email;
+      if (!targetEmail || !targetEmail.trim()) {
+        showToast("Please enter a valid email address.", "error");
+        return { success: false, message: "Email required" };
+      }
+
+      const res = await fetch(`${API_BASE_URL}/products/${productId}/notify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: targetEmail.trim() })
+      });
+
+      const resJson = await res.json();
+      if (res.ok && resJson.success) {
+        showToast(resJson.message, "success");
+        return { success: true, message: resJson.message };
+      } else {
+        showToast(resJson.message || "Failed to register stock notification.", "error");
+        return { success: false, message: resJson.message };
+      }
+    } catch (err) {
+      console.error("Stock Notification error:", err);
+      showToast("Network error. Please try again.", "error");
+      return { success: false, message: err.message };
+    }
+  }, [user.email, showToast]);
+
   return (
     <ReetSutraContext.Provider value={{
       products,
@@ -869,6 +898,7 @@ export const ReetSutraProvider = ({ children }) => {
       placeOrder,
       initializeRazorpayOrder,
       verifyRazorpayPayment,
+      subscribeStockNotification,
       showToast,
       toast
     }}>

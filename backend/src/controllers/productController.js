@@ -1,11 +1,61 @@
 import mongoose from "mongoose";
 import Product from "../models/Product.js";
 import Category from "../models/Category.js";
+import StockNotification from "../models/StockNotification.js";
+import User from "../models/User.js";
+import { sendBackInStockEmail } from "../services/emailService.js";
 import { getPaginationMeta } from "../utils/pagination.js";
 import { sendSuccess, sendError } from "../utils/response.js";
 import { checkRequiredFields } from "../validations/validator.js";
 
 const CATEGORY_POPULATE = { path: "category", select: "name slug status" };
+
+/**
+ * Trigger Back in Stock Emails if product stock restocked > 0
+ */
+export const notifySubscribersIfStockRestocked = async (productDoc) => {
+  try {
+    if (!productDoc || productDoc.stock <= 0) return;
+
+    const pendingNotifications = await StockNotification.find({
+      product: productDoc._id,
+      status: "Pending"
+    }).populate("user", "name email");
+
+    if (pendingNotifications.length === 0) return;
+
+    console.log(`🔔 Restock Alert: Sending ${pendingNotifications.length} notifications for ${productDoc.name}`);
+
+    const discountedPrice = Math.round(productDoc.price * (1 - (productDoc.discount || 0) / 100));
+
+    for (const sub of pendingNotifications) {
+      let realName = "";
+      if (sub.user && sub.user.name) {
+        realName = sub.user.name;
+      } else {
+        const foundUser = await User.findOne({ email: sub.email });
+        if (foundUser && foundUser.name) {
+          realName = foundUser.name;
+        }
+      }
+
+      await sendBackInStockEmail({
+        toEmail: sub.email,
+        userName: realName,
+        productName: productDoc.name,
+        productImage: productDoc.image,
+        productPrice: discountedPrice,
+        productId: productDoc._id,
+        shortDescription: productDoc.shortDescription || productDoc.description || ""
+      });
+      sub.status = "Notified";
+      sub.notifiedAt = new Date();
+      await sub.save();
+    }
+  } catch (err) {
+    console.error("Error triggering back in stock notifications:", err);
+  }
+};
 
 /**
  * Add a new Product (Admin only).
@@ -69,6 +119,11 @@ export const addProduct = async (req, res, next) => {
 
     await newProduct.populate(CATEGORY_POPULATE);
 
+    // Notify if initial stock > 0
+    if (newProduct.stock > 0) {
+      await notifySubscribersIfStockRestocked(newProduct);
+    }
+
     return sendSuccess(res, "Product created successfully.", newProduct, 201);
   } catch (error) {
     next(error);
@@ -82,9 +137,12 @@ export const editProduct = async (req, res, next) => {
   try {
     const { id } = req.params;
     const product = await Product.findById(id);
+
     if (!product) {
       return sendError(res, "Product not found.", 404);
     }
+
+    const previousStock = product.stock || 0;
 
     const fieldsToUpdate = [
       "name",
@@ -141,6 +199,12 @@ export const editProduct = async (req, res, next) => {
 
     await product.save();
     await product.populate(CATEGORY_POPULATE);
+
+    // Trigger Restock Notification Emails if stock was 0 or restocked > 0
+    if (product.stock > 0 && previousStock <= 0) {
+      await notifySubscribersIfStockRestocked(product);
+    }
+
     return sendSuccess(res, "Product updated successfully.", product);
   } catch (error) {
     next(error);
@@ -166,55 +230,53 @@ export const deleteProduct = async (req, res, next) => {
 };
 
 /**
- * Get Products (Public).
- * Supports search term fuzzy query, category filter, status filter, and pagination.
+ * Get All Products with search, category, status & pagination filters.
  */
 export const getProducts = async (req, res, next) => {
   try {
-    const { search, category, status, page = 1, limit = 10 } = req.query;
-    
+    const { search, category, status, page = 1, limit = 50 } = req.query;
+
     const query = {};
 
-    // Filter by Status (Public gets Active, Admin can request specific ones)
-    if (status) {
-      query.status = status;
-    } else {
-      query.status = "Active"; // Default
-    }
-
-    // Category Filter (accepts a category id or its name)
-    if (category) {
-      let categoryDoc = null;
-      if (mongoose.Types.ObjectId.isValid(category)) {
-        categoryDoc = await Category.findById(category);
-      }
-      if (!categoryDoc) {
-        categoryDoc = await Category.findOne({ name: category });
-      }
-      // Fall back to a non-existent id so an unmatched filter yields zero results, not everything.
-      query.category = categoryDoc ? categoryDoc._id : new mongoose.Types.ObjectId();
-    }
-
-    // Fuzzy text search on Name or Description
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: "i" } },
-        { description: { $regex: search, $options: "i" } }
+        { sku: { $regex: search, $options: "i" } },
+        { brand: { $regex: search, $options: "i" } }
       ];
     }
 
-    const totalProducts = await Product.countDocuments(query);
-    const pagination = getPaginationMeta(page, limit, totalProducts);
+    if (category) {
+      if (mongoose.Types.ObjectId.isValid(category)) {
+        query.category = category;
+      } else {
+        const catDoc = await Category.findOne({ name: { $regex: new RegExp(`^${category}$`, "i") } });
+        if (catDoc) query.category = catDoc._id;
+      }
+    }
 
-    const products = await Product.find(query)
-      .populate(CATEGORY_POPULATE)
-      .sort({ createdAt: -1 })
-      .skip(pagination.skip)
-      .limit(pagination.limit);
+    if (status) {
+      query.status = status;
+    }
+
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+
+    const [products, total] = await Promise.all([
+      Product.find(query)
+        .populate(CATEGORY_POPULATE)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNum),
+      Product.countDocuments(query)
+    ]);
+
+    const meta = getPaginationMeta(total, pageNum, limitNum);
 
     return sendSuccess(res, "Products fetched successfully.", {
       products,
-      pagination
+      pagination: meta
     });
   } catch (error) {
     next(error);
@@ -222,7 +284,7 @@ export const getProducts = async (req, res, next) => {
 };
 
 /**
- * Get Single Product by ID (Public).
+ * Get Single Product By ID.
  */
 export const getProductById = async (req, res, next) => {
   try {
@@ -233,7 +295,50 @@ export const getProductById = async (req, res, next) => {
       return sendError(res, "Product not found.", 404);
     }
 
-    return sendSuccess(res, "Product retrieved successfully.", product);
+    return sendSuccess(res, "Product details fetched.", product);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Subscribe Customer to Back-In-Stock Email Alerts
+ */
+export const subscribeStockNotification = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { email } = req.body;
+
+    if (!email || !email.trim()) {
+      return sendError(res, "Email address is required.", 400);
+    }
+
+    const product = await Product.findById(id);
+    if (!product) {
+      return sendError(res, "Product not found.", 404);
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+
+    // Check if already pending subscription exists
+    const existing = await StockNotification.findOne({
+      product: id,
+      email: cleanEmail,
+      status: "Pending"
+    });
+
+    if (existing) {
+      return sendSuccess(res, `You are already subscribed! We will email ${cleanEmail} as soon as ${product.name} is restocked.`, existing);
+    }
+
+    const newSub = await StockNotification.create({
+      product: id,
+      user: req.user?._id || null,
+      email: cleanEmail,
+      status: "Pending"
+    });
+
+    return sendSuccess(res, `Success! We will email ${cleanEmail} as soon as ${product.name} is back in stock.`, newSub, 201);
   } catch (error) {
     next(error);
   }
@@ -244,35 +349,23 @@ export const getProductById = async (req, res, next) => {
  */
 export const bulkImportProducts = async (req, res, next) => {
   try {
-    const { products: rawProducts } = req.body;
-
-    if (!Array.isArray(rawProducts) || rawProducts.length === 0) {
+    const { products } = req.body;
+    if (!Array.isArray(products) || products.length === 0) {
       return sendError(res, "Products array is required for bulk import.", 400);
     }
 
-    // Find default category or create "General" category if needed
-    let defaultCat = await Category.findOne({ status: "Active" });
-    if (!defaultCat) {
-      defaultCat = await Category.create({ name: "General", slug: "general", status: "Active" });
-    }
-
-    const categoriesList = await Category.find();
+    const allCategories = await Category.find();
 
     const createdProducts = [];
-    for (const item of rawProducts) {
-      if (!item.name) continue;
-
-      // Find matching category by name or ID
-      let categoryId = defaultCat._id;
+    for (const item of products) {
+      let categoryId = null;
       if (item.category) {
-        const found = categoriesList.find(c =>
-          c._id.toString() === item.category ||
+        const found = allCategories.find(c =>
           c.name.toLowerCase() === String(item.category).toLowerCase()
         );
         if (found) categoryId = found._id;
       }
 
-      // Format shelf life (e.g., if 1080 is passed, append "Days" if numeric)
       let shelfLifeVal = item.shelfLife ? String(item.shelfLife).trim() : "";
       if (shelfLifeVal && !isNaN(shelfLifeVal)) {
         shelfLifeVal = `${shelfLifeVal} Days`;
