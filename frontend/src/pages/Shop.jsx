@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useReetSutra } from '../context/ReetSutraContext';
 import ProductCard from '../components/ProductCard';
 import QuickViewModal from '../components/QuickViewModal';
-import { SlidersHorizontal, ArrowUpDown, X, Star } from 'lucide-react';
+import { SlidersHorizontal, ArrowUpDown, X, Star, ChevronDown, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Shop() {
@@ -16,6 +16,7 @@ export default function Shop() {
   const [priceRange, setPriceRange] = useState('All'); // 'All' | 'under250' | '250to500' | 'above500'
   const [minRating, setMinRating] = useState(0);
   const [sortBy, setSortBy] = useState('featured'); // 'featured' | 'priceLow' | 'priceHigh' | 'rating'
+  const [isSortOpen, setIsSortOpen] = useState(false);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
   // Sync with search/category params in URL
@@ -118,19 +119,58 @@ export default function Shop() {
             <span>Filters</span>
           </button>
 
-          {/* Sort Dropdown */}
-          <div className="flex items-center space-x-2">
+          {/* Custom Styled Sort Dropdown */}
+          <div className="relative flex items-center space-x-2">
             <ArrowUpDown className="w-4 h-4 text-brand-gold hidden sm:inline" />
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="text-xs md:text-sm text-brand-green bg-white border border-brand-gold/30 rounded px-2.5 py-2 font-bold focus:outline-none focus:border-brand-gold"
+            
+            <button
+              onClick={() => setIsSortOpen(prev => !prev)}
+              className="text-xs md:text-sm text-[#143021] bg-[#FAF6EF] border border-[#C5972E]/40 rounded-lg px-3 py-2 font-bold flex items-center space-x-2 cursor-pointer shadow-xs hover:border-[#C5972E] transition-all"
             >
-              <option value="featured">Sort by: Featured</option>
-              <option value="priceLow">Price: Low to High</option>
-              <option value="priceHigh">Price: High to Low</option>
-              <option value="rating">Top Rated</option>
-            </select>
+              <span>
+                {sortBy === 'featured' && 'Sort by: Featured'}
+                {sortBy === 'priceLow' && 'Price: Low to High'}
+                {sortBy === 'priceHigh' && 'Price: High to Low'}
+                {sortBy === 'rating' && 'Top Rated'}
+              </span>
+              <ChevronDown className={`w-4 h-4 text-[#C5972E] transition-transform duration-200 ${isSortOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {isSortOpen && (
+              <>
+                {/* Backdrop overlay to close when clicking outside */}
+                <div className="fixed inset-0 z-40" onClick={() => setIsSortOpen(false)} />
+
+                {/* Custom Menu */}
+                <div className="absolute right-0 top-full mt-1.5 z-50 w-52 bg-[#FAF6EF] border border-[#C5972E]/40 rounded-xl shadow-2xl py-1.5 overflow-hidden">
+                  {[
+                    { id: 'featured', label: 'Sort by: Featured' },
+                    { id: 'priceLow', label: 'Price: Low to High' },
+                    { id: 'priceHigh', label: 'Price: High to Low' },
+                    { id: 'rating', label: 'Top Rated' }
+                  ].map((option) => {
+                    const isSelected = sortBy === option.id;
+                    return (
+                      <button
+                        key={option.id}
+                        onClick={() => {
+                          setSortBy(option.id);
+                          setIsSortOpen(false);
+                        }}
+                        className={`w-full text-left px-4 py-2.5 text-xs font-bold flex items-center justify-between transition-colors cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#143021] text-[#C5972E]'
+                            : 'text-[#143021] hover:bg-[#143021]/10 hover:text-[#C5972E]'
+                        }`}
+                      >
+                        <span>{option.label}</span>
+                        {isSelected && <Check className="w-3.5 h-3.5 text-[#C5972E] shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </div>
 
         </div>
