@@ -14,6 +14,7 @@ import bannerRoutes from "./routes/bannerRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
 import settingsRoutes from "./routes/settingsRoutes.js";
 import grnRoutes from "./routes/grnRoutes.js";
+import couponRoutes from "./routes/couponRoutes.js";
 
 import User from "./models/User.js";
 import { hashPassword } from "./utils/password.js";
@@ -32,12 +33,12 @@ connectDB().then(async () => {
         email: "admin@reetsutra.com",
         password: hashedPassword,
         role: "superadmin",
-        permissions: ["dashboard", "products", "inventory", "categories", "orders", "customers", "banners", "analytics", "settings", "profile"]
+        permissions: ["dashboard", "products", "inventory", "categories", "orders", "customers", "banners", "coupons", "analytics", "settings", "profile"]
       });
       console.log("✅ Default superadmin seeded (admin@reetsutra.com / admin123)");
     } else if (adminExists.role !== "superadmin") {
       adminExists.role = "superadmin";
-      adminExists.permissions = ["dashboard", "products", "inventory", "categories", "orders", "customers", "banners", "analytics", "settings", "profile"];
+      adminExists.permissions = ["dashboard", "products", "inventory", "categories", "orders", "customers", "banners", "coupons", "analytics", "settings", "profile"];
       await adminExists.save();
       console.log("✅ Updated admin@reetsutra.com role to superadmin");
     }
@@ -72,6 +73,7 @@ app.use("/api/banners", bannerRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/grn", grnRoutes);
+app.use("/api/coupons", couponRoutes);
 
 // Catch-all 404 handler
 app.use((req, res, next) => {

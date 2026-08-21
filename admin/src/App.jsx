@@ -8,6 +8,7 @@ import { Categories } from "./pages/Categories";
 import { Orders } from "./pages/Orders";
 import { Customers } from "./pages/Customers";
 import { Banners } from "./pages/Banners";
+import { Coupons } from "./pages/Coupons";
 import { Analytics } from "./pages/Analytics";
 import { Inventory } from "./pages/Inventory";
 import { GRN } from "./pages/GRN";
@@ -19,10 +20,10 @@ const RequirePermission = ({ permissionKey, children }) => {
   const { adminProfile } = useData();
   const isSuperAdmin = adminProfile?.role === "superadmin" || adminProfile?.email === "admin@reetsutra.com";
   const userPermissions = isSuperAdmin
-    ? ["dashboard", "products", "inventory", "categories", "orders", "customers", "banners", "analytics", "settings", "profile"]
+    ? ["dashboard", "products", "inventory", "categories", "orders", "customers", "banners", "coupons", "analytics", "settings", "profile"]
     : (adminProfile?.permissions || []);
 
-  const hasAccess = isSuperAdmin || userPermissions.includes(permissionKey);
+  const hasAccess = isSuperAdmin || permissionKey === "profile" || userPermissions.includes(permissionKey);
 
   if (!hasAccess) {
     return (
@@ -63,6 +64,7 @@ function AppContent() {
           <Route path="/orders" element={<RequirePermission permissionKey="orders"><Orders /></RequirePermission>} />
           <Route path="/customers" element={<RequirePermission permissionKey="customers"><Customers /></RequirePermission>} />
           <Route path="/banners" element={<RequirePermission permissionKey="banners"><Banners /></RequirePermission>} />
+          <Route path="/coupons" element={<RequirePermission permissionKey="coupons"><Coupons /></RequirePermission>} />
           <Route path="/analytics" element={<RequirePermission permissionKey="analytics"><Analytics /></RequirePermission>} />
           <Route path="/settings" element={<RequirePermission permissionKey="settings"><Settings /></RequirePermission>} />
           <Route path="/profile" element={<RequirePermission permissionKey="profile"><Profile /></RequirePermission>} />

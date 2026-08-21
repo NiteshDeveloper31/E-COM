@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { ShieldCheck, AlertCircle, Loader } from "lucide-react";
 
+import { API_BASE_URL } from "../config";
+
 export const Login = ({ onLoginSuccess }) => {
   const [loginType, setLoginType] = useState("superadmin"); // "superadmin" | "admin"
   const [email, setEmail] = useState("admin@reetsutra.com");
@@ -19,7 +21,7 @@ export const Login = ({ onLoginSuccess }) => {
     setError("");
 
     try {
-      const response = await fetch("http://localhost:5000/api/auth/login", {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"

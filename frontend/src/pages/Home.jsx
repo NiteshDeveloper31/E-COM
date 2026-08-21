@@ -20,7 +20,10 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import heroBg from '../assets/MainBannerImage.png';
+import { API_BASE_URL, BACKEND_URL } from '../config';
+
+import heroBg from '../assets/Final_Banner_Img_web.png';
+import mobileHeroBg from '../assets/Mobile_view_Banner_image.jpg';
 import storyImage from '../assets/reet_sutra_story.png';
 
 const PickleJarIcon = () => (
@@ -96,32 +99,36 @@ const NoPreservativesIcon = () => (
   </svg>
 );
 
-const PrideInBiharIcon = () => (
-  <svg className="w-9 h-9 sm:w-10 sm:h-10 text-[#C8A25D] shrink-0" viewBox="0 0 44 44" fill="none" stroke="#C8A25D" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+const PrideInBiharIcon = ({ className = "w-8 h-8 sm:w-10 sm:h-10 text-[#C8A25D] shrink-0" }) => (
+  <svg className={className} viewBox="0 0 50 44" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
     {/* Geographic Bihar Map Outline */}
     <path
-      d="M 9 16 
-         L 14 13.5 
-         L 19 15 
-         L 24 13 
-         L 31 14.5 
-         L 35 18 
-         L 33 22 
-         L 36 26 
-         L 34 31 
-         L 28 30 
-         L 25 33 
-         L 19 32 
-         L 15 34 
-         L 11 30 
-         L 12 24 
-         L 8 21 
+      d="M 12 18 
+         L 13 11 
+         L 17 9 
+         L 23 10 
+         L 29 8 
+         L 36 9 
+         L 43 12 
+         L 44 17 
+         L 41 21 
+         L 44 25 
+         L 42 30 
+         L 36 29 
+         L 33 34 
+         L 26 33 
+         L 22 37 
+         L 16 33 
+         L 14 35 
+         L 10 31 
+         L 11 25 
+         L 7 22 
          Z"
-      fill="#C8A25D"
+      fill="currentColor"
       fillOpacity="0.12"
       strokeWidth="1.8"
     />
-    <path d="M 9 22 C 16 23, 24 21, 35 23" stroke="#C8A25D" strokeWidth="1" strokeDasharray="1.5 1.5" opacity="0.6" />
+    <path d="M 8 22 C 16 23, 26 21, 42 24" stroke="currentColor" strokeWidth="1" strokeDasharray="1.5 1.5" opacity="0.6" />
   </svg>
 );
 
@@ -148,7 +155,7 @@ export default function Home() {
   useEffect(() => {
     const fetchBanners = async () => {
       try {
-        const response = await fetch("http://localhost:5000/api/banners");
+        const response = await fetch(`${API_BASE_URL}/banners`);
         const resJson = await response.json();
         if (response.ok && resJson.success) {
           const active = resJson.data.filter(b => b.status === "Active");
@@ -165,13 +172,13 @@ export default function Home() {
   const displayBanners = [
     {
       isDefault: true,
-      title: "The True Taste of Bihar,\nNow at Your Home",
-      subtitle: "Pure Ingredients. Traditional Recipes.\nMade with Love.",
+      title: "The Taste of Bihar,\nCrafted with Tradition",
+      subtitle: "Every Bite, A Story of Bihar,\nShared With Loved Ones.",
       image: heroBg
     },
     ...heroBanners
   ];
-  
+
   const currentBanner = displayBanners[currentSlideIndex % displayBanners.length];
 
   // Auto-slide every 3.5 seconds
@@ -195,7 +202,15 @@ export default function Home() {
     if (banner.image.startsWith("data:") || banner.image.startsWith("http://") || banner.image.startsWith("https://")) {
       return banner.image;
     }
-    return `http://localhost:5000${banner.image.startsWith("/") ? "" : "/"}${banner.image}`;
+    return `${BACKEND_URL}${banner.image.startsWith("/") ? "" : "/"}${banner.image}`;
+  };
+
+  const getMobileBannerImage = (banner) => {
+    if (!banner || banner.isDefault || !banner.image) return mobileHeroBg;
+    if (banner.image.startsWith("data:") || banner.image.startsWith("http://") || banner.image.startsWith("https://")) {
+      return banner.image;
+    }
+    return `${BACKEND_URL}${banner.image.startsWith("/") ? "" : "/"}${banner.image}`;
   };
 
   // Filter bestsellers dynamically
@@ -323,204 +338,166 @@ export default function Home() {
         }
       `}</style>
 
-      {/* 1. Premium Hero Section with correct background image */}
-      <section
-        className="relative w-full min-h-[460px] sm:min-h-[500px] md:min-h-[460px] lg:h-auto lg:min-h-[410px] xl:min-h-[435px] lg:aspect-[2017/528] border-b border-brand-gold/15 bg-cover bg-center bg-no-repeat flex flex-col lg:flex-row items-center justify-center lg:justify-start py-8 lg:py-0 overflow-hidden transition-all duration-1000 ease-in-out"
-        style={{ backgroundImage: `url(${getBannerImage(currentBanner)})` }}
-      >
+      {/* 1. Premium Hero Section */}
 
+      {/* 1A. MOBILE VIEW: Dedicated Mobile Hero Layout using Mobile_view_Banner_image.jpg */}
+      <div className="block lg:hidden relative w-full overflow-hidden border-b border-brand-gold/15 bg-[#FAF6EF]">
+        <div className="relative w-full overflow-hidden">
+          {/* Mobile Banner Image */}
+          <img
+            src={getMobileBannerImage(currentBanner)}
+            alt="ReetSutra Mobile Banner"
+            className="w-full h-auto object-contain block"
+          />
 
-
-        <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 z-10 relative">
-          <div className="grid grid-cols-1 lg:grid-cols-12 items-center">
-
-            {/* Left Block: Copy — clean solid text, center-aligned */}
-            <div className="lg:col-span-7 space-y-3 lg:space-y-2.5 xl:space-y-3.5 flex flex-col items-center text-center max-w-xl mx-auto lg:mx-0 relative z-10">
-              {/* Sunburst radial glow spotlight */}
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.75)_0%,rgba(255,255,255,0)_70%)] pointer-events-none -z-10 scale-[1.6] blur-xl" />
-
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={currentSlideIndex}
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -15 }}
-                  transition={{ duration: 0.4 }}
-                  className="w-full flex flex-col items-center space-y-3 lg:space-y-2.5 xl:space-y-3.5 bg-white/60 backdrop-blur-[3px] rounded-2xl px-5 py-6 sm:px-7 sm:py-7 lg:bg-transparent lg:backdrop-blur-none lg:rounded-none lg:px-0 lg:py-0"
+          {/* Render Text Overlay ONLY for custom active Admin Banners (Default banner has pre-rendered graphic text) */}
+          {!currentBanner.isDefault && (
+            <div className="absolute inset-x-0 top-[15%] px-4 flex flex-col items-center text-center space-y-2.5 z-10">
+              <div className="bg-white/85 backdrop-blur-md p-4 rounded-xl shadow-lg border border-[#C5972E]/30 w-full max-w-[320px]">
+                <h1
+                  className="text-[22px] font-extrabold tracking-tight leading-tight text-[#143021] font-serif"
+                  style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
                 >
-                  {!currentBanner.isDefault ? (
-                    /* Dynamic Admin Banner */
-                    <>
-                      <div className="space-y-2.5 flex flex-col items-center w-full">
-                        <h1
-                          className="text-2xl sm:text-3xl md:text-[34px] lg:text-[36px] xl:text-[40px] font-extrabold tracking-wide leading-tight text-[#1E3926] font-serif"
-                          style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
-                        >
-                          {currentBanner.title}
-                        </h1>
-
-                        {/* Gold Ornament Separator */}
-                        <div className="flex items-center justify-center space-x-3 w-full py-0.5">
-                          <div className="h-[1px] bg-[#C8A25D]/50 w-12" />
-                          <svg className="w-5 h-2.5 text-[#C8A25D] fill-current shrink-0" viewBox="0 0 24 12">
-                            <path d="M12 1L17 6L12 11L7 6Z" />
-                            <circle cx="2" cy="6" r="1.5" />
-                            <circle cx="22" cy="6" r="1.5" />
-                          </svg>
-                          <div className="h-[1px] bg-[#C8A25D]/50 w-12" />
-                        </div>
-
-                        <p
-                          className="text-xs sm:text-sm md:text-[14.5px] text-[#1E3926] font-medium leading-relaxed tracking-wide font-serif"
-                          style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
-                        >
-                          {currentBanner.subtitle}
-                        </p>
-                      </div>
-
-                      <div className="flex flex-row gap-4 w-full justify-center pt-2">
-                        <Link
-                          to={currentBanner.buttonLink}
-                          className="bg-[#1E3926] hover:bg-[#13251A] text-[#C8A25D] font-extrabold text-[11px] tracking-widest uppercase py-3 px-8 rounded shadow-md hover:scale-[1.01] transition-all duration-300 text-center flex items-center justify-center space-x-2 cursor-pointer border border-[#1E3926]"
-                        >
-                          <span>{currentBanner.buttonText}</span>
-                          <ArrowRight className="w-3.5 h-3.5 text-[#C8A25D]" />
-                        </Link>
-                      </div>
-                    </>
-                  ) : (
-                    /* Fallback Mockup Banner */
-                    <>
-                      <div className="space-y-2.5 flex flex-col items-center w-full">
-                        <h1
-                          className="text-2xl sm:text-3xl md:text-[34px] lg:text-[36px] xl:text-[40px] font-extrabold tracking-wide leading-tight text-[#1E3926] font-serif"
-                          style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
-                        >
-                          The True Taste of Bihar,<br />
-                          <span className="text-[#C8A25D] font-bold">Now at Your Home</span>
-                        </h1>
-
-                        {/* Gold Ornament Separator */}
-                        <div className="flex items-center justify-center space-x-3 w-full py-0.5">
-                          <div className="h-[1px] bg-[#C8A25D]/50 w-12" />
-                          <svg className="w-5 h-2.5 text-[#C8A25D] fill-current shrink-0" viewBox="0 0 24 12">
-                            <path d="M12 1L17 6L12 11L7 6Z" />
-                            <circle cx="2" cy="6" r="1.5" />
-                            <circle cx="22" cy="6" r="1.5" />
-                          </svg>
-                          <div className="h-[1px] bg-[#C8A25D]/50 w-12" />
-                        </div>
-
-                        <p
-                          className="text-xs sm:text-sm md:text-[14.5px] text-[#1E3926] font-medium leading-relaxed tracking-wide font-serif"
-                          style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
-                        >
-                          Pure Ingredients. Traditional Recipes.<br />
-                          Made with Love.
-                        </p>
-                      </div>
-
-                      <div className="flex flex-row gap-4 w-full justify-center pt-1">
-                        <Link
-                          to="/shop?category=Ghee"
-                          className="bg-[#1E3926] hover:bg-[#13251A] text-[#C8A25D] font-extrabold text-[10.5px] tracking-widest uppercase py-2.5 px-4.5 rounded shadow-md hover:scale-[1.01] transition-all duration-300 text-center flex items-center justify-center space-x-2 cursor-pointer border border-[#1E3926]"
-                        >
-                          <span>SHOP GHEE</span>
-                          <Leaf className="w-3.5 h-3.5 text-[#C8A25D] fill-current" />
-                        </Link>
-                        <Link
-                          to="/shop?category=Pickles"
-                          className="bg-[#FAF7F2]/80 hover:bg-brand-cream border border-[#C8A25D] text-[#C8A25D] font-extrabold text-[10.5px] tracking-widest uppercase py-2.5 px-4.5 rounded shadow-sm hover:scale-[1.01] transition-all duration-300 text-center flex items-center justify-center space-x-2 cursor-pointer"
-                        >
-                          <span>SHOP PICKLES</span>
-                          <PickleJarIcon />
-                        </Link>
-                      </div>
-                    </>
-                  )}
-                </motion.div>
-              </AnimatePresence>
-            </div>
-
-            {/* Right Block is empty to let the background image's jars show through */}
-            <div className="hidden lg:block lg:col-span-5" />
-
-
-
-          </div>
-        </div>
-
-        {/* Slide Navigation Controls */}
-        {displayBanners.length > 1 && (
-          <>
-            {/* Left Chevron Button */}
-            <button
-              onClick={prevSlide}
-              className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 z-30 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#1E3926]/80 hover:bg-[#1E3926] text-[#C8A25D] border border-[#C8A25D]/40 flex items-center justify-center transition-all duration-300 cursor-pointer backdrop-blur-md shadow-xl hover:scale-110"
-              aria-label="Previous Slide"
-            >
-              <ChevronLeft className="w-6 h-6 text-[#C8A25D]" />
-            </button>
-
-            {/* Right Chevron Button */}
-            <button
-              onClick={nextSlide}
-              className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 z-30 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#1E3926]/80 hover:bg-[#1E3926] text-[#C8A25D] border border-[#C8A25D]/40 flex items-center justify-center transition-all duration-300 cursor-pointer backdrop-blur-md shadow-xl hover:scale-110"
-              aria-label="Next Slide"
-            >
-              <ChevronRight className="w-6 h-6 text-[#C8A25D]" />
-            </button>
-
-            {/* Bottom Indicator Dots & Slide Counter */}
-            <div className="absolute bottom-2.5 right-6 sm:right-12 z-30 flex items-center space-x-2 bg-[#1E3926]/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-[#C8A25D]/30 shadow-md">
-              {displayBanners.map((_, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setCurrentSlideIndex(idx)}
-                  className={`h-2 transition-all duration-300 cursor-pointer rounded-full ${
-                    idx === currentSlideIndex % displayBanners.length
-                      ? 'w-6 bg-[#C8A25D]'
-                      : 'w-2 bg-white/40 hover:bg-white/70'
-                  }`}
-                  aria-label={`Go to slide ${idx + 1}`}
-                />
-              ))}
-              <span className="text-[10px] font-mono font-bold text-[#C8A25D] pl-1">
-                {(currentSlideIndex % displayBanners.length) + 1}/{displayBanners.length}
-              </span>
-            </div>
-          </>
-        )}
-
-        {/* 1.2 Bottom Translucent Features Bar - Floating at the bottom-left */}
-        <div className="relative mt-5 mx-4 sm:mx-6 max-w-[620px] lg:absolute lg:mt-0 lg:mx-0 lg:bottom-4 xl:bottom-5 lg:left-12 bg-[#1E3926]/90 border border-[#B8934E]/30 backdrop-blur-md py-2 px-3.5 rounded-xl shadow-lg z-20">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-            {[
-              { icon: MapPin, title: "MADE WITH PRIDE", desc: "In Bihar" },
-              { icon: Leaf, title: "100% NATURAL", desc: "No Preservatives" },
-              { icon: Heart, title: "HANDMADE", desc: "In Small Batches" },
-              { icon: Award, title: "AUTHENTIC RECIPES", desc: "Passed Down Generations" }
-            ].map((feat, idx) => (
-              <div key={idx} className="flex items-start gap-1.5">
-                <div className="w-6 h-6 rounded-full bg-white/10 text-brand-gold flex items-center justify-center shrink-0 mt-0.5">
-                  <feat.icon className="w-3.5 h-3.5 fill-current" />
-                </div>
-                <div className="space-y-0.5">
-                  <h4 className="font-bold text-[8.5px] text-brand-cream tracking-wider uppercase leading-none">{feat.title}</h4>
-                  <p className="text-[7.5px] text-brand-cream/70 font-sans leading-snug">{feat.desc}</p>
-                </div>
+                  {currentBanner.title}
+                </h1>
+                <p
+                  className="text-[12px] text-[#143021] font-medium leading-relaxed font-serif mt-1"
+                  style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                >
+                  {currentBanner.subtitle}
+                </p>
               </div>
-            ))}
+            </div>
+          )}
+
+          {/* Buttons Overlay for Mobile View - Shifted 15px higher up */}
+          <div className="absolute left-[4%] xs:left-[5%] sm:left-[6%] bottom-[23%] xs:bottom-[24%] sm:bottom-[25%] z-20 flex flex-col items-start space-y-1.5 xs:space-y-2">
+            {/* SHOP NOW Button */}
+            <Link
+              to={currentBanner.buttonLink || "/shop"}
+              className="bg-[#143021] hover:bg-[#0E2317] text-[#C5972E] font-extrabold text-[10px] xs:text-[11px] tracking-[0.14em] uppercase py-1.5 xs:py-2 px-3.5 xs:px-4 rounded-md shadow-md flex items-center justify-center space-x-1.5 border border-[#C5972E]/40 active:scale-95 transition-all w-[150px] xs:w-[170px]"
+            >
+              <span>{currentBanner.buttonText || "SHOP NOW"}</span>
+              <Leaf className="w-3.5 h-3.5 text-[#C5972E] fill-current shrink-0" />
+            </Link>
+
+            {/* EXPLORE COLLECTION Button */}
+            <Link
+              to="/shop"
+              className="bg-[#FAF6EF]/95 hover:bg-[#FAF6EF] border border-[#C5972E]/60 text-[#7A5822] font-extrabold text-[10px] xs:text-[11px] tracking-[0.14em] uppercase py-1.5 xs:py-2 px-3.5 xs:px-4 rounded-md shadow-xs flex items-center justify-center space-x-1.5 active:scale-95 transition-all w-[150px] xs:w-[170px]"
+            >
+              <span>EXPLORE COLLECTION</span>
+            </Link>
           </div>
+
+          {/* Mobile Slider Controls */}
+          {displayBanners.length > 1 && (
+            <>
+              <button
+                onClick={prevSlide}
+                className="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-[#143021]/80 text-[#C5972E] border border-[#C5972E]/40 flex items-center justify-center shadow-md active:scale-95"
+                aria-label="Previous Slide"
+              >
+                <ChevronLeft className="w-4 h-4 text-[#C5972E]" />
+              </button>
+              <button
+                onClick={nextSlide}
+                className="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-[#143021]/80 text-[#C5972E] border border-[#C5972E]/40 flex items-center justify-center shadow-md active:scale-95"
+                aria-label="Next Slide"
+              >
+                <ChevronRight className="w-4 h-4 text-[#C5972E]" />
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* 1B. DESKTOP VIEW: Clean Full-Width Banner Image using new_banner_img.jpg */}
+      <section className="hidden lg:block relative w-full overflow-hidden border-b border-brand-gold/15 bg-[#FAF6EF]">
+        <div className="relative w-full overflow-hidden">
+          <img
+            src={getBannerImage(currentBanner)}
+            alt="ReetSutra Desktop Banner"
+            className="w-full h-auto object-contain block"
+          />
+
+          {/* Overlay Buttons for Default Desktop Banner positioned vertically stacked in empty space to the left of the red chilis bowl */}
+          {currentBanner.isDefault && (
+            <div className="absolute left-[8.5%] lg:left-[9.5%] xl:left-[10.5%] bottom-[7.5%] lg:bottom-[8.5%] xl:bottom-[9.5%] z-20 flex flex-col items-start space-y-2.5 xl:space-y-3">
+              {/* SHOP NOW Button (Top): Deep Forest Green (#143021) background, Gold text (#C5972E) with Leaf icon */}
+              <Link
+                to={currentBanner.buttonLink || "/shop"}
+                className="bg-[#143021] hover:bg-[#0E2317] text-[#C5972E] font-extrabold text-[12px] xl:text-[13px] tracking-[0.16em] uppercase py-2.5 lg:py-3 px-6 xl:px-7 rounded-lg shadow-lg hover:shadow-xl hover:scale-[1.03] transition-all duration-300 flex items-center justify-center space-x-2 border border-[#C5972E]/40 cursor-pointer active:scale-95 w-[220px] xl:w-[245px]"
+              >
+                <span>{currentBanner.buttonText || "SHOP NOW"}</span>
+                <Leaf className="w-4 h-4 text-[#C5972E] fill-current" />
+              </Link>
+
+              {/* EXPLORE COLLECTION Button (Bottom): Soft Ivory Cream (#FAF6EF) background, Deep Gold/Brown text (#7A5822), Gold border */}
+              <Link
+                to="/shop"
+                className="bg-[#FAF6EF]/95 hover:bg-[#FAF6EF] text-[#7A5822] hover:text-[#5B4017] font-extrabold text-[12px] xl:text-[13px] tracking-[0.16em] uppercase py-2.5 lg:py-3 px-6 xl:px-7 rounded-lg shadow-md hover:shadow-lg hover:scale-[1.03] transition-all duration-300 flex items-center justify-center space-x-2 border border-[#C5972E]/70 cursor-pointer active:scale-95 w-[220px] xl:w-[245px]"
+              >
+                <span>EXPLORE COLLECTION</span>
+              </Link>
+            </div>
+          )}
+
+          {/* Render Text Overlay ONLY for custom active Admin Banners (Default banner has pre-rendered graphic text) */}
+          {!currentBanner.isDefault && (
+            <div className="absolute inset-0 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 z-10 flex items-center">
+              <div className="max-w-lg space-y-3 flex flex-col items-center text-center p-6 bg-white/85 backdrop-blur-md rounded-2xl shadow-xl border border-[#C5972E]/30">
+                <h1
+                  className="text-[32px] xl:text-[36px] font-extrabold tracking-wide leading-tight text-[#143021] font-serif"
+                  style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                >
+                  {currentBanner.title}
+                </h1>
+                <p
+                  className="text-[14px] text-[#143021] font-medium leading-relaxed tracking-wide font-serif"
+                  style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                >
+                  {currentBanner.subtitle}
+                </p>
+                {currentBanner.buttonText && (
+                  <Link
+                    to={currentBanner.buttonLink || "/shop"}
+                    className="bg-[#143021] hover:bg-[#0E2317] text-[#C5972E] font-extrabold text-[11px] tracking-widest uppercase py-3 px-8 rounded-md shadow-md flex items-center justify-center space-x-2"
+                  >
+                    <span>{currentBanner.buttonText}</span>
+                    <ArrowRight className="w-3.5 h-3.5 text-[#C5972E]" />
+                  </Link>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Desktop Slider Controls */}
+          {displayBanners.length > 1 && (
+            <>
+              <button
+                onClick={prevSlide}
+                className="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-[#143021]/80 hover:bg-[#143021] text-[#C5972E] border border-[#C5972E]/40 flex items-center justify-center shadow-lg active:scale-95 transition-all"
+                aria-label="Previous Slide"
+              >
+                <ChevronLeft className="w-5 h-5 text-[#C5972E]" />
+              </button>
+              <button
+                onClick={nextSlide}
+                className="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-[#143021]/80 hover:bg-[#143021] text-[#C5972E] border border-[#C5972E]/40 flex items-center justify-center shadow-lg active:scale-95 transition-all"
+                aria-label="Next Slide"
+              >
+                <ChevronRight className="w-5 h-5 text-[#C5972E]" />
+              </button>
+            </>
+          )}
         </div>
       </section>
 
-
-
       {/* 1.3 Under-Hero 6-Feature Bar - Light ivory cream background, gold dividers, matching reference image */}
-      <section className="bg-[#FAF6EF] border-y border-[#B8934E]/20 py-4 sm:py-5 px-3 sm:px-6">
+      <section className="bg-[#FAF6EF] border-y border-[#B8934E]/20 py-5 sm:py-6 px-3 sm:px-6 overflow-hidden">
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-y-4 sm:gap-y-0">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-y-6 md:gap-y-0 gap-x-2 sm:gap-x-4">
             {[
               {
                 icon: SmallBatchesIcon,
@@ -563,16 +540,18 @@ export default function Home() {
               return (
                 <div
                   key={idx}
-                  className={`flex items-center justify-center gap-2.5 sm:gap-3 py-2 px-2 text-left ${idx !== arr.length - 1 ? 'lg:border-r lg:border-[#B8934E]/25' : ''
+                  className={`flex items-center justify-start gap-2.5 sm:gap-3 py-1.5 px-1 sm:px-2 text-left w-full max-w-[200px] xs:max-w-[220px] mx-auto ${idx !== arr.length - 1 ? 'lg:border-r lg:border-[#B8934E]/25' : ''
                     }`}
                 >
-                  <IconComp />
-                  <div className="flex flex-col justify-center">
-                    <h4 className="font-extrabold text-[10px] sm:text-[11px] text-[#1E3926] tracking-wider uppercase leading-tight font-sans">
+                  <div className="shrink-0 w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center">
+                    <IconComp />
+                  </div>
+                  <div className="flex flex-col justify-center min-w-0">
+                    <h4 className="font-extrabold text-[9.5px] xs:text-[10px] sm:text-[11px] text-[#1E3926] tracking-wider uppercase leading-tight font-sans">
                       {feat.title1}
                       <span className="block">{feat.title2}</span>
                     </h4>
-                    <p className="text-[9px] sm:text-[9.5px] text-[#8C6D34] font-serif italic mt-0.5 leading-none">
+                    <p className="text-[8.5px] xs:text-[9px] sm:text-[9.5px] text-[#8C6D34] font-serif italic mt-0.5 leading-none">
                       {feat.subtitle}
                     </p>
                   </div>
@@ -836,12 +815,16 @@ export default function Home() {
                     { name: "Festive Collection", path: "/shop?category=Gift Boxes" },
                     { name: "Luxury Boxes", path: "/shop?category=Gift Boxes" }
                   ].map((item, idx) => (
-                    <div key={idx} className="flex justify-between items-center border-b border-brand-creamDark pb-2 pr-2">
-                      <span className="font-bold text-xs uppercase tracking-wider text-brand-green">{item.name}</span>
-                      <Link to={item.path} className="text-[10px] font-bold text-brand-gold hover:text-brand-green transition-colors uppercase tracking-widest underline decoration-brand-gold/50 cursor-pointer">
-                        Explore
-                      </Link>
-                    </div>
+                    <Link
+                      key={idx}
+                      to={item.path}
+                      className="group flex items-center justify-between border-b border-brand-creamDark pb-2.5 pr-2 hover:border-brand-gold transition-all duration-300 cursor-pointer"
+                    >
+                      <span className="font-bold text-xs uppercase tracking-wider text-brand-green group-hover:text-brand-gold transition-colors flex items-center gap-1.5">
+                        {item.name}
+                      </span>
+                      <ArrowRight className="w-3.5 h-3.5 text-brand-gold opacity-70 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                    </Link>
                   ))}
                 </div>
               </div>

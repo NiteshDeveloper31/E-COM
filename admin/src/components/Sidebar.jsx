@@ -15,7 +15,8 @@ import {
   Lock,
   UserPlus,
   Shield,
-  PackageCheck
+  PackageCheck,
+  Ticket
 } from "lucide-react";
 import { useData } from "../context/DataContext";
 import { ManageAdminsModal } from "./ManageAdminsModal";
@@ -29,7 +30,7 @@ export const Sidebar = ({ isOpen, toggleSidebar }) => {
 
   const isSuperAdmin = adminProfile?.role === "superadmin" || adminProfile?.email === "admin@reetsutra.com";
   const userPermissions = isSuperAdmin
-    ? ["dashboard", "products", "inventory", "categories", "orders", "customers", "banners", "analytics", "settings", "profile"]
+    ? ["dashboard", "products", "inventory", "categories", "orders", "customers", "banners", "coupons", "analytics", "settings", "profile"]
     : (adminProfile?.permissions || []);
 
   const menuItems = [
@@ -41,6 +42,7 @@ export const Sidebar = ({ isOpen, toggleSidebar }) => {
     { key: "orders", name: "Orders", path: "/orders", icon: ClipboardList, badge: pendingOrdersCount },
     { key: "customers", name: "Customers", path: "/customers", icon: Users },
     { key: "banners", name: "Banners", path: "/banners", icon: Image },
+    { key: "coupons", name: "Coupons", path: "/coupons", icon: Ticket },
     { key: "analytics", name: "Analytics", path: "/analytics", icon: BarChart3 },
     { key: "settings", name: "Settings", path: "/settings", icon: Settings },
     { key: "profile", name: "Profile", path: "/profile", icon: User }
@@ -73,7 +75,7 @@ export const Sidebar = ({ isOpen, toggleSidebar }) => {
       {/* Navigation Links */}
       <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
         {menuItems.map((item) => {
-          const hasAccess = isSuperAdmin || userPermissions.includes(item.key);
+          const hasAccess = isSuperAdmin || item.key === "profile" || userPermissions.includes(item.key);
 
           if (!hasAccess) {
             return (

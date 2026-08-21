@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
+import { API_BASE_URL } from '../config';
+
 export default function ProductDetails() {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -33,7 +35,7 @@ export default function ProductDetails() {
   const loadReviews = useCallback(async () => {
     try {
       setIsReviewsLoading(true);
-      const res = await fetch(`http://localhost:5000/api/products/${id}/reviews`);
+      const res = await fetch(`${API_BASE_URL}/products/${id}/reviews`);
       const data = await res.json();
       if (res.ok && data.success) {
         setReviews(data.data);
@@ -55,7 +57,7 @@ export default function ProductDetails() {
     try {
       setIsSubmittingReview(true);
       const activeToken = localStorage.getItem("rs_token");
-      const res = await fetch(`http://localhost:5000/api/products/${id}/reviews`, {
+      const res = await fetch(`${API_BASE_URL}/products/${id}/reviews`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -86,7 +88,7 @@ export default function ProductDetails() {
 
     try {
       const activeToken = localStorage.getItem("rs_token");
-      const res = await fetch(`http://localhost:5000/api/products/reviews/${reviewId}`, {
+      const res = await fetch(`${API_BASE_URL}/products/reviews/${reviewId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${activeToken}`
@@ -150,6 +152,19 @@ export default function ProductDetails() {
     );
   }
 
+  // Combine primary image and additional gallery images without duplicates
+  const allImages = React.useMemo(() => {
+    if (!product) return [];
+    const list = [];
+    if (product.image) list.push(product.image);
+    if (Array.isArray(product.images)) {
+      product.images.forEach(img => {
+        if (img && !list.includes(img)) list.push(img);
+      });
+    }
+    return list;
+  }, [product]);
+
   const inWishlist = isInWishlist(product.id);
   const discountedPrice = Math.round(product.price * (1 - product.discount / 100));
 
@@ -209,29 +224,33 @@ export default function ProductDetails() {
           </div>
 
           {/* Gallery Thumbnails */}
-          {((product.images && product.images.length > 0) || product.video) && (
+          {(allImages.length > 1 || product.video) && (
             <div className="flex flex-wrap gap-2 pt-2">
-              {product.images && product.images.map((img, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => { setSelectedImage(img); setIsVideoSelected(false); }}
-                  className={`w-16 h-16 rounded border overflow-hidden transition-all duration-200 cursor-pointer ${
-                    !isVideoSelected && selectedImage === img
-                      ? 'border-brand-gold ring-1 ring-brand-gold/50 shadow-sm'
-                      : 'border-brand-gold/20 hover:border-brand-gold/50 bg-white'
-                  }`}
-                >
-                  <img src={img} alt={`${product.name} gallery ${idx + 1}`} className="w-full h-full object-cover" />
-                </button>
-              ))}
+              {allImages.map((img, idx) => {
+                const isSelected = !isVideoSelected && (selectedImage ? selectedImage === img : idx === 0);
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => { setSelectedImage(img); setIsVideoSelected(false); }}
+                    title={`View image ${idx + 1}`}
+                    className={`w-16 h-16 rounded border overflow-hidden transition-all duration-200 cursor-pointer ${
+                      isSelected
+                        ? 'border-brand-gold ring-2 ring-brand-gold/60 shadow-sm scale-105'
+                        : 'border-brand-gold/20 hover:border-brand-gold/60 bg-white opacity-80 hover:opacity-100'
+                    }`}
+                  >
+                    <img src={img} alt={`${product.name} gallery ${idx + 1}`} className="w-full h-full object-cover" />
+                  </button>
+                );
+              })}
               {product.video && (
                 <button
                   onClick={() => setIsVideoSelected(true)}
                   title="Play product video"
                   className={`relative w-16 h-16 rounded border overflow-hidden transition-all duration-200 cursor-pointer ${
                     isVideoSelected
-                      ? 'border-brand-gold ring-1 ring-brand-gold/50 shadow-sm'
-                      : 'border-brand-gold/20 hover:border-brand-gold/50 bg-white'
+                      ? 'border-brand-gold ring-2 ring-brand-gold/60 shadow-sm scale-105'
+                      : 'border-brand-gold/20 hover:border-brand-gold/60 bg-white opacity-80 hover:opacity-100'
                   }`}
                 >
                   <video src={product.video} className="w-full h-full object-cover" muted />

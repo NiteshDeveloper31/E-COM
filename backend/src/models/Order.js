@@ -7,7 +7,7 @@ const orderSchema = new mongoose.Schema(
       ref: "User",
       required: true
     },
-    orderCode: { type: String, unique: true, trim: true },
+    orderCode: { type: String, unique: true, sparse: true, trim: true },
     invoiceCode: { type: String, unique: true, sparse: true, trim: true },
     invoiceDate: { type: Date, default: null },
     channelName: { type: String, default: "Website" },
@@ -136,6 +136,39 @@ const orderSchema = new mongoose.Schema(
   }
 );
 
+// Pre-save hook to ensure orderCode and invoiceCode are ALWAYS populated
+orderSchema.pre("save", function (next) {
+  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  const randomSuffix = Math.floor(10000 + Math.random() * 90000);
+
+  if (!this.orderCode || this.orderCode === "null") {
+    this.orderCode = `ORD-${dateStr}-${randomSuffix}`;
+  }
+  if (!this.invoiceCode || this.invoiceCode === "null") {
+    this.invoiceCode = `INV-${dateStr}-${randomSuffix}`;
+  }
+  next();
+});
+
 const Order = mongoose.model("Order", orderSchema);
+
+// Self-healing: Ensure legacy null orderCode documents get valid codes & drop old non-sparse index
+setTimeout(async () => {
+  try {
+    const nullOrders = await Order.find({ $or: [{ orderCode: null }, { orderCode: "null" }, { orderCode: { $exists: false } }] });
+    for (const ord of nullOrders) {
+      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+      const randomSuffix = Math.floor(10000 + Math.random() * 90000);
+      ord.orderCode = `ORD-${dateStr}-${randomSuffix}`;
+      if (!ord.invoiceCode) {
+        ord.invoiceCode = `INV-${dateStr}-${randomSuffix}`;
+      }
+      await ord.save();
+    }
+    await Order.collection.dropIndex("orderCode_1").catch(() => {});
+  } catch (err) {
+    // Ignore index drop errors
+  }
+}, 2000);
 
 export default Order;

@@ -9,6 +9,19 @@ export default function QuickViewModal({ product, onClose }) {
   const { addToCart, user, showToast } = useReetSutra();
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState('ingredients'); // 'ingredients' | 'benefits'
+  const [selectedImage, setSelectedImage] = useState(product?.image || '');
+
+  const allImages = React.useMemo(() => {
+    if (!product) return [];
+    const list = [];
+    if (product.image) list.push(product.image);
+    if (Array.isArray(product.images)) {
+      product.images.forEach(img => {
+        if (img && !list.includes(img)) list.push(img);
+      });
+    }
+    return list;
+  }, [product]);
 
   if (!product) return null;
 
@@ -56,16 +69,35 @@ export default function QuickViewModal({ product, onClose }) {
             </button>
 
             {/* Left Side: Image Carousel / Preview */}
-            <div className="w-full md:w-1/2 aspect-square md:aspect-auto md:h-[500px] bg-brand-cream/30 relative">
-              <img
-                src={product.image}
-                alt={product.name}
-                className="w-full h-full object-cover"
-              />
-              {product.bestseller && (
-                <span className="absolute top-4 left-4 bg-brand-green text-brand-cream text-[10px] font-bold tracking-wider px-2.5 py-1 uppercase rounded-sm shadow-md">
-                  Bestseller
-                </span>
+            <div className="w-full md:w-1/2 bg-brand-cream/30 relative flex flex-col justify-between p-4">
+              <div className="relative w-full aspect-square overflow-hidden rounded-lg">
+                <img
+                  src={selectedImage || product.image}
+                  alt={product.name}
+                  className="w-full h-full object-cover"
+                />
+                {product.bestseller && (
+                  <span className="absolute top-4 left-4 bg-brand-green text-brand-cream text-[10px] font-bold tracking-wider px-2.5 py-1 uppercase rounded-sm shadow-md">
+                    Bestseller
+                  </span>
+                )}
+              </div>
+              {allImages.length > 1 && (
+                <div className="flex gap-2 pt-3 justify-center">
+                  {allImages.map((img, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setSelectedImage(img)}
+                      className={`w-12 h-12 rounded border overflow-hidden transition-all cursor-pointer ${
+                        (selectedImage ? selectedImage === img : idx === 0)
+                          ? 'border-brand-gold ring-2 ring-brand-gold/60 shadow-sm scale-105'
+                          : 'border-brand-gold/20 hover:border-brand-gold/60 opacity-80'
+                      }`}
+                    >
+                      <img src={img} alt={`${product.name} ${idx + 1}`} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
 

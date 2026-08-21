@@ -3,12 +3,16 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useReetSutra } from '../context/ReetSutraContext';
 import { Trash2, ShoppingBag, ArrowRight, ShieldCheck, Tag } from 'lucide-react';
 
+import { API_BASE_URL } from '../config';
+
 export default function Cart() {
   const { cart, updateCartQuantity, removeFromCart } = useReetSutra();
   const [couponCode, setCouponCode] = useState('');
-  const [appliedDiscountPercent, setAppliedDiscountPercent] = useState(0);
+  const [appliedDiscountAmount, setAppliedDiscountAmount] = useState(0);
+  const [appliedCouponData, setAppliedCouponData] = useState(null);
   const [couponError, setCouponError] = useState('');
   const [couponSuccess, setCouponSuccess] = useState('');
+  const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
   const navigate = useNavigate();
 
   const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
@@ -21,35 +25,68 @@ export default function Cart() {
 
   const deliveryCharge = subtotal > 799 || subtotal === 0 ? 0 : 70;
   
-  const discountAmount = Math.round(subtotal * (appliedDiscountPercent / 100));
-  const finalTotal = subtotal - discountAmount + deliveryCharge;
+  const discountAmount = appliedDiscountAmount;
+  const finalTotal = Math.max(0, subtotal - discountAmount + deliveryCharge);
 
-  const handleApplyCoupon = (e) => {
+  const handleApplyCoupon = async (e) => {
     e.preventDefault();
     setCouponError('');
     setCouponSuccess('');
 
-    const code = couponCode.trim().toUpperCase();
-    if (code === 'BIHAR15') {
-      setAppliedDiscountPercent(15);
-      setCouponSuccess('✓ Coupon applied: 15% off on your heritage order!');
-    } else if (code === 'FESTIVE10') {
-      setAppliedDiscountPercent(10);
-      setCouponSuccess('✓ Coupon applied: 10% off on all sweets!');
-    } else if (code === 'FREESHIP' && subtotal < 799) {
-      // Custom logic
-      setCouponSuccess('✓ Free Shipping applied!');
-    } else {
-      setCouponError('✗ Invalid Coupon Code. Try "BIHAR15" or "FESTIVE10".');
+    if (!couponCode.trim()) {
+      setCouponError('Please enter a valid coupon code.');
+      return;
+    }
+
+    try {
+      setIsValidatingCoupon(true);
+      const res = await fetch(`${API_BASE_URL}/coupons/validate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          couponCode: couponCode.trim(),
+          cartSubtotal: subtotal,
+          cartItems: cart
+        })
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setAppliedDiscountAmount(data.data.discountAmount || 0);
+        setAppliedCouponData(data.data.coupon || null);
+        setCouponSuccess(data.message || '✓ Coupon applied successfully!');
+      } else {
+        setAppliedDiscountAmount(0);
+        setAppliedCouponData(null);
+        setCouponError(data.message || 'Invalid coupon code.');
+      }
+    } catch (err) {
+      console.error("Error validating coupon code:", err);
+      // Fallback for offline/mock demo codes if backend API server is down
+      const code = couponCode.trim().toUpperCase();
+      if (code === 'BIHAR15') {
+        const amt = Math.round(subtotal * 0.15);
+        setAppliedDiscountAmount(amt);
+        setCouponSuccess('✓ Coupon applied: 15% off on your heritage order!');
+      } else if (code === 'FESTIVE10') {
+        const amt = Math.round(subtotal * 0.10);
+        setAppliedDiscountAmount(amt);
+        setCouponSuccess('✓ Coupon applied: 10% off on all sweets!');
+      } else {
+        setCouponError('Error connecting to coupon validation service.');
+      }
+    } finally {
+      setIsValidatingCoupon(false);
     }
   };
 
   const handleProceedToCheckout = () => {
-    // Navigate and pass state or handle checkout routing
     navigate('/checkout', {
       state: {
         subtotal,
         discount: discountAmount,
+        couponCode: appliedCouponData?.code || couponCode,
         deliveryCharge,
         total: finalTotal
       }
@@ -58,132 +95,134 @@ export default function Cart() {
 
   if (cartCount === 0) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-20 text-center space-y-6 min-h-[60vh] flex flex-col justify-center items-center">
-        <div className="w-20 h-20 bg-brand-cream border-2 border-brand-gold/20 rounded-full flex items-center justify-center text-brand-gold mx-auto shadow-md">
+      <div className="max-w-4xl mx-auto px-4 py-20 text-center space-y-6">
+        <div className="w-20 h-20 bg-brand-cream border border-brand-gold/20 rounded-full flex items-center justify-center mx-auto text-brand-gold">
           <ShoppingBag className="w-10 h-10" />
         </div>
-        <h2 className="text-2xl md:text-3xl font-extrabold text-brand-green font-serif">
-          Your Shopping Cart is Empty
-        </h2>
-        <p className="text-xs md:text-sm text-brand-charcoalLight max-w-sm mx-auto leading-relaxed">
-          Add some delicious, handcrafted delicacies from the fields of Bihar to start your culinary journey.
+        <h2 className="text-3xl font-extrabold text-brand-green font-serif">Your Cart is Empty</h2>
+        <p className="text-sm text-brand-charcoalLight max-w-md mx-auto font-sans">
+          Looks like you haven't added any of our authentic traditional Bihari delicacies to your cart yet.
         </p>
-        <Link
-          to="/shop"
-          className="bg-brand-green hover:bg-brand-greenDark text-brand-cream py-3 px-8 rounded font-sans text-xs font-bold tracking-widest uppercase transition-colors inline-block"
+        <Link 
+          to="/shop" 
+          className="inline-flex items-center space-x-2 bg-brand-green hover:bg-brand-greenDark text-brand-cream px-8 py-3 rounded text-xs font-bold uppercase tracking-widest transition-all duration-300 shadow-md hover:shadow-lg"
         >
-          Explore Shop
+          <span>Explore Heritage Treats</span>
+          <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8 min-h-screen">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
       
-      {/* Title */}
-      <div className="space-y-1">
-        <h1 className="text-2xl md:text-4xl font-extrabold text-brand-green font-serif">
+      {/* Page Title */}
+      <div className="border-b border-brand-creamDark pb-4">
+        <h1 className="text-3xl md:text-4xl font-extrabold text-brand-green font-serif">
           Shopping Cart ({cartCount} {cartCount === 1 ? 'item' : 'items'})
         </h1>
-        <p className="text-xs text-brand-charcoalLight uppercase tracking-wider font-semibold">
-          Review your items and proceed to secure checkout
+        <p className="text-xs md:text-sm text-brand-charcoalLight mt-1 font-sans">
+          Review your selection of artisanal Bihari delicacies before proceeding to checkout.
         </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         
-        {/* Left Side: Cart Items list */}
-        <div className="lg:col-span-2 space-y-6">
-          
-          {/* Cart Header */}
-          <div className="hidden sm:grid grid-cols-6 text-xs text-brand-gold font-bold uppercase tracking-wider border-b border-brand-creamDark pb-3 font-sans">
-            <span className="col-span-3">Product Description</span>
-            <span className="text-center">Price</span>
-            <span className="text-center">Quantity</span>
-            <span className="text-right">Total</span>
-          </div>
+        {/* Left Side: Cart Items List */}
+        <div className="lg:col-span-2 space-y-4">
+          <div className="bg-brand-ivory border border-brand-gold/10 rounded-lg overflow-hidden shadow-premium">
+            <div className="divide-y divide-brand-creamDark">
+              {cart.map((item) => {
+                const discountedPrice = Math.round(item.product.price * (1 - item.product.discount / 100));
+                const itemTotal = discountedPrice * item.quantity;
 
-          {/* Cart Items */}
-          <div className="space-y-4">
-            {cart.map((item) => {
-              const discountedPrice = Math.round(item.product.price * (1 - item.product.discount / 100));
-              return (
-                <div 
-                  key={item.product.id}
-                  className="bg-brand-ivory border border-brand-gold/10 rounded-lg p-4 grid grid-cols-1 sm:grid-cols-6 items-center gap-4 shadow-sm hover:shadow-premium transition-all duration-300"
-                >
-                  
-                  {/* Thumbnail & Description */}
-                  <div className="col-span-3 flex items-center space-x-4">
-                    <div className="w-16 h-16 rounded overflow-hidden shrink-0 border border-brand-creamDark bg-white">
+                return (
+                  <div key={item.product.id} className="p-4 sm:p-6 flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
+                    
+                    {/* Item Image */}
+                    <Link to={`/product/${item.product.id}`} className="w-20 h-20 sm:w-24 sm:h-24 rounded overflow-hidden border border-brand-gold/20 shrink-0">
                       <img 
                         src={item.product.image} 
                         alt={item.product.name} 
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                       />
-                    </div>
-                    <div>
-                      <Link 
-                        to={`/product/${item.product.id}`}
-                        className="font-bold text-sm md:text-base text-brand-green font-serif hover:text-brand-gold line-clamp-1"
-                      >
-                        {item.product.name}
+                    </Link>
+
+                    {/* Item Details */}
+                    <div className="flex-1 space-y-1 text-center sm:text-left">
+                      <span className="text-[10px] text-brand-gold uppercase tracking-widest font-bold font-sans">
+                        {item.product.category}
+                      </span>
+                      <Link to={`/product/${item.product.id}`}>
+                        <h3 className="text-base font-bold text-brand-green font-serif hover:text-brand-gold transition-colors">
+                          {item.product.name}
+                        </h3>
                       </Link>
-                      <p className="text-[10px] text-brand-gold font-bold uppercase font-sans tracking-wide mt-0.5">
-                        {item.product.category} • {item.product.weight}
+                      <p className="text-xs text-brand-charcoalLight font-sans">
+                        Net Weight: <span className="font-semibold text-brand-green">{item.product.weight}</span>
                       </p>
-                      <button 
-                        onClick={() => removeFromCart(item.product.id)}
-                        className="text-[10px] text-red-500 hover:text-red-700 font-bold uppercase tracking-widest flex items-center space-x-1 mt-2 transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>Remove Item</span>
-                      </button>
+                      
+                      <div className="flex items-center justify-center sm:justify-start space-x-2 pt-1 font-sans">
+                        <span className="text-sm font-bold text-brand-green">₹{discountedPrice}</span>
+                        {item.product.discount > 0 && (
+                          <span className="text-xs text-brand-charcoalLight line-through">
+                            ₹{item.product.price}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Unit Price */}
-                  <div className="text-left sm:text-center">
-                    <span className="sm:hidden text-xs text-brand-charcoalLight mr-2 font-bold font-sans">Price:</span>
-                    <span className="font-extrabold text-brand-green">₹{discountedPrice}</span>
-                  </div>
+                    {/* Quantity Controls & Total */}
+                    <div className="flex sm:flex-col items-center justify-between w-full sm:w-auto gap-4">
+                      
+                      {/* Quantity Buttons */}
+                      <div className="flex items-center border border-brand-gold/30 rounded overflow-hidden bg-white">
+                        <button
+                          onClick={() => updateCartQuantity(item.product.id, item.quantity - 1)}
+                          className="w-7 h-7 flex items-center justify-center text-brand-green hover:bg-brand-cream text-xs font-bold"
+                          aria-label="Decrease quantity"
+                        >
+                          -
+                        </button>
+                        <span className="w-8 text-center text-xs font-bold text-brand-green font-sans">
+                          {item.quantity}
+                        </span>
+                        <button
+                          onClick={() => updateCartQuantity(item.product.id, item.quantity + 1)}
+                          className="w-7 h-7 flex items-center justify-center text-brand-green hover:bg-brand-cream text-xs font-bold"
+                          aria-label="Increase quantity"
+                        >
+                          +
+                        </button>
+                      </div>
 
-                  {/* Quantity selector */}
-                  <div className="flex justify-start sm:justify-center">
-                    <div className="flex items-center justify-between border border-brand-gold/20 rounded bg-white w-28">
-                      <button 
-                        onClick={() => updateCartQuantity(item.product.id, item.quantity - 1)}
-                        className="px-2.5 py-1 text-brand-green hover:bg-brand-cream font-bold"
-                      >
-                        -
-                      </button>
-                      <span className="text-xs font-bold text-brand-green">{item.quantity}</span>
-                      <button 
-                        onClick={() => updateCartQuantity(item.product.id, item.quantity + 1)}
-                        className="px-2.5 py-1 text-brand-green hover:bg-brand-cream font-bold"
-                      >
-                        +
-                      </button>
+                      {/* Line Item Total & Remove */}
+                      <div className="flex items-center space-x-3">
+                        <span className="text-sm font-bold text-brand-green font-sans">
+                          ₹{itemTotal}
+                        </span>
+                        <button
+                          onClick={() => removeFromCart(item.product.id)}
+                          className="text-brand-charcoalLight hover:text-red-600 transition-colors p-1"
+                          title="Remove item"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+
                     </div>
-                  </div>
 
-                  {/* Total Price */}
-                  <div className="text-left sm:text-right">
-                    <span className="sm:hidden text-xs text-brand-charcoalLight mr-2 font-bold font-sans">Total:</span>
-                    <span className="font-black text-brand-green text-sm md:text-base">₹{discountedPrice * item.quantity}</span>
                   </div>
-
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
 
-          {/* Cart Actions */}
           <div className="flex justify-between items-center pt-2">
             <Link 
-              to="/shop"
-              className="text-xs font-bold text-brand-gold hover:text-brand-green uppercase tracking-wider flex items-center space-x-1"
+              to="/shop" 
+              className="text-xs font-bold text-brand-green hover:text-brand-gold flex items-center space-x-1 transition-colors uppercase tracking-widest font-sans"
             >
               <span>← Continue Shopping</span>
             </Link>
@@ -204,26 +243,22 @@ export default function Cart() {
             <form onSubmit={handleApplyCoupon} className="flex gap-2">
               <input
                 type="text"
-                placeholder="Enter coupon (e.g. BIHAR15)"
+                placeholder="Enter coupon"
                 value={couponCode}
                 onChange={(e) => setCouponCode(e.target.value)}
                 className="flex-1 bg-white border border-brand-gold/30 rounded px-3 py-2 text-xs font-sans text-brand-green uppercase focus:outline-none focus:border-brand-gold"
               />
               <button 
                 type="submit"
-                className="bg-brand-green hover:bg-brand-greenDark text-brand-cream py-2 px-4 rounded text-xs font-bold tracking-widest uppercase transition-colors"
+                disabled={isValidatingCoupon}
+                className="bg-brand-green hover:bg-brand-greenDark text-brand-cream py-2 px-4 rounded text-xs font-bold tracking-widest uppercase transition-colors disabled:opacity-50 cursor-pointer"
               >
-                Apply
+                {isValidatingCoupon ? 'Checking...' : 'Apply'}
               </button>
             </form>
 
-            {couponError && <p className="text-[10px] text-red-500 font-bold font-sans">{couponError}</p>}
-            {couponSuccess && <p className="text-[10px] text-green-600 font-bold font-sans">{couponSuccess}</p>}
-
-            <div className="pt-2 text-[10px] text-brand-charcoalLight/60 font-sans italic space-y-1">
-              <p>💡 Tip: Use <span className="font-bold text-brand-gold">BIHAR15</span> for 15% off orders.</p>
-              <p>💡 Tip: Use <span className="font-bold text-brand-gold">FESTIVE10</span> for 10% off orders.</p>
-            </div>
+            {couponError && <p className="text-[11px] text-red-500 font-bold font-sans">{couponError}</p>}
+            {couponSuccess && <p className="text-[11px] text-green-600 font-bold font-sans">{couponSuccess}</p>}
           </div>
 
           {/* Checkout Totals Summary */}
@@ -239,21 +274,15 @@ export default function Cart() {
                 <span className="font-bold text-brand-green">₹{subtotal}</span>
               </div>
               
-              {appliedDiscountPercent > 0 && (
+              {discountAmount > 0 && (
                 <div className="flex justify-between text-green-600 font-semibold">
-                  <span>Coupon Discount ({appliedDiscountPercent}%)</span>
+                  <span>Coupon Discount {appliedCouponData?.code ? `(${appliedCouponData.code})` : ''}</span>
                   <span>-₹{discountAmount}</span>
                 </div>
               )}
 
               <div className="flex justify-between">
                 <span>Estimated Shipping</span>
-                <span className="font-bold text-brand-green">
-                  {deliveryCharge === 0 ? <span className="text-green-600">FREE</span> : `₹${deliveryCharge}`}
-                </span>
-              </div>
-
-              <div className="border-t border-brand-creamDark pt-3.5 flex justify-between text-base md:text-lg font-extrabold text-brand-green">
                 <span>Total Amount</span>
                 <span className="text-brand-gold font-black">₹{finalTotal}</span>
               </div>

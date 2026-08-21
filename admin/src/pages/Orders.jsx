@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Eye, Edit, Clock, MapPin, CreditCard, ShoppingBag, AlertTriangle, Download } from "lucide-react";
+import { Eye, Edit, Clock, MapPin, CreditCard, ShoppingBag, AlertTriangle, Download, Printer } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useData } from "../context/DataContext";
 import { DataTable } from "../components/DataTable";
@@ -12,6 +12,7 @@ export const Orders = () => {
   const [shippingCourier, setShippingCourier] = useState("");
   const [trackingNumber, setTrackingNumber] = useState("");
   const [packetNumber, setPacketNumber] = useState("");
+  const [printModalOrder, setPrintModalOrder] = useState(null);
 
   const formatINR = (value) => {
     return new Intl.NumberFormat("en-IN", {
@@ -362,14 +363,29 @@ export const Orders = () => {
         filterKey="orderStatus"
         filterPlaceholder="All Order Statuses"
         filterOptions={filterOptions}
-        renderActions={(row) => (
-          <button
-            onClick={() => handleOpenDrawer(row)}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-primary/10 text-xs font-bold text-primary hover:bg-primary/5 hover:border-primary transition-all cursor-pointer"
-          >
-            <Eye size={12} /> Inspect
-          </button>
-        )}
+        renderActions={(row) => {
+          const canPrintInvoice = ["Processing", "Shipped", "Delivered"].includes(row.orderStatus);
+          return (
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => handleOpenDrawer(row)}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-primary/10 text-xs font-bold text-primary hover:bg-primary/5 hover:border-primary transition-all cursor-pointer"
+                title="Inspect Order"
+              >
+                <Eye size={12} /> Inspect
+              </button>
+              {canPrintInvoice && (
+                <button
+                  onClick={() => setPrintModalOrder(row)}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-secondary text-primary text-xs font-bold hover:bg-secondary/80 shadow-xs transition-all cursor-pointer"
+                  title="Print Tax Invoice & Shipping Label"
+                >
+                  <Printer size={12} /> Invoice
+                </button>
+              )}
+            </div>
+          );
+        }}
       />
 
       {/* Order Slide-over Inspect Drawer */}
@@ -542,7 +558,17 @@ export const Orders = () => {
 
             {/* Audit History Timeline */}
             <div className="space-y-2.5">
-              <h4 className="text-xs font-bold text-primary uppercase tracking-wider">Tracking Timeline logs</h4>
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-primary uppercase tracking-wider">Tracking Timeline logs</h4>
+                {["Processing", "Shipped", "Delivered"].includes(selectedOrder.orderStatus) && (
+                  <button
+                    onClick={() => setPrintModalOrder(selectedOrder)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary text-primary font-bold text-xs rounded-lg shadow-xs hover:bg-secondary/80 transition-all cursor-pointer"
+                  >
+                    <Printer size={14} /> Print Tax Invoice & Label
+                  </button>
+                )}
+              </div>
               <div className="bg-white border border-primary/5 rounded-xl p-5">
                 <div className="relative border-l border-primary/10 ml-2.5 space-y-4 py-1.5">
                   {selectedOrder.timeline.map((log, index) => (
@@ -564,6 +590,218 @@ export const Orders = () => {
           </div>
         )}
       </Drawer>
+
+      {/* --- Printable Tax Invoice & Shipping Label Modal --- */}
+      {printModalOrder && (
+        <div className="fixed inset-0 z-[99999] bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          {/* Printable Container */}
+          <div className="bg-white w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden my-6 border border-primary/20">
+            {/* Modal Top Controls (Hidden during print) */}
+            <div className="bg-primary text-white p-4 flex items-center justify-between print:hidden">
+              <div className="flex items-center gap-2">
+                <Printer className="text-secondary" size={20} />
+                <h3 className="font-bold text-base font-display">Tax Invoice & Shipping Label Preview</h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => window.print()}
+                  className="px-4 py-1.5 bg-secondary text-primary font-bold text-xs rounded-lg hover:bg-secondary/90 shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <Printer size={14} /> 🖨️ Print Invoice / Label
+                </button>
+                <button
+                  onClick={() => setPrintModalOrder(null)}
+                  className="px-3 py-1.5 bg-white/10 text-white font-bold text-xs rounded-lg hover:bg-white/20 transition-all cursor-pointer"
+                >
+                  Close ✕
+                </button>
+              </div>
+            </div>
+
+            {/* Tax Invoice Document Sheet (Exact match to real-world E-Commerce Invoice layout) */}
+            <div id="printable-tax-invoice" className="p-6 sm:p-8 text-black bg-white font-sans text-xs space-y-4">
+              
+              {/* Invoice Main Box Header */}
+              <div className="border-2 border-black p-3 rounded-t-sm">
+                <div className="flex justify-between items-start border-b border-black pb-2 mb-2">
+                  <div>
+                    <h1 className="text-xl font-extrabold tracking-wider font-serif text-black uppercase">ReetSutra Organics</h1>
+                    <p className="text-[10px] text-gray-700 font-semibold">Authentic Bihari Delicacies & Heritage Food Products</p>
+                    <p className="text-[9.5px] text-gray-600">GSTIN: 10AABCR1234F1Z5 | FSSAI Lic No: 11525069000360</p>
+                  </div>
+                  <div className="text-right">
+                    <h2 className="text-lg font-black uppercase text-black tracking-widest">TAX INVOICE</h2>
+                    <p className="text-[10px] font-mono font-extrabold text-gray-800">
+                      Invoice No: <span className="text-black uppercase">{printModalOrder.invoiceCode || `INV-${printModalOrder.id}`}</span>
+                    </p>
+                    <p className="text-[10px] text-gray-600">
+                      Invoice Date: {printModalOrder.invoiceDate ? formatDateAsDDMMYYYYHHMMSS(printModalOrder.invoiceDate) : printModalOrder.date}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Barcode & Order Summary Row */}
+                <div className="grid grid-cols-2 gap-4 text-[10.5px]">
+                  <div>
+                    <p className="font-bold">Order ID: <span className="font-mono">{printModalOrder.orderCode || printModalOrder.id}</span></p>
+                    <p className="text-gray-600">Order Date: {printModalOrder.date}</p>
+                    {/* Simulated Barcode UI */}
+                    <div className="mt-1.5 font-mono text-[10px] bg-black text-white px-2 py-1 rounded inline-block font-black tracking-widest">
+                      ||||||| | ||||| |||| ||| ||||||| {printModalOrder.id}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold">Payment Method: <span className="uppercase text-black font-extrabold">{printModalOrder.paymentMethod}</span></p>
+                    <p className="text-gray-600">Payment Status: <span className="font-bold">{printModalOrder.paymentStatus}</span></p>
+                    <p className="text-gray-600">Courier / AWB: <span className="font-mono font-bold text-black">{printModalOrder.shippingCourier || 'Delhivery Express'} ({printModalOrder.trackingNumber || 'SF3753227596MA'})</span></p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Shipping Address ("Ship To") Grid */}
+              <div className="grid grid-cols-2 gap-0 border-2 border-t-0 border-black text-[11px]">
+                <div className="p-3 border-r border-black space-y-1">
+                  <span className="font-extrabold uppercase text-[10px] bg-gray-200 px-1.5 py-0.5 rounded">SHIP TO (DELIVERY ADDRESS):</span>
+                  <p className="font-extrabold text-xs text-black uppercase pt-1">{printModalOrder.shippingAddress?.name || printModalOrder.customerName}</p>
+                  <p className="text-gray-800 leading-snug">
+                    {printModalOrder.shippingAddress?.line} {printModalOrder.shippingAddress?.line2 || ""}
+                  </p>
+                  <p className="text-gray-800 font-bold">
+                    {printModalOrder.shippingAddress?.city}, {printModalOrder.shippingAddress?.state} - {printModalOrder.shippingAddress?.zip}
+                  </p>
+                  <p className="text-gray-800 font-semibold pt-0.5">📞 Phone: {printModalOrder.customerPhone}</p>
+                </div>
+
+                <div className="p-3 space-y-1 bg-gray-50/50">
+                  <span className="font-extrabold uppercase text-[10px] bg-gray-200 px-1.5 py-0.5 rounded">DISPATCH WAREHOUSE DETAILS:</span>
+                  <p className="font-extrabold text-xs text-black">ReetSutra Fulfillment Center</p>
+                  <p className="text-gray-700 leading-snug">Plot 42, Main Heritage Road, Patna, Bihar - 800001</p>
+                  <p className="text-gray-700 font-medium">Support: care@reetsutra.com | +91 73786 47099</p>
+                  <div className="pt-1">
+                    <span className="text-[9px] font-mono bg-black text-white px-2 py-0.5 rounded">PACKAGE NO: {printModalOrder.packetNumber || 'PKT-001'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Itemized Product GST Table */}
+              <div className="border-2 border-t-0 border-black overflow-hidden">
+                <table className="w-full text-left border-collapse text-[10.5px]">
+                  <thead>
+                    <tr className="bg-gray-100 border-b border-black font-extrabold uppercase text-[9.5px]">
+                      <th className="p-2 border-r border-black">Item Name & Details</th>
+                      <th className="p-2 border-r border-black text-center">HSN Code</th>
+                      <th className="p-2 border-r border-black text-center">Qty</th>
+                      <th className="p-2 border-r border-black text-right">Rate (₹)</th>
+                      <th className="p-2 border-r border-black text-right">Taxable (₹)</th>
+                      <th className="p-2 border-r border-black text-right">CGST 2.5%</th>
+                      <th className="p-2 border-r border-black text-right">SGST 2.5%</th>
+                      <th className="p-2 text-right">Total (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-300">
+                    {printModalOrder.items.map((item, idx) => {
+                      const qty = item.quantity || 1;
+                      const totalPrice = item.price * qty;
+                      const taxableVal = totalPrice / 1.05; // Base rate excluding 5% GST
+                      const totalGst = totalPrice - taxableVal;
+                      const cgst = totalGst / 2;
+                      const sgst = totalGst / 2;
+                      const hsn = item.productName.toLowerCase().includes('ghee') ? '0405' : item.productName.toLowerCase().includes('makhana') ? '1904' : '2001';
+
+                      return (
+                        <tr key={idx} className="hover:bg-gray-50">
+                          <td className="p-2 border-r border-black font-semibold">
+                            {item.productName}
+                            <span className="block text-[9px] text-gray-500 font-mono">
+                              EAN Code: {item.eanCode || item.sku || (item.productName.toLowerCase().includes('thekua') ? '8908014092092' : item.productName.toLowerCase().includes('ghee') ? '8908014092018' : '8908014092290')}
+                            </span>
+                          </td>
+                          <td className="p-2 border-r border-black text-center font-mono">{hsn}</td>
+                          <td className="p-2 border-r border-black text-center font-bold">{qty}</td>
+                          <td className="p-2 border-r border-black text-right font-mono">₹ {(taxableVal / qty).toFixed(2)}</td>
+                          <td className="p-2 border-r border-black text-right font-mono">₹ {taxableVal.toFixed(2)}</td>
+                          <td className="p-2 border-r border-black text-right font-mono">₹ {cgst.toFixed(2)}</td>
+                          <td className="p-2 border-r border-black text-right font-mono">₹ {sgst.toFixed(2)}</td>
+                          <td className="p-2 text-right font-bold font-mono">₹ {totalPrice.toFixed(2)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+
+                {/* Subtotal Summary Box */}
+                <div className="border-t-2 border-black p-3 bg-gray-50 flex justify-between items-end">
+                  <div className="space-y-1 max-w-sm">
+                    <p className="text-[10px] font-bold text-gray-800">Amount in Words:</p>
+                    <p className="text-[11px] font-extrabold capitalize italic text-black">
+                      Rupees {formatINR(printModalOrder.total).replace('₹', '')} Only
+                    </p>
+                    <p className="text-[9px] text-gray-500 pt-1">
+                      Declaration: We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.
+                    </p>
+                  </div>
+
+                  <div className="w-56 text-right space-y-1 font-mono text-[11px]">
+                    <div className="flex justify-between text-gray-700">
+                      <span>Total Taxable:</span>
+                      <span>₹ {(printModalOrder.subtotal / 1.05).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-gray-700">
+                      <span>Total CGST (2.5%):</span>
+                      <span>₹ {((printModalOrder.subtotal - (printModalOrder.subtotal / 1.05)) / 2).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-gray-700">
+                      <span>Total SGST (2.5%):</span>
+                      <span>₹ {((printModalOrder.subtotal - (printModalOrder.subtotal / 1.05)) / 2).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-gray-700">
+                      <span>Shipping Fee:</span>
+                      <span>₹ {printModalOrder.shipping || 0}</span>
+                    </div>
+                    <div className="flex justify-between text-black font-extrabold text-sm border-t border-black pt-1">
+                      <span>Grand Total:</span>
+                      <span>{formatINR(printModalOrder.total)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Authorized Signatory Footer */}
+                <div className="border-t border-black p-3 flex justify-between items-center text-[10px]">
+                  <div>
+                    <p className="font-bold">Thank you for ordering with ReetSutra!</p>
+                    <p className="text-gray-600">This is a computer generated Tax Invoice.</p>
+                  </div>
+                  <div className="text-center font-bold">
+                    <div className="h-8 border-b border-dashed border-black mb-1 w-36 mx-auto"></div>
+                    <p className="uppercase text-[9px]">Authorized Signatory</p>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Print CSS Styling Rule */}
+      <style>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          #printable-tax-invoice, #printable-tax-invoice * {
+            visibility: visible;
+          }
+          #printable-tax-invoice {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            margin: 0;
+            padding: 15px;
+          }
+        }
+      `}</style>
     </>
   );
 };

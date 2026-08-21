@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { API_BASE_URL } from "../config";
 
 const DataContext = createContext();
 
@@ -90,7 +91,7 @@ export const DataProvider = ({ children }) => {
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api${endpoint}`, config);
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
       
       if (response.status === 401 || response.status === 403) {
         logoutAdmin();

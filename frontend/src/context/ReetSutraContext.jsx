@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
+import { API_BASE_URL, BACKEND_URL } from '../config';
 
 const ReetSutraContext = createContext();
 
@@ -78,7 +79,7 @@ export const ReetSutraProvider = ({ children }) => {
   // Fetch Products Catalog
   const fetchProducts = useCallback(async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/products?limit=100");
+      const response = await fetch(`${API_BASE_URL}/products?limit=100`);
       const resJson = await response.json();
       
       if (response.ok && resJson.success) {
@@ -119,7 +120,7 @@ export const ReetSutraProvider = ({ children }) => {
 
   const fetchSettings = useCallback(async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/settings");
+      const response = await fetch(`${API_BASE_URL}/settings`);
       const resJson = await response.json();
       if (response.ok && resJson.success && resJson.data) {
         setSettings(resJson.data);
@@ -146,7 +147,7 @@ export const ReetSutraProvider = ({ children }) => {
   const fetchAddresses = useCallback(async (activeToken) => {
     if (!activeToken || !user.id) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/customers/${user.id}/addresses`, {
+      const res = await fetch(`${API_BASE_URL}/customers/${user.id}/addresses`, {
         headers: { "Authorization": `Bearer ${activeToken}` }
       });
       if (res.status === 401) {
@@ -173,7 +174,7 @@ export const ReetSutraProvider = ({ children }) => {
   const fetchOrders = useCallback(async (activeToken) => {
     if (!activeToken) return;
     try {
-      const res = await fetch("http://localhost:5000/api/orders/my-orders", {
+      const res = await fetch(`${API_BASE_URL}/orders/my-orders`, {
         headers: { "Authorization": `Bearer ${activeToken}` }
       });
       if (res.status === 401) {
@@ -285,7 +286,7 @@ export const ReetSutraProvider = ({ children }) => {
     if (!activeToken || !user.id) return;
 
     try {
-      const response = await fetch(`http://localhost:5000/api/customers/${user.id}/addresses`, {
+      const response = await fetch(`${API_BASE_URL}/customers/${user.id}/addresses`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -323,7 +324,7 @@ export const ReetSutraProvider = ({ children }) => {
     if (!activeToken || !user.id) return;
 
     try {
-      const response = await fetch(`http://localhost:5000/api/customers/${user.id}/addresses/${addressId}`, {
+      const response = await fetch(`${API_BASE_URL}/customers/${user.id}/addresses/${addressId}`, {
         method: "DELETE",
         headers: {
           "Authorization": `Bearer ${activeToken}`
@@ -352,7 +353,7 @@ export const ReetSutraProvider = ({ children }) => {
     if (!activeToken || !user.id) return;
 
     try {
-      const response = await fetch(`http://localhost:5000/api/customers/${user.id}/addresses/${addressId}`, {
+      const response = await fetch(`${API_BASE_URL}/customers/${user.id}/addresses/${addressId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -390,7 +391,7 @@ export const ReetSutraProvider = ({ children }) => {
     if (!activeToken || !user.id) return;
 
     try {
-      const response = await fetch(`http://localhost:5000/api/customers/${user.id}/addresses/${addressId}/default`, {
+      const response = await fetch(`${API_BASE_URL}/customers/${user.id}/addresses/${addressId}/default`, {
         method: "PATCH",
         headers: {
           "Authorization": `Bearer ${activeToken}`
@@ -420,7 +421,7 @@ export const ReetSutraProvider = ({ children }) => {
     if (!activeToken) return;
 
     try {
-      const response = await fetch("http://localhost:5000/api/auth/profile", {
+      const response = await fetch(`${API_BASE_URL}/auth/profile`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -463,7 +464,7 @@ export const ReetSutraProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const response = await fetch("http://localhost:5000/api/auth/login", {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password })
@@ -491,7 +492,7 @@ export const ReetSutraProvider = ({ children }) => {
 
   const register = async (name, email, password, address = null) => {
     try {
-      const response = await fetch("http://localhost:5000/api/auth/register", {
+      const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(address ? { name, email, password, address } : { name, email, password })
@@ -519,7 +520,7 @@ export const ReetSutraProvider = ({ children }) => {
 
   const sendOTP = async (phone, password = null, isLogin = false) => {
     try {
-      const response = await fetch("http://localhost:5000/api/auth/send-otp", {
+      const response = await fetch(`${API_BASE_URL}/auth/send-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone, password, isLogin })
@@ -538,7 +539,7 @@ export const ReetSutraProvider = ({ children }) => {
 
   const verifyOTPLogin = async (phone, otp) => {
     try {
-      const response = await fetch("http://localhost:5000/api/auth/verify-otp-login", {
+      const response = await fetch(`${API_BASE_URL}/auth/verify-otp-login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone, otp })
@@ -565,7 +566,7 @@ export const ReetSutraProvider = ({ children }) => {
 
   const registerWithOTP = async (name, email, phone, password, otp, address) => {
     try {
-      const response = await fetch("http://localhost:5000/api/auth/verify-otp-register", {
+      const response = await fetch(`${API_BASE_URL}/auth/verify-otp-register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, phone, password, otp, address })
@@ -595,7 +596,7 @@ export const ReetSutraProvider = ({ children }) => {
     if (!activeToken) return false;
 
     try {
-      const response = await fetch("http://localhost:5000/api/auth/change-phone", {
+      const response = await fetch(`${API_BASE_URL}/auth/change-phone`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -628,7 +629,7 @@ export const ReetSutraProvider = ({ children }) => {
     if (!activeToken) return false;
 
     try {
-      const response = await fetch("http://localhost:5000/api/auth/change-email", {
+      const response = await fetch(`${API_BASE_URL}/auth/change-email`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -692,7 +693,7 @@ export const ReetSutraProvider = ({ children }) => {
         paymentMethod: orderData.paymentMethod || "COD"
       };
 
-      const response = await fetch("http://localhost:5000/api/orders", {
+      const response = await fetch(`${API_BASE_URL}/orders`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -763,7 +764,7 @@ export const ReetSutraProvider = ({ children }) => {
         billingAddress: orderData.billingAddress || null
       };
 
-      const response = await fetch("http://localhost:5000/api/orders/razorpay/create", {
+      const response = await fetch(`${API_BASE_URL}/orders/razorpay/create`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -798,7 +799,7 @@ export const ReetSutraProvider = ({ children }) => {
     }
 
     try {
-      const response = await fetch("http://localhost:5000/api/orders/razorpay/verify", {
+      const response = await fetch(`${API_BASE_URL}/orders/razorpay/verify`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

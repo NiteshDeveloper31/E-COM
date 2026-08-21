@@ -5,6 +5,8 @@ import { useData } from "../context/DataContext";
 import { DataTable } from "../components/DataTable";
 import { Drawer } from "../components/Drawer";
 
+import { API_BASE_URL } from "../config";
+
 export const Customers = () => {
   const { customers, orders, updateCustomerStatus } = useData();
   const [selectedCustomer, setSelectedCustomer] = useState(null);
@@ -152,7 +154,7 @@ export const Customers = () => {
       const activeToken = localStorage.getItem("rs_admin_token");
       if (!activeToken) return;
 
-      const response = await fetch(`http://localhost:5000/api/customers/${cust.id || cust._id}/addresses`, {
+      const response = await fetch(`${API_BASE_URL}/customers/${cust.id || cust._id}/addresses`, {
         headers: {
           "Authorization": `Bearer ${activeToken}`
         }

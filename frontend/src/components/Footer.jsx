@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useReetSutra } from '../context/ReetSutraContext';
+import rsFooterImg from '../assets/rs_footer_img.png';
 import { 
   Mail, 
   Phone, 
@@ -180,7 +181,7 @@ export default function Footer() {
       </div>
 
       {/* Trust, Newsletter & App Download Section - Redesigned bottom bar */}
-      <div className="w-full bg-[#15281E] border-y border-brand-gold/25 py-10 my-8">
+      <div className="w-full bg-[#15281E] border-t border-brand-gold/25 py-10 mt-8 mb-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12 items-center">
           
           {/* Left Column: Trust Badges */}
@@ -270,7 +271,7 @@ export default function Footer() {
                   <GooglePlaySVG />
                   <div className="flex flex-col items-start text-left leading-none">
                     <span className="text-[8px] uppercase tracking-wider text-brand-gold font-bold font-sans">COMING SOON</span>
-                    <span className="text-[11px] font-bold font-sans text-white/90 mt-0.5">Google Play</span>
+                    <span className="text-[11px] font-bold font-sans text-[#FFF] mt-0.5">Google Play</span>
                   </div>
                 </a>
               </div>
@@ -286,7 +287,7 @@ export default function Footer() {
                   <AppStoreSVG />
                   <div className="flex flex-col items-start text-left leading-none">
                     <span className="text-[8px] uppercase tracking-wider text-brand-gold font-bold font-sans">COMING SOON</span>
-                    <span className="text-[11px] font-bold font-sans text-white/90 mt-0.5">App Store</span>
+                    <span className="text-[11px] font-bold font-sans text-[#FFF] mt-0.5">App Store</span>
                   </div>
                 </a>
               </div>
@@ -296,8 +297,17 @@ export default function Footer() {
         </div>
       </div>
 
+      {/* Traditional Bihar Village Heritage Artwork Banner */}
+      <div className="w-full overflow-hidden mt-0 mb-2">
+        <img
+          src={rsFooterImg}
+          alt="ReetSutra Bihar Village Heritage Art"
+          className="w-full h-auto max-h-32 sm:max-h-44 md:max-h-56 lg:max-h-64 object-cover object-center transition-opacity duration-300"
+        />
+      </div>
+
       {/* Bottom Copyright bar */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-brand-gold/10 mt-6 pt-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-brand-gold/10 pt-4">
         <div className="flex flex-col md:flex-row items-center justify-between text-xs text-brand-cream/60 font-sans gap-4">
           <p>© {new Date().getFullYear()} ReetSutra Organic Private Limited. All Rights Reserved.</p>
           <p className="flex items-center space-x-4">

@@ -90,7 +90,7 @@ export default function Header() {
       </div>
 
 
-      <header className="sticky top-0 z-50 w-full bg-brand-green border-b border-brand-gold/20 shadow-premium transition-all duration-300">
+      <header className="sticky top-0 z-50 w-full bg-[#143021] border-b border-brand-gold/20 shadow-premium transition-all duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex justify-between items-center">
 
           {/* Mobile Menu Icon (Left on Mobile) */}

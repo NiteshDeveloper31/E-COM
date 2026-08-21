@@ -411,9 +411,19 @@ export const createRazorpayOrder = async (req, res, next) => {
 
     const razorpayOrder = await razorpay.orders.create(options);
 
+    // Auto-generate Order Code & Invoice Code
+    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    const randomSuffix = Math.floor(10000 + Math.random() * 90000);
+    const orderCode = `ORD-${dateStr}-${randomSuffix}`;
+    const invoiceCode = `INV-${dateStr}-${randomSuffix}`;
+
     // Create Order in DB (Pending Payment status)
     const newOrder = await Order.create({
       userId: req.user._id,
+      orderCode,
+      invoiceCode,
+      invoiceDate: new Date(),
+      channelName: "Website",
       items: processedItems,
       subtotal,
       tax,
