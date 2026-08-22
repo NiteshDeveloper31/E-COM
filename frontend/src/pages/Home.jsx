@@ -438,22 +438,22 @@ export default function Home() {
             className="w-full h-auto object-contain block"
           />
 
-          {/* Overlay Buttons for Default Desktop Banner positioned 20px higher up */}
+          {/* Overlay Buttons for Default Desktop Banner with reduced compact size */}
           {currentBanner.isDefault && (
-            <div className="absolute left-[7.5%] lg:left-[8.5%] xl:left-[9.5%] bottom-[4.3%] lg:bottom-[4.5%] xl:bottom-[5%] z-20 flex flex-row items-center space-x-3 xl:space-x-4">
+            <div className="absolute left-[5%] lg:left-[6%] xl:left-[6.5%] bottom-[17%] lg:bottom-[19%] xl:bottom-[20%] z-20 flex flex-row items-center space-x-2.5 xl:space-x-3">
               {/* SHOP NOW Button */}
               <Link
                 to={currentBanner.buttonLink || "/shop"}
-                className="bg-[#143021] hover:bg-[#0E2317] text-[#C5972E] font-extrabold text-[11px] lg:text-[12px] xl:text-[13px] tracking-[0.14em] uppercase py-2 lg:py-2.5 px-5 xl:px-6 rounded-lg shadow-lg hover:shadow-xl hover:scale-[1.03] transition-all duration-300 flex items-center justify-center space-x-2 border border-[#C5972E]/40 cursor-pointer active:scale-95 min-w-[170px] lg:min-w-[190px] xl:min-w-[210px]"
+                className="bg-[#143021] hover:bg-[#0E2317] text-[#C5972E] font-extrabold text-[10px] lg:text-[11px] xl:text-[11.5px] tracking-[0.12em] uppercase py-1.5 lg:py-2 px-4 xl:px-5 rounded-md shadow-md hover:shadow-lg hover:scale-[1.03] transition-all duration-300 flex items-center justify-center space-x-1.5 border border-[#C5972E]/40 cursor-pointer active:scale-95 min-w-[135px] lg:min-w-[155px] xl:min-w-[170px]"
               >
                 <span>{currentBanner.buttonText || "SHOP NOW"}</span>
-                <Leaf className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-[#C5972E] fill-current" />
+                <Leaf className="w-3 h-3 lg:w-3.5 lg:h-3.5 text-[#C5972E] fill-current" />
               </Link>
 
               {/* EXPLORE COLLECTION Button */}
               <Link
                 to="/shop"
-                className="bg-[#FAF6EF]/95 hover:bg-[#FAF6EF] text-[#7A5822] hover:text-[#5B4017] font-extrabold text-[11px] lg:text-[12px] xl:text-[13px] tracking-[0.14em] uppercase py-2 lg:py-2.5 px-5 xl:px-6 rounded-lg shadow-md hover:shadow-lg hover:scale-[1.03] transition-all duration-300 flex items-center justify-center space-x-2 border border-[#C5972E]/70 cursor-pointer active:scale-95 min-w-[170px] lg:min-w-[190px] xl:min-w-[210px]"
+                className="bg-[#FAF6EF]/95 hover:bg-[#FAF6EF] text-[#7A5822] hover:text-[#5B4017] font-extrabold text-[10px] lg:text-[11px] xl:text-[11.5px] tracking-[0.12em] uppercase py-1.5 lg:py-2 px-4 xl:px-5 rounded-md shadow-xs hover:shadow-sm hover:scale-[1.03] transition-all duration-300 flex items-center justify-center space-x-1.5 border border-[#C5972E]/70 cursor-pointer active:scale-95 min-w-[135px] lg:min-w-[155px] xl:min-w-[170px]"
               >
                 <span>EXPLORE COLLECTION</span>
               </Link>

@@ -62,24 +62,24 @@ export default function Header() {
 
   return (
     <>
-      {/* Top Utility Bar */}
-      <div className="hidden md:block w-full bg-[#FAF7F2] text-[#143021] border-b border-[#C5972E]/15">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-8 flex justify-between items-center text-[10.5px] font-bold tracking-wide">
-          <div className="flex items-center gap-1.5">
+      {/* Top Utility Bar with SHOP NOW Button Deep Forest Green Color */}
+      <div className="hidden md:block w-full bg-[#143021] text-[#C5972E] border-b border-[#C5972E]/30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-8 flex justify-between items-center text-[10.5px] font-extrabold tracking-wider uppercase">
+          <div className="flex items-center gap-1.5 text-[#C5972E]">
             <Leaf className="w-3 h-3 text-[#C5972E] fill-current shrink-0" />
-            <span>Made with Tradition, Shared with Love, From Bihar to Your Home.</span>
+            <span className="text-[#FAF6EF]">Made with Tradition, Shared with Love, From Bihar to Your Home.</span>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 text-[#FAF6EF]">
             <span className="flex items-center gap-1.5">
               <Truck className="w-3 h-3 text-[#C5972E] shrink-0" />
               Free Shipping on Orders Above ₹999
             </span>
-            <span className="text-[#C5972E]/30">|</span>
+            <span className="text-[#C5972E]/40">|</span>
             <Link to="/profile/orders" className="flex items-center gap-1.5 hover:text-[#C5972E] transition-colors">
               <Phone className="w-3 h-3 text-[#C5972E] shrink-0" />
               Track Order
             </Link>
-            <span className="text-[#C5972E]/30">|</span>
+            <span className="text-[#C5972E]/40">|</span>
             <span className="flex items-center gap-1.5">
               <MapPin className="w-3 h-3 text-[#C5972E] shrink-0" />
               Store Locator
@@ -88,9 +88,9 @@ export default function Header() {
         </div>
       </div>
 
-      {/* Main Navbar Header: White Background & Black/Dark Green Text */}
-      <header className="sticky top-0 z-50 w-full bg-white border-b border-gray-200/80 shadow-xs transition-all duration-300">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex justify-between items-center">
+      {/* Main Navbar Header: Warm Cream Background (#FAF6EF) & Exact Matching Nav Item Styling */}
+      <header className="sticky top-0 z-50 w-full bg-[#FAF6EF] border-b border-[#C5972E]/20 shadow-xs transition-all duration-300">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-[84px] md:min-h-[96px] py-2 md:py-2.5 flex justify-between items-center">
 
           {/* Mobile Menu Icon (Left on Mobile) */}
           <button
@@ -101,25 +101,23 @@ export default function Header() {
             <Menu className="w-6 h-6" />
           </button>
 
-          {/* Logo Brand: 100% Sharp Brand Match */}
-          <Link to="/" className="flex items-center space-x-2.5 group shrink-0">
+          {/* Logo Brand: Vertically Stacked RS Monogram + ReetSutra + Tagline */}
+          <Link to="/" className="flex flex-col items-center justify-center text-center group shrink-0 py-0.5">
             <LogoMonogram />
-            <div className="flex flex-col items-start leading-none">
-              <span 
-                className="text-xl md:text-2.5xl font-extrabold tracking-tight transition-all duration-300"
-                style={{ fontFamily: "'Playfair Display', 'Georgia', serif" }}
-              >
-                <span className="text-[#143021]">Reet</span>
-                <span className="text-[#C5972E]">Sutra</span>
-              </span>
-              <span className="text-[7px] md:text-[8.5px] font-sans font-bold tracking-[0.22em] text-[#143021]/85 uppercase mt-0.5">
-                THE TASTE OF BIHAR
-              </span>
-            </div>
+            <span 
+              className="text-lg md:text-2xl font-extrabold tracking-tight transition-all duration-300 leading-none mt-1"
+              style={{ fontFamily: "'Playfair Display', 'Georgia', serif" }}
+            >
+              <span className="text-[#143021]">Reet</span>
+              <span className="text-[#C5972E]">Sutra</span>
+            </span>
+            <span className="text-[7.5px] md:text-[8.5px] font-sans font-bold tracking-[0.24em] text-[#143021]/85 uppercase mt-0.5">
+              THE TASTE OF BIHAR
+            </span>
           </Link>
 
-          {/* Desktop Navigation: Dark Black Links */}
-          <nav className="hidden lg:flex items-center space-x-2 xl:space-x-3.5">
+          {/* Desktop Navigation: Matching Reference Image Color & Serif Typography */}
+          <nav className="hidden lg:flex items-center space-x-2.5 xl:space-x-4">
             {menuItems.map((item) => {
               const currentFullPath = location.pathname + location.search;
               const isActive = item.path === '/'
@@ -129,13 +127,14 @@ export default function Header() {
                 <Link
                   key={item.name}
                   to={item.path}
-                  className={`relative font-sans text-[10.5px] xl:text-xs tracking-wider uppercase font-bold transition-colors duration-200 py-2 shrink-0 ${
-                    isActive ? 'text-[#143021]' : 'text-black/85 hover:text-[#C5972E]'
+                  style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                  className={`relative text-[11px] xl:text-[12.5px] tracking-wider uppercase font-extrabold transition-colors duration-200 py-2 shrink-0 ${
+                    isActive ? 'text-[#143021]' : 'text-[#2C2216]/85 hover:text-[#C5972E]'
                   }`}
                 >
                   {item.name}
                   {item.name === 'Shop' && (
-                    <ChevronDown className="inline w-3 h-3 ml-0.5 -mb-0.5 text-black/70" />
+                    <ChevronDown className="inline w-3 h-3 ml-0.5 -mb-0.5 text-[#2C2216]/70" />
                   )}
                   {isActive && (
                     <motion.div
@@ -155,7 +154,7 @@ export default function Header() {
             {/* Search Toggle */}
             <button
               onClick={() => setIsSearchOpen(true)}
-              className="p-2 text-[#143021] hover:text-[#C5972E] transition-colors duration-200 cursor-pointer"
+              className="p-2 text-[#2C2216] hover:text-[#C5972E] transition-colors duration-200 cursor-pointer"
               aria-label="Search"
             >
               <Search className="w-5 h-5 md:w-5.5 h-5.5" />
@@ -164,12 +163,12 @@ export default function Header() {
             {/* Wishlist Link */}
             <Link
               to="/wishlist"
-              className="relative p-2 text-[#143021] hover:text-[#C5972E] transition-colors duration-200"
+              className="relative p-2 text-[#2C2216] hover:text-[#C5972E] transition-colors duration-200"
               aria-label="Wishlist"
             >
               <Heart className="w-5 h-5 md:w-5.5 h-5.5" />
               {wishlistCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-[#143021] text-[#C5972E] text-[9px] font-extrabold w-4.5 h-4.5 rounded-full flex items-center justify-center border border-white shadow-xs">
+                <span className="absolute -top-1 -right-1 bg-[#A37820] text-white text-[9px] font-bold w-4.5 h-4.5 rounded-full flex items-center justify-center shadow-xs">
                   {wishlistCount}
                 </span>
               )}
@@ -178,12 +177,12 @@ export default function Header() {
             {/* Cart Link */}
             <Link
               to="/cart"
-              className="relative p-2 text-[#143021] hover:text-[#C5972E] transition-colors duration-200"
+              className="relative p-2 text-[#2C2216] hover:text-[#C5972E] transition-colors duration-200"
               aria-label="Cart"
             >
               <ShoppingCart className="w-5 h-5 md:w-5.5 h-5.5" />
               {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-[#143021] text-[#C5972E] text-[9px] font-extrabold w-4.5 h-4.5 rounded-full flex items-center justify-center border border-white shadow-xs">
+                <span className="absolute -top-1 -right-1 bg-[#A37820] text-white text-[9px] font-bold w-4.5 h-4.5 rounded-full flex items-center justify-center shadow-xs">
                   {cartCount}
                 </span>
               )}

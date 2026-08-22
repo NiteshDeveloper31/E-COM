@@ -216,7 +216,7 @@ export function ContactUs() {
                 <MapPin className="w-5 h-5 text-brand-gold shrink-0 mt-0.5" />
                 <div>
                   <p className="font-bold text-brand-green">Corporate Headquarters:</p>
-                  <p>ReetSutra Organic Private Limited, Boring Road, Patna, Bihar - 800001, India</p>
+                  <p>Vrindesha Private Limited, Boring Road, Patna, Bihar - 800001, India</p>
                 </div>
               </li>
               <li className="flex items-center space-x-3">
@@ -275,7 +275,7 @@ export function PrivacyPolicy() {
 
       <h2 className="text-base md:text-lg font-bold text-brand-green font-serif mt-6">1. Introduction</h2>
       <p>
-        ReetSutra Organic Private Limited ("we", "our", or "ReetSutra") respects the privacy of our customers and visitors. This Privacy Policy describes how we collect, store, and share your personal data when you interact with our e-commerce platform.
+        Vrindesha Private Limited ("we", "our", or "ReetSutra") respects the privacy of our customers and visitors. This Privacy Policy describes how we collect, store, and share your personal data when you interact with our e-commerce platform.
       </p>
 
       <h2 className="text-base md:text-lg font-bold text-brand-green font-serif mt-6">2. Data We Collect</h2>
