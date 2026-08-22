@@ -251,12 +251,21 @@ export default function Home() {
     }
   };
 
+  // Helper to ensure .jpeg is used for ghee & thekua even if backend returns legacy .jpg URLs
+  const fixImageUrl = (url) => {
+    if (!url) return '';
+    let fixed = url;
+    if (fixed.includes('thekua.jpg')) fixed = fixed.replace('thekua.jpg', 'thekua.jpeg');
+    if (fixed.includes('desi_cow_ghee.jpg')) fixed = fixed.replace('desi_cow_ghee.jpg', 'desi_cow_ghee.jpeg');
+    return fixed;
+  };
+
   // Default fallback categories
   const defaultCategories = [
     { name: 'Pickles', displayName: 'Pickle', image: '/images/mango_pickle.jpg' },
-    { name: 'Ghee', displayName: 'Ghee', image: '/images/desi_cow_ghee.jpg' },
+    { name: 'Ghee', displayName: 'Ghee', image: '/images/desi_cow_ghee.jpeg' },
     { name: 'Makhana', displayName: 'Makhana', image: '/images/makhana.jpg' },
-    { name: 'Thekua', displayName: 'Thekua', image: '/images/thekua.jpg' },
+    { name: 'Thekua', displayName: 'Thekua', image: '/images/thekua.jpeg' },
     { name: 'Honey', displayName: 'Theney', image: '/images/honey.jpg' },
     { name: 'Sattu', displayName: 'Sattu', image: '/images/sattu.jpg' },
     { name: 'Snacks', displayName: 'Snacks', image: '/images/snacks.jpg' },
@@ -304,7 +313,7 @@ export default function Home() {
   // Instagram Social Gallery items with real product images & category links
   const socialGalleryItems = [
     {
-      image: '/images/desi_cow_ghee.jpg',
+      image: '/images/desi_cow_ghee.jpeg',
       title: 'Pure A2 Cow Ghee',
       category: 'Ghee',
       link: '/shop?category=Ghee'
@@ -316,7 +325,7 @@ export default function Home() {
       link: '/shop?category=Pickles'
     },
     {
-      image: '/images/thekua.jpg',
+      image: '/images/thekua.jpeg',
       title: 'Homemade Bihari Thekua',
       category: 'Thekua',
       link: '/shop?category=Thekua'
@@ -610,7 +619,7 @@ export default function Home() {
                 >
                   <div className="aspect-square w-24 rounded-full overflow-hidden border border-brand-gold/20 group-hover:border-brand-gold p-1 bg-white transition-all duration-300 shadow-sm group-hover:shadow-md">
                     <img
-                      src={cat.image}
+                      src={fixImageUrl(cat.image)}
                       alt={cat.name}
                       className="w-full h-full object-cover rounded-full group-hover:scale-105 transition-transform duration-500"
                     />
@@ -877,7 +886,7 @@ export default function Home() {
             <Link to="/shop?category=Thekua" className="group space-y-4 text-left block cursor-pointer">
               <div className="aspect-[4/3] rounded overflow-hidden shadow-md border border-brand-gold/15 bg-white group-hover:border-brand-gold transition-all duration-300">
                 <img
-                  src="/images/thekua.jpg"
+                  src="/images/thekua.jpeg"
                   alt="Authentic Bihar Thekua"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
@@ -895,7 +904,7 @@ export default function Home() {
             <Link to="/shop?category=Ghee" className="group space-y-4 text-left block cursor-pointer">
               <div className="aspect-[4/3] rounded overflow-hidden shadow-md border border-brand-gold/15 bg-white group-hover:border-brand-gold transition-all duration-300">
                 <img
-                  src="/images/desi_cow_ghee.jpg"
+                  src="/images/desi_cow_ghee.jpeg"
                   alt="Pure A2 Bilona Cow Ghee"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
