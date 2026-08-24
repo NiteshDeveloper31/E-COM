@@ -1,25 +1,50 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Mail, Phone, MapPin, Send, MessageCircle, Heart, Award, ShieldCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
 // ==========================================
 // 1. ABOUT US
 // ==========================================
 export function AboutUs() {
+  const [storyData, setStoryData] = useState(null);
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/settings`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.data) {
+          setStoryData(data.data);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const subtitle = storyData?.ourStorySubtitle || "OUR MISSION";
+  const title = storyData?.ourStoryTitle || "Restoring the Forgotten Flavors of Bihar";
+  const desc = storyData?.ourStoryDescription || "ReetSutra is built on three pillars: Heritage preservation, premium natural quality, and direct empowerment of rural women collectives. We believe traditional recipes are sacred cultural trusts that deserve to be celebrated globally.";
+  const womenTitle = storyData?.womenTitle || "Empowering Rural Women Collectives";
+  const womenDesc1 = storyData?.womenDesc1 || "At the heart of ReetSutra is our collaboration with local Self-Help Groups (SHGs) across districts like Nalanda, Gaya, Madhubani, and Patna. These home chefs are master guardians of culinary methods developed over centuries.";
+  const womenDesc2 = storyData?.womenDesc2 || "By offering complete infrastructure training, fair pricing, and direct digital supply chains, we enable local women to achieve absolute financial security. When you buy a pack of Thekua or hand-pounded Tilkut, your money goes directly into a woman artisan's bank account.";
+  const artisanCount = storyData?.artisanCount || "150+";
+  const districtsCount = storyData?.districtsCount || "12+";
+  const storyImg = storyData?.ourStoryImage || "https://images.unsplash.com/photo-1541832676-9b763b0239ab?auto=format&fit=crop&w=700&q=80";
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-16">
       
       {/* Hero Narrative */}
       <section className="text-center max-w-3xl mx-auto space-y-4">
         <span className="text-xs text-brand-gold font-bold tracking-[0.25em] uppercase block">
-          OUR MISSION
+          {subtitle}
         </span>
         <h1 className="text-3xl md:text-5xl font-extrabold text-brand-green font-serif leading-tight">
-          Restoring the Forgotten Flavors of Bihar
+          {title}
         </h1>
         <div className="w-16 h-[2px] bg-brand-gold mx-auto mt-2" />
         <p className="text-sm md:text-base text-brand-charcoalLight font-sans leading-relaxed pt-2">
-          ReetSutra is built on three pillars: **Heritage preservation, premium natural quality, and direct empowerment of rural women collectives.** We believe traditional recipes are sacred cultural trusts that deserve to be celebrated globally.
+          {desc}
         </p>
       </section>
 
@@ -27,21 +52,17 @@ export function AboutUs() {
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
         <div className="space-y-6 text-xs md:text-sm text-brand-charcoalLight leading-relaxed font-sans">
           <h2 className="text-xl md:text-2xl font-bold text-brand-green font-serif">
-            Empowering Rural Women Collectives
+            {womenTitle}
           </h2>
-          <p>
-            At the heart of ReetSutra is our collaboration with local Self-Help Groups (SHGs) across districts like Nalanda, Gaya, Madhubani, and Patna. These home chefs are master guardians of culinary methods developed over centuries.
-          </p>
-          <p>
-            By offering complete infrastructure training, fair pricing, and direct digital supply chains, we enable local women to achieve absolute financial security. When you buy a pack of Thekua or hand-pounded Tilkut, your money goes directly into a woman artisan’s bank account.
-          </p>
+          <p>{womenDesc1}</p>
+          <p>{womenDesc2}</p>
           <div className="grid grid-cols-2 gap-4 pt-4 text-center">
             <div className="border border-brand-gold/20 p-4 rounded bg-brand-ivory">
-              <span className="text-2xl font-black text-brand-green block">150+</span>
+              <span className="text-2xl font-black text-brand-green block">{artisanCount}</span>
               <span className="text-[10px] text-brand-gold font-bold uppercase tracking-wider">Artisan Chefs</span>
             </div>
             <div className="border border-brand-gold/20 p-4 rounded bg-brand-ivory">
-              <span className="text-2xl font-black text-brand-green block">12+</span>
+              <span className="text-2xl font-black text-brand-green block">{districtsCount}</span>
               <span className="text-[10px] text-brand-gold font-bold uppercase tracking-wider">Rural Districts</span>
             </div>
           </div>
@@ -49,8 +70,8 @@ export function AboutUs() {
 
         <div className="rounded-lg overflow-hidden border border-brand-gold/15 shadow-premium">
           <img
-            src="https://images.unsplash.com/photo-1541832676-9b763b0239ab?auto=format&fit=crop&w=700&q=80"
-            alt="Organic farming seeds"
+            src={storyImg}
+            alt="Our Story"
             className="w-full h-full object-cover"
           />
         </div>

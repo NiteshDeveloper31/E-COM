@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Settings as SettingsIcon, Globe, Phone, ShieldCheck, Check, Info } from "lucide-react";
+import { Settings as SettingsIcon, Globe, Phone, ShieldCheck, Check, Info, BookOpen } from "lucide-react";
 import { useData } from "../context/DataContext";
 
 export const Settings = () => {
@@ -33,6 +33,17 @@ export const Settings = () => {
   const [seoKeywords, setSeoKeywords] = useState(settings?.seoKeywords || "");
   const [robotsTxt, setRobotsTxt] = useState(settings?.robotsTxt || "User-agent: *\nAllow: /");
 
+  // Dynamic Our Story Content States
+  const [ourStoryTitle, setOurStoryTitle] = useState(settings?.ourStoryTitle || "Restoring the Forgotten Flavors of Bihar");
+  const [ourStorySubtitle, setOurStorySubtitle] = useState(settings?.ourStorySubtitle || "OUR MISSION");
+  const [ourStoryDescription, setOurStoryDescription] = useState(settings?.ourStoryDescription || "ReetSutra is built on three pillars: Heritage preservation, premium natural quality, and direct empowerment of rural women collectives.");
+  const [womenTitle, setWomenTitle] = useState(settings?.womenTitle || "Empowering Rural Women Collectives");
+  const [womenDesc1, setWomenDesc1] = useState(settings?.womenDesc1 || "At the heart of ReetSutra is our collaboration with local Self-Help Groups (SHGs) across districts like Nalanda, Gaya, Madhubani, and Patna.");
+  const [womenDesc2, setWomenDesc2] = useState(settings?.womenDesc2 || "By offering complete infrastructure training, fair pricing, and direct digital supply chains, we enable local women to achieve absolute financial security.");
+  const [artisanCount, setArtisanCount] = useState(settings?.artisanCount || "150+");
+  const [districtsCount, setDistrictsCount] = useState(settings?.districtsCount || "12+");
+  const [ourStoryImage, setOurStoryImage] = useState(settings?.ourStoryImage || "https://images.unsplash.com/photo-1541832676-9b763b0239ab?auto=format&fit=crop&w=700&q=80");
+
   React.useEffect(() => {
     if (settings) {
       if (settings.storeName) setStoreName(settings.storeName);
@@ -46,6 +57,15 @@ export const Settings = () => {
       if (settings.socialWhatsapp) setSocialWhatsapp(settings.socialWhatsapp);
       if (settings.socialTwitter) setSocialTwitter(settings.socialTwitter);
       if (settings.socialLinkedin) setSocialLinkedin(settings.socialLinkedin);
+      if (settings.ourStoryTitle) setOurStoryTitle(settings.ourStoryTitle);
+      if (settings.ourStorySubtitle) setOurStorySubtitle(settings.ourStorySubtitle);
+      if (settings.ourStoryDescription) setOurStoryDescription(settings.ourStoryDescription);
+      if (settings.womenTitle) setWomenTitle(settings.womenTitle);
+      if (settings.womenDesc1) setWomenDesc1(settings.womenDesc1);
+      if (settings.womenDesc2) setWomenDesc2(settings.womenDesc2);
+      if (settings.artisanCount) setArtisanCount(settings.artisanCount);
+      if (settings.districtsCount) setDistrictsCount(settings.districtsCount);
+      if (settings.ourStoryImage) setOurStoryImage(settings.ourStoryImage);
     }
   }, [settings]);
 
@@ -72,7 +92,16 @@ export const Settings = () => {
       seoTitle,
       seoMetaDescription,
       seoKeywords,
-      robotsTxt
+      robotsTxt,
+      ourStoryTitle,
+      ourStorySubtitle,
+      ourStoryDescription,
+      womenTitle,
+      womenDesc1,
+      womenDesc2,
+      artisanCount,
+      districtsCount,
+      ourStoryImage
     };
 
     await updateSettings(payload);
@@ -82,7 +111,8 @@ export const Settings = () => {
 
   const tabs = [
     { id: "general", label: "General & Branding", icon: SettingsIcon },
-    { id: "contact", label: "Contact & Socials", icon: Phone }
+    { id: "contact", label: "Contact & Socials", icon: Phone },
+    { id: "story", label: "Our Story Page", icon: BookOpen }
   ];
 
   return (
@@ -93,7 +123,7 @@ export const Settings = () => {
             Settings Configuration
           </h1>
           <p className="text-sm text-charcoal-light font-medium">
-            Configure default taxes, store metadata, contact details, and SEO indexing.
+            Configure default taxes, store metadata, contact details, and Our Story content.
           </p>
         </div>
 
@@ -167,7 +197,7 @@ export const Settings = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
                     <div>
                       <label className="block text-xs font-bold text-primary mb-1">
-                        Store Logo URL (Mock upload)
+                        Store Logo URL
                       </label>
                       <input
                         type="text"
@@ -194,78 +224,20 @@ export const Settings = () => {
                       )}
                     </div>
                   </div>
-
-                  <h3 className="font-display font-semibold text-base text-primary border-b border-primary/5 pb-2 pt-2">
-                    Transactional Defaults
-                  </h3>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-primary mb-1">
-                        Default Currency
-                      </label>
-                      <select
-                        value={currency}
-                        onChange={(e) => setCurrency(e.target.value)}
-                        className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
-                      >
-                        <option value="INR (₹)">Indian Rupee (₹)</option>
-                        <option value="USD ($)">US Dollar ($)</option>
-                        <option value="EUR (€)">Euro (€)</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-primary mb-1">
-                        GST Tax Rate (%)
-                      </label>
-                      <input
-                        type="number"
-                        value={taxRate}
-                        onChange={(e) => setTaxRate(e.target.value)}
-                        className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-primary mb-1">
-                        Order Code Prefix
-                      </label>
-                      <input
-                        type="text"
-                        value={orderPrefix}
-                        onChange={(e) => setOrderPrefix(e.target.value)}
-                        className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-primary mb-1">
-                      Timezone Locale
-                    </label>
-                    <select
-                      value={timezone}
-                      onChange={(e) => setTimezone(e.target.value)}
-                      className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
-                    >
-                      <option value="IST (UTC+05:30)">India Standard Time (UTC+05:30)</option>
-                      <option value="GMT (UTC+00:00)">GMT (UTC+00:00)</option>
-                      <option value="PST (UTC-08:00)">Pacific Standard Time (UTC-08:00)</option>
-                    </select>
-                  </div>
                 </div>
               )}
 
-              {/* --- CONTACT SETTINGS --- */}
+              {/* --- CONTACT & SOCIAL SETTINGS --- */}
               {activeTab === "contact" && (
                 <div className="space-y-4">
                   <h3 className="font-display font-semibold text-base text-primary border-b border-primary/5 pb-2">
-                    Contact Channels
+                    Customer Service Coordinates
                   </h3>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-primary mb-1">
-                        Customer Support Email
+                        Contact Support Email
                       </label>
                       <input
                         type="email"
@@ -276,7 +248,7 @@ export const Settings = () => {
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-primary mb-1">
-                        Hotline Phone Number
+                        Contact Helpline Phone
                       </label>
                       <input
                         type="text"
@@ -285,106 +257,119 @@ export const Settings = () => {
                         className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
                       />
                     </div>
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-bold text-primary mb-1">
+                        Store HQ Address
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={contactAddress}
+                        onChange={(e) => setContactAddress(e.target.value)}
+                        className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
+                      />
+                    </div>
                   </div>
+                </div>
+              )}
 
-                  <div>
-                    <label className="block text-xs font-bold text-primary mb-1">
-                      Warehouse / Physical Address
-                    </label>
-                    <textarea
-                      rows={2}
-                      value={contactAddress}
-                      onChange={(e) => setContactAddress(e.target.value)}
-                      className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all resize-none"
-                    />
-                  </div>
-
-                  <h3 className="font-display font-semibold text-base text-primary border-b border-primary/5 pb-2 pt-2">
-                    Social Media Integrations
+              {/* --- OUR STORY CONTENT SETTINGS --- */}
+              {activeTab === "story" && (
+                <div className="space-y-4">
+                  <h3 className="font-display font-semibold text-base text-primary border-b border-primary/5 pb-2">
+                    Our Story & Mission Content (/about)
                   </h3>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-primary mb-1">
-                        Instagram Profile Link
-                      </label>
+                      <label className="block text-xs font-bold text-primary mb-1">Mission Subtitle / Badge</label>
                       <input
                         type="text"
-                        placeholder="https://instagram.com/yourhandle"
-                        value={socialInstagram}
-                        onChange={(e) => setSocialInstagram(e.target.value)}
+                        value={ourStorySubtitle}
+                        onChange={(e) => setOurStorySubtitle(e.target.value)}
                         className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-primary mb-1">
-                        Facebook Page Link
-                      </label>
+                      <label className="block text-xs font-bold text-primary mb-1">Mission Main Title</label>
                       <input
                         type="text"
-                        placeholder="https://facebook.com/yourpage"
-                        value={socialFacebook}
-                        onChange={(e) => setSocialFacebook(e.target.value)}
+                        value={ourStoryTitle}
+                        onChange={(e) => setOurStoryTitle(e.target.value)}
+                        className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-primary mb-1">Mission Description / Narrative</label>
+                    <textarea
+                      rows={3}
+                      value={ourStoryDescription}
+                      onChange={(e) => setOurStoryDescription(e.target.value)}
+                      className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
+                    />
+                  </div>
+
+                  <h3 className="font-display font-semibold text-base text-primary border-b border-primary/5 pb-2 pt-2">
+                    Women Empowerment Section
+                  </h3>
+
+                  <div>
+                    <label className="block text-xs font-bold text-primary mb-1">Section Heading</label>
+                    <input
+                      type="text"
+                      value={womenTitle}
+                      onChange={(e) => setWomenTitle(e.target.value)}
+                      className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-primary mb-1">Paragraph 1</label>
+                      <textarea
+                        rows={3}
+                        value={womenDesc1}
+                        onChange={(e) => setWomenDesc1(e.target.value)}
                         className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-primary mb-1">
-                        YouTube Channel Link
-                      </label>
+                      <label className="block text-xs font-bold text-primary mb-1">Paragraph 2</label>
+                      <textarea
+                        rows={3}
+                        value={womenDesc2}
+                        onChange={(e) => setWomenDesc2(e.target.value)}
+                        className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-primary mb-1">Artisan Chefs Count</label>
                       <input
                         type="text"
-                        placeholder="https://youtube.com/@yourchannel"
-                        value={socialYoutube}
-                        onChange={(e) => setSocialYoutube(e.target.value)}
+                        value={artisanCount}
+                        onChange={(e) => setArtisanCount(e.target.value)}
                         className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-primary mb-1">
-                        Telegram Channel / Group Link
-                      </label>
+                      <label className="block text-xs font-bold text-primary mb-1">Rural Districts Count</label>
                       <input
                         type="text"
-                        placeholder="https://t.me/yourchannel"
-                        value={socialTelegram}
-                        onChange={(e) => setSocialTelegram(e.target.value)}
+                        value={districtsCount}
+                        onChange={(e) => setDistrictsCount(e.target.value)}
                         className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-primary mb-1">
-                        WhatsApp Link / Number
-                      </label>
+                      <label className="block text-xs font-bold text-primary mb-1">Story Feature Image URL</label>
                       <input
                         type="text"
-                        placeholder="https://wa.me/919123456789"
-                        value={socialWhatsapp}
-                        onChange={(e) => setSocialWhatsapp(e.target.value)}
-                        className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-primary mb-1">
-                        X (Twitter) Profile Link
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="https://x.com/yourhandle"
-                        value={socialTwitter}
-                        onChange={(e) => setSocialTwitter(e.target.value)}
-                        className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
-                      />
-                    </div>
-                    <div className="sm:col-span-2">
-                      <label className="block text-xs font-bold text-primary mb-1">
-                        LinkedIn Page Link
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="https://linkedin.com/company/yourcompany"
-                        value={socialLinkedin}
-                        onChange={(e) => setSocialLinkedin(e.target.value)}
+                        value={ourStoryImage}
+                        onChange={(e) => setOurStoryImage(e.target.value)}
                         className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
                       />
                     </div>
