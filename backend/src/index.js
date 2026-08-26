@@ -93,8 +93,15 @@ connectDB().then(async () => {
 
 const app = express();
 
-// Middlewares
-app.use(cors());
+// Enable robust CORS for all origins, headers, methods and preflight requests
+app.use(cors({
+  origin: "*",
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
+}));
+
+app.options("*", cors());
+
 app.use(express.json({ limit: "50mb" })); // Support large base64 image strings
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
