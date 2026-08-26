@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { useReetSutra } from '../context/ReetSutraContext';
 import { Plus, Check, ShieldCheck, MapPin } from 'lucide-react';
 
 export default function Checkout() {
-  const { cart, addresses, addAddress, showToast, placeOrder, initializeRazorpayOrder, verifyRazorpayPayment } = useReetSutra();
+  const { cart, addresses, token, user, addAddress, showToast, placeOrder, initializeRazorpayOrder, verifyRazorpayPayment } = useReetSutra();
   const location = useLocation();
   const navigate = useNavigate();
+  const hasRedirectedRef = useRef(false);
 
   // Get total parameters from Cart navigation state, or compute if refreshed
   const state = location.state || {};
@@ -14,23 +15,11 @@ export default function Checkout() {
   const [selectedAddressId, setSelectedAddressId] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Razorpay');
   const [isProcessing, setIsProcessing] = useState(false);
-
-  const loadRazorpayScript = () => {
-    return new Promise((resolve) => {
-      const script = document.createElement('script');
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
-    });
-  };
   const [showAddAddressForm, setShowAddAddressForm] = useState(false);
   const [billingSameAsShipping, setBillingSameAsShipping] = useState(true);
   const [billingAddr, setBillingAddr] = useState({
     name: '', phone: '', line: '', city: '', state: '', zip: ''
   });
-
-  // Form State for new address
   const [newAddr, setNewAddr] = useState({
     name: '',
     type: 'Home',
@@ -41,8 +30,28 @@ export default function Checkout() {
     phone: ''
   });
 
-  const checkoutItems = buyNowItem ? [buyNowItem] : cart;
-  const checkoutCount = buyNowItem ? buyNowItem.quantity : cart.reduce((acc, item) => acc + item.quantity, 0);
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  const checkoutItems = buyNowItem ? [buyNowItem] : (cart || []);
+  const checkoutCount = buyNowItem ? buyNowItem.quantity : checkoutItems.reduce((acc, item) => acc + item.quantity, 0);
+
+  // Authentication Guard: Redirect logged-out users once to /login form
+  useEffect(() => {
+    const isLoggedIn = Boolean(token || (user && user.isLoggedIn));
+    if (!isLoggedIn && !hasRedirectedRef.current) {
+      hasRedirectedRef.current = true;
+      showToast("Please login or create an account to proceed with checkout.", "error");
+      navigate('/login', { state: { from: '/checkout', buyNowItem } });
+    }
+  }, [token, user, navigate, showToast, buyNowItem]);
 
   // Redirect if checkout items are empty
   useEffect(() => {
@@ -96,13 +105,14 @@ export default function Checkout() {
       return;
     }
 
-    setIsProcessing(true);
+    const couponCode = state.couponCode || "";
 
     if (paymentMethod === 'COD') {
       try {
         const orderId = await placeOrder({
           subtotal,
           discount,
+          couponCode,
           deliveryCharge,
           total,
           address: selectedAddress,

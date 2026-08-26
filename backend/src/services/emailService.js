@@ -28,8 +28,8 @@ const createTransporter = () => {
  * Send Back-in-Stock Email Notification
  */
 export const sendBackInStockEmail = async ({ toEmail, userName: inputUserName, productName, productImage, productPrice, productId, shortDescription }) => {
-  const shopUrl = (process.env.FRONTEND_URL || "").replace(/\/$/, "");
-  const productUrl = shopUrl ? `${shopUrl}/product/${productId}` : "";
+  const shopUrl = (process.env.FRONTEND_URL || "https://reetsutra.com").replace(/\/$/, "");
+  const productUrl = productId ? `${shopUrl}/product/${productId}` : shopUrl;
   
   let displayName = (inputUserName || "").trim();
   if (!displayName) {
@@ -37,7 +37,15 @@ export const sendBackInStockEmail = async ({ toEmail, userName: inputUserName, p
     displayName = raw.charAt(0).toUpperCase() + raw.slice(1);
   }
 
-  const shortDescText = shortDescription || "Authentic traditional Bihari recipe made with pure ingredients.";
+  let cleanProductImage = productImage || "";
+  if (cleanProductImage.startsWith("data:")) {
+    cleanProductImage = ""; // Strip large Base64 string to keep payload < 5KB
+  } else if (cleanProductImage.startsWith("/")) {
+    const backendUrl = (process.env.BACKEND_URL || "https://reetsutra.onrender.com").replace(/\/$/, "");
+    cleanProductImage = `${backendUrl}${cleanProductImage}`;
+  }
+
+  const shortDescText = shortDescription || "Authentic traditional recipe made with pure ingredients.";
 
   const formattedMessage = `
 Hi ${displayName},
@@ -70,17 +78,19 @@ Team ReetSutra
         to_email: toEmail,
         email: toEmail,
         user_email: toEmail,
-        from_email: toEmail,
+        from_email: "support@reetsutra.com",
+        from_name: "ReetSutra",
+        company_name: "ReetSutra",
+        brand_name: "ReetSutra",
         name: displayName,
-        from_name: displayName,
         userName: displayName,
         user_name: displayName,
         to_name: displayName,
-        reply_to: toEmail,
+        reply_to: "support@reetsutra.com",
         productName: productName,
         shortProductDescription: shortDescText,
         product_price: `₹${productPrice}`,
-        product_image: productImage || "",
+        product_image: cleanProductImage,
         product_url: productUrl,
         shop_url: shopUrl,
         subject: `🎉 ${productName} is Back in Stock! - ReetSutra`,
@@ -91,7 +101,8 @@ Team ReetSutra
     const response = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Origin": process.env.FRONTEND_URL || "https://reetsutra.com"
       },
       body: JSON.stringify(emailJsPayload)
     });

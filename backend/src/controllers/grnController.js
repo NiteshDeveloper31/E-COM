@@ -1,5 +1,6 @@
 import GRN from "../models/GRN.js";
 import Product from "../models/Product.js";
+import ProductMySQL from "../models/mysql/Product.js";
 import { sendSuccess, sendError } from "../utils/response.js";
 import { notifySubscribersIfStockRestocked } from "./productController.js";
 
@@ -26,7 +27,15 @@ export const createGRN = async (req, res, next) => {
       return sendError(res, "Quantities cannot be negative numbers.", 400);
     }
 
-    const product = await Product.findById(productId);
+    let product = null;
+
+    if (!isNaN(productId)) {
+      product = await ProductMySQL.findByPk(Number(productId));
+    }
+    if (!product) {
+      product = await Product.findById(productId).catch(() => null);
+    }
+
     if (!product) {
       return sendError(res, "Selected product not found.", 404);
     }
@@ -39,14 +48,16 @@ export const createGRN = async (req, res, next) => {
     product.badInventory = (product.badInventory || 0) + badQtyNum;
     await product.save();
 
-    // Trigger Restock Email Notification if product was restocked
-    if (newStock > 0 && previousStock <= 0) {
+    // Trigger Restock Email Notification if product has stock and pending subscribers
+    if (newStock > 0) {
       await notifySubscribersIfStockRestocked(product);
     }
 
+    const prodId = product.id || product._id;
+
     // Create GRN Audit Log Entry
     const grnRecord = await GRN.create({
-      productId: product._id,
+      productId: String(prodId),
       productName: product.name,
       sku: product.sku || "N/A",
       weight: product.weight || "",

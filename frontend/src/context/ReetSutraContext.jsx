@@ -690,7 +690,14 @@ export const ReetSutraProvider = ({ children }) => {
           zip: orderData.address.zip
         },
         billingAddress: orderData.billingAddress || null,
-        paymentMethod: orderData.paymentMethod || "COD"
+        paymentMethod: orderData.paymentMethod || "COD",
+        subtotal: orderData.subtotal,
+        shipping: orderData.deliveryCharge !== undefined ? orderData.deliveryCharge : orderData.shipping,
+        deliveryCharge: orderData.deliveryCharge,
+        discount: orderData.discount || 0,
+        couponDiscount: orderData.discount || 0,
+        couponCode: orderData.couponCode || "",
+        total: orderData.total
       };
 
       const response = await fetch(`${API_BASE_URL}/orders`, {
@@ -836,15 +843,20 @@ export const ReetSutraProvider = ({ children }) => {
 
   const subscribeStockNotification = useCallback(async (productId, emailInput) => {
     try {
-      const targetEmail = emailInput || user.email;
+      const targetEmail = emailInput || user?.email;
       if (!targetEmail || !targetEmail.trim()) {
         showToast("Please enter a valid email address.", "error");
         return { success: false, message: "Email required" };
       }
 
+      const headers = { "Content-Type": "application/json" };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
       const res = await fetch(`${API_BASE_URL}/products/${productId}/notify`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ email: targetEmail.trim() })
       });
 
@@ -861,7 +873,7 @@ export const ReetSutraProvider = ({ children }) => {
       showToast("Network error. Please try again.", "error");
       return { success: false, message: err.message };
     }
-  }, [user.email, showToast]);
+  }, [user?.email, token, showToast]);
 
   return (
     <ReetSutraContext.Provider value={{
@@ -927,8 +939,12 @@ export const ReetSutraProvider = ({ children }) => {
               <p className="text-xs font-semibold text-brand-green leading-normal mt-0.5">{toast.message}</p>
             </div>
             <button 
-              onClick={() => setToast(null)}
-              className="text-brand-charcoalLight/50 hover:text-brand-green font-bold text-sm cursor-pointer p-1"
+              onClick={() => {
+                if (toastTimeoutId) clearTimeout(toastTimeoutId);
+                setToast(null);
+              }}
+              className="text-brand-charcoalLight/50 hover:text-brand-green font-bold text-sm cursor-pointer p-1 text-gray-500 hover:text-gray-800"
+              aria-label="Close Toast Notification"
             >
               ✕
             </button>

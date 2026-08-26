@@ -19,6 +19,7 @@ import OrderSuccess from './pages/OrderSuccess';
 import Auth from './pages/Auth';
 import Profile from './pages/Profile';
 import Wishlist from './pages/Wishlist';
+import RecipesBlog from './pages/RecipesBlog';
 import { AboutUs, ContactUs, PrivacyPolicy, TermsConditions } from './pages/InfoPages';
 
 export default function App() {
@@ -61,8 +62,9 @@ export default function App() {
               <Route path="/profile/addresses" element={<Profile />} />
               <Route path="/profile/track-order/:orderId" element={<Profile />} />
 
-              {/* Information / Policy pages */}
+              {/* Information / Policy / Blog pages */}
               <Route path="/about" element={<AboutUs />} />
+              <Route path="/recipes-blog" element={<RecipesBlog />} />
               <Route path="/contact" element={<ContactUs />} />
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
               <Route path="/terms-conditions" element={<TermsConditions />} />

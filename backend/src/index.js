@@ -3,6 +3,11 @@ import cors from "cors";
 import dotenv from "dotenv";
 import connectDB from "./config/db.js";
 import errorMiddleware from "./middleware/errorMiddleware.js";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Import Routers
 import authRoutes from "./routes/authRoutes.js";
@@ -15,13 +20,21 @@ import dashboardRoutes from "./routes/dashboardRoutes.js";
 import settingsRoutes from "./routes/settingsRoutes.js";
 import grnRoutes from "./routes/grnRoutes.js";
 import couponRoutes from "./routes/couponRoutes.js";
+import recipeRoutes from "./routes/recipeRoutes.js";
+import { seedDefaultRecipes } from "./controllers/recipeController.js";
 
 import User from "./models/User.js";
 import Category from "./models/Category.js";
+import Banner from "./models/Banner.js";
 import { hashPassword } from "./utils/password.js";
+
+import { seedMySQLData } from "./seedMySQL.js";
 
 // Load Environment variables
 dotenv.config();
+
+// Initialize MySQL Database connection
+seedMySQLData();
 
 // Connect to MongoDB & auto-seed admin & categories
 connectDB().then(async () => {
@@ -51,22 +64,28 @@ connectDB().then(async () => {
       console.log("✅ Updated admin@reetsutra.com role to superadmin");
     }
 
-    // Seed default categories if empty
-    const catCount = await Category.countDocuments();
-    if (catCount === 0) {
-      const defaultCategories = [
-        { name: 'Pickles', displayName: 'Pickle', image: '/images/mango_pickle.jpg', description: 'Traditional Bihari pickles made with authentic spices', slug: 'pickles' },
-        { name: 'Ghee', displayName: 'Ghee', image: '/images/desi_cow_ghee.jpeg', description: 'Pure A2 Bilona Cow Ghee', slug: 'ghee' },
-        { name: 'Makhana', displayName: 'Makhana', image: '/images/makhana.jpg', description: 'Light & crunchy roasted makhana', slug: 'makhana' },
-        { name: 'Thekua', displayName: 'Thekua', image: '/images/thekua.jpeg', description: 'Authentic Bihari cookie made with jaggery & ghee', slug: 'thekua' },
-        { name: 'Honey', displayName: 'Theney', image: '/images/honey.jpg', description: 'Pure natural wild forest honey', slug: 'honey' },
-        { name: 'Sattu', displayName: 'Sattu', image: '/images/sattu.jpg', description: 'Traditional roasted chana sattu flour', slug: 'sattu' },
-        { name: 'Snacks', displayName: 'Snacks', image: '/images/snacks.jpg', description: 'Authentic Bihari savory snacks', slug: 'snacks' },
-        { name: 'Gift Boxes', displayName: 'Gift Boxes', image: '/images/premium_combo_box.jpg', description: 'Curated premium gift boxes', slug: 'gift-boxes' }
-      ];
-      await Category.insertMany(defaultCategories);
-      console.log("✅ Default 8 categories seeded successfully");
+
+
+    // Seed default permanent hero banner if empty
+    const bannerCount = await Banner.countDocuments();
+    if (bannerCount === 0) {
+      await Banner.create({
+        title: "The Taste of Bihar, Crafted with Tradition",
+        subtitle: "Every Bite, A Story of Bihar, Shared With Loved Ones.",
+        bannerType: "Permanent",
+        targetDevice: "Both",
+        desktopImage: "/assets/Final_Banner_Img_web.png",
+        mobileImage: "/assets/Mobile_view_Banner_image.jpg",
+        image: "/assets/Final_Banner_Img_web.png",
+        buttonText: "SHOP NOW",
+        buttonLink: "/shop",
+        status: "Active",
+        placement: "Main Hero Permanent"
+      });
+      console.log("✅ Default Permanent Banner seeded successfully");
     }
+
+    await seedDefaultRecipes();
   } catch (err) {
     console.error("Seed check failed:", err.message);
   }
@@ -78,6 +97,7 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: "50mb" })); // Support large base64 image strings
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 // Basic Health Check Route
 app.get("/api/health", (req, res) => {
@@ -99,6 +119,7 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/grn", grnRoutes);
 app.use("/api/coupons", couponRoutes);
+app.use("/api/recipes", recipeRoutes);
 
 // Catch-all 404 handler
 app.use((req, res, next) => {

@@ -1,7 +1,25 @@
 import React, { useState } from "react";
-import { Plus, Edit2, Trash2, Calendar, Link2, Eye, AlertTriangle, EyeOff } from "lucide-react";
+import { Plus, Edit2, Trash2, Calendar, Link2, Eye, AlertTriangle, EyeOff, Monitor, Smartphone, Layers } from "lucide-react";
 import { useData } from "../context/DataContext";
 import { Modal } from "../components/Modal";
+
+// Read 100% UNTOUCHED RAW ORIGINAL FILE (Preserves 100% exact original resolution & 0% blur quality up to 15MB)
+const readHighQualityImageFile = (file, callback, showError) => {
+  const MAX_BYTES = 15 * 1024 * 1024; // 15MB limit
+  if (file.size > MAX_BYTES) {
+    if (showError) {
+      showError("File size exceeds 15MB limit. Please upload an image under 15MB.");
+    }
+    return;
+  }
+
+  // Direct untouched raw file reader
+  const reader = new FileReader();
+  reader.onloadend = () => {
+    callback(reader.result);
+  };
+  reader.readAsDataURL(file);
+};
 
 export const Banners = () => {
   const { banners, addBanner, updateBanner, deleteBanner, showToast } = useData();
@@ -14,11 +32,11 @@ export const Banners = () => {
 
   // Form states
   const [formTitle, setFormTitle] = useState("");
-  const [formSubtitle, setFormSubtitle] = useState("");
-  const [formImage, setFormImage] = useState("");
-  const [formButtonText, setFormButtonText] = useState("");
-  const [formButtonLink, setFormButtonLink] = useState("");
-  const [formPlacement, setFormPlacement] = useState("Main Hero");
+  const [formBannerType, setFormBannerType] = useState("Permanent"); // Permanent vs Floating
+  const [formTargetDevice, setFormTargetDevice] = useState("Both"); // Both, Desktop, Mobile
+  const [formDesktopImage, setFormDesktopImage] = useState("");
+  const [formMobileImage, setFormMobileImage] = useState("");
+  const [formButtonLink, setFormButtonLink] = useState("/shop");
   const [formStartDate, setFormStartDate] = useState("");
   const [formEndDate, setFormEndDate] = useState("");
   const [formStatus, setFormStatus] = useState("Active");
@@ -27,11 +45,11 @@ export const Banners = () => {
   const handleOpenAdd = () => {
     setCurrentBanner(null);
     setFormTitle("");
-    setFormSubtitle("");
-    setFormImage("");
-    setFormButtonText("");
-    setFormButtonLink("");
-    setFormPlacement("Main Hero");
+    setFormBannerType("Permanent");
+    setFormTargetDevice("Both");
+    setFormDesktopImage("");
+    setFormMobileImage("");
+    setFormButtonLink("/shop");
     setFormStartDate("");
     setFormEndDate("");
     setFormStatus("Active");
@@ -41,15 +59,15 @@ export const Banners = () => {
 
   const handleOpenEdit = (ban) => {
     setCurrentBanner(ban);
-    setFormTitle(ban.title);
-    setFormSubtitle(ban.subtitle);
-    setFormImage(ban.image);
-    setFormButtonText(ban.buttonText);
-    setFormButtonLink(ban.buttonLink);
-    setFormPlacement(ban.placement);
-    setFormStartDate(ban.startDate);
-    setFormEndDate(ban.endDate);
-    setFormStatus(ban.status);
+    setFormTitle(ban.title || "");
+    setFormBannerType(ban.bannerType || "Permanent");
+    setFormTargetDevice(ban.targetDevice || "Both");
+    setFormDesktopImage(ban.desktopImage || ban.image || "");
+    setFormMobileImage(ban.mobileImage || ban.image || "");
+    setFormButtonLink(ban.buttonLink || "/shop");
+    setFormStartDate(ban.startDate ? new Date(ban.startDate).toISOString().slice(0, 10) : "");
+    setFormEndDate(ban.endDate ? new Date(ban.endDate).toISOString().slice(0, 10) : "");
+    setFormStatus(ban.status || "Active");
     setFormError("");
     setIsAddEditOpen(true);
   };
@@ -61,20 +79,30 @@ export const Banners = () => {
 
   const handleSubmitBanner = (e) => {
     e.preventDefault();
-    if (!formTitle || !formImage || !formButtonText || !formButtonLink) {
-      setFormError("Please fill out all required fields (*).");
+    if (!formDesktopImage && !formMobileImage) {
+      setFormError("Please select at least one Banner Image (Desktop or Mobile).");
       return;
     }
 
+    if (formBannerType === "Floating" && (!formStartDate || !formEndDate)) {
+      setFormError("Floating banners require Start Date and End Date.");
+      return;
+    }
+
+    const bannerTitle = formTitle || `${formBannerType} Banner (${formTargetDevice})`;
+
     const payload = {
-      title: formTitle,
-      subtitle: formSubtitle,
-      image: formImage,
-      buttonText: formButtonText,
-      buttonLink: formButtonLink,
-      placement: formPlacement,
-      startDate: formStartDate || new Date().toISOString().slice(0, 10),
-      endDate: formEndDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+      title: bannerTitle,
+      bannerType: formBannerType,
+      targetDevice: formTargetDevice,
+      desktopImage: formDesktopImage || "",
+      mobileImage: formMobileImage || "",
+      image: formDesktopImage || formMobileImage || "",
+      buttonText: "SHOP NOW",
+      buttonLink: formButtonLink || "/shop",
+      placement: formBannerType === "Permanent" ? "Main Hero Permanent" : "Floating Offer",
+      startDate: formBannerType === "Floating" ? formStartDate : null,
+      endDate: formBannerType === "Floating" ? formEndDate : null,
       status: formStatus
     };
 
@@ -100,6 +128,15 @@ export const Banners = () => {
     updateBanner(ban.id, { status: nextStatus });
   };
 
+  const getAdminImageUrl = (imgPath) => {
+    if (!imgPath) return "";
+    if (imgPath.startsWith("data:") || imgPath.startsWith("http://") || imgPath.startsWith("https://")) {
+      return imgPath;
+    }
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+    return `${backendUrl}${imgPath.startsWith("/") ? "" : "/"}${imgPath}`;
+  };
+
   return (
     <>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -108,7 +145,7 @@ export const Banners = () => {
             Banner Management
           </h1>
           <p className="text-sm text-charcoal-light font-medium">
-            Manage frontpage advertising campaigns, promotional sliders, and shop discounts.
+            Manage main continuous hero banners, floating campaign offers, and target device views.
           </p>
         </div>
 
@@ -122,310 +159,374 @@ export const Banners = () => {
 
       {/* Grid listing of banners */}
       <div className="grid grid-cols-1 gap-6">
-        {banners.map((ban) => (
-          <div
-            key={ban.id}
-            className="bg-white rounded-xl border border-primary/10 overflow-hidden shadow-xs hover:shadow-md transition-all duration-200 grid grid-cols-1 lg:grid-cols-3"
-          >
-            {/* Visual Preview Panel */}
-            <div className="relative h-48 lg:h-auto min-h-40 bg-primary-dark overflow-hidden lg:col-span-1 border-r border-primary/5">
-              <img
-                src={ban.image}
-                alt={ban.title}
-                className="w-full h-full object-cover opacity-80"
-              />
-              {/* Overlay simulation */}
-              <div className="absolute inset-0 bg-linear-to-t from-primary-dark/85 to-transparent p-5 flex flex-col justify-end text-white">
-                <span className="text-[10px] font-bold text-secondary uppercase tracking-widest bg-primary-dark/65 px-2 py-0.5 rounded-sm self-start mb-2 border border-secondary/25">
-                  {ban.placement}
-                </span>
-                <h4 className="font-display font-semibold text-xs leading-snug line-clamp-2">
-                  {ban.title}
-                </h4>
-                <p className="text-[9px] text-white/70 line-clamp-1 mt-0.5 font-medium">
-                  {ban.subtitle}
-                </p>
-                <span className="text-[9px] font-bold text-primary bg-secondary px-2.5 py-0.5 rounded-md mt-2 self-start pointer-events-none">
-                  {ban.buttonText}
-                </span>
-              </div>
-            </div>
+        {banners.map((ban) => {
+          const isPermanent = ban.bannerType === "Permanent" || ban.placement?.includes("Permanent");
+          const targetDev = ban.targetDevice || "Both";
+          const isValidImg = (img) => img && !img.startsWith('/assets/');
+          const rawBg = isValidImg(ban.desktopImage) ? ban.desktopImage
+                      : isValidImg(ban.mobileImage) ? ban.mobileImage
+                      : isValidImg(ban.image) ? ban.image
+                      : ban.desktopImage || ban.mobileImage || ban.image;
+          const bgImg = getAdminImageUrl(rawBg);
 
-            {/* Meta description and details */}
-            <div className="p-6 lg:col-span-2 flex flex-col justify-between gap-6">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between gap-4">
-                  <h3 className="font-display font-semibold text-base text-primary">
-                    {ban.title}
-                  </h3>
-                  
-                  <button
-                    onClick={() => handleStatusToggle(ban)}
-                    className={`flex items-center gap-1.5 px-3 py-1 border rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      ban.status === "Active"
-                        ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-                        : "bg-charcoal-light/10 text-charcoal-light border-charcoal-light/25 hover:bg-charcoal-light/15"
-                    }`}
-                  >
-                    {ban.status === "Active" ? (
-                      <>
-                        <Eye size={12} /> Active
-                      </>
-                    ) : (
-                      <>
-                        <EyeOff size={12} /> Inactive
-                      </>
-                    )}
-                  </button>
-                </div>
+          return (
+            <div
+              key={ban.id}
+              className="bg-white rounded-xl border border-primary/10 overflow-hidden shadow-xs hover:shadow-md transition-all duration-200 grid grid-cols-1 lg:grid-cols-3"
+            >
+              {/* Visual Preview Panel */}
+              <div className="relative h-48 lg:h-auto min-h-40 bg-primary-dark overflow-hidden lg:col-span-1 border-r border-primary/5">
+                <img
+                  src={bgImg}
+                  alt={ban.title}
+                  className="w-full h-full object-cover opacity-85"
+                />
+                {/* Overlay simulation */}
+                <div className="absolute inset-0 bg-linear-to-t from-primary-dark/85 via-primary-dark/30 to-transparent p-5 flex flex-col justify-between text-white">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded border ${
+                      isPermanent
+                        ? "bg-emerald-950/80 text-emerald-300 border-emerald-500/40"
+                        : "bg-amber-950/80 text-amber-300 border-amber-500/40"
+                    }`}>
+                      {isPermanent ? "📌 Permanent Banner" : "✨ Floating Banner"}
+                    </span>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                  <div className="flex items-center gap-2 text-charcoal-light font-semibold">
-                    <Link2 size={14} className="text-secondary" />
-                    <span>Target URL: <span className="font-bold text-primary">{ban.buttonLink}</span></span>
+                    <span className="text-[10px] font-bold text-white bg-primary-dark/80 px-2 py-0.5 rounded border border-white/20 flex items-center gap-1">
+                      {targetDev === "Desktop" && <Monitor size={12} />}
+                      {targetDev === "Mobile" && <Smartphone size={12} />}
+                      {targetDev === "Both" && <Layers size={12} />}
+                      {targetDev}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-2 text-charcoal-light font-semibold">
-                    <Calendar size={14} className="text-secondary" />
-                    <span>Schedule: <span className="font-bold text-primary">{ban.startDate}</span> to <span className="font-bold text-primary">{ban.endDate}</span></span>
+
+                  <div>
+                    <h4 className="font-display font-bold text-sm leading-snug line-clamp-1">
+                      {ban.title}
+                    </h4>
+                    <div className="flex gap-2 mt-2">
+                      <span className="text-[9px] font-bold text-white bg-emerald-800 px-2.5 py-1 rounded shadow-xs uppercase tracking-wider">
+                        SHOP NOW 🍃
+                      </span>
+                      <span className="text-[9px] font-bold text-amber-200 border border-amber-300/40 px-2.5 py-1 rounded shadow-xs uppercase tracking-wider">
+                        EXPLORE COLLECTION
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Actions panel */}
-              <div className="flex items-center justify-between border-t border-primary/5 pt-4">
-                <span className="text-[10px] text-charcoal-light font-medium">
-                  Banner Campaign ID: {ban.id}
-                </span>
-                
-                <div className="flex items-center gap-1.5">
+              {/* Data & Actions Panel */}
+              <div className="p-6 lg:col-span-2 flex flex-col justify-between space-y-4">
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h3 className="font-display font-bold text-lg text-primary">
+                        {ban.title}
+                      </h3>
+                      <p className="text-xs text-charcoal-light font-medium flex items-center gap-1 mt-0.5">
+                        <Link2 size={13} className="text-secondary" />
+                        Redirect Target: <code className="bg-background px-1.5 py-0.5 rounded text-primary border border-primary/10">{ban.buttonLink || "/shop"}</code>
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleStatusToggle(ban)}
+                        className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                          ban.status === "Active"
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            : "bg-rose-50 text-rose-700 border border-rose-200"
+                        }`}
+                      >
+                        {ban.status === "Active" ? <Eye size={12} /> : <EyeOff size={12} />}
+                        {ban.status}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs border-t border-primary/5">
+                    <div className="bg-background p-3 rounded-lg border border-primary/5 space-y-1">
+                      <span className="text-[10px] font-bold text-charcoal-light uppercase block">Banner Classification</span>
+                      <span className="font-semibold text-primary">
+                        {isPermanent ? "Permanent (Continuous Main Hero)" : "Floating Offer Campaign"}
+                      </span>
+                    </div>
+
+                    <div className="bg-background p-3 rounded-lg border border-primary/5 space-y-1">
+                      <span className="text-[10px] font-bold text-charcoal-light uppercase block">Campaign Duration</span>
+                      <span className="font-semibold text-primary flex items-center gap-1">
+                        <Calendar size={13} className="text-primary/60" />
+                        {isPermanent ? (
+                          <span className="text-emerald-700 font-bold">Always Active (No Expiry)</span>
+                        ) : (
+                          `${ban.startDate ? new Date(ban.startDate).toLocaleDateString() : 'Immediate'} - ${ban.endDate ? new Date(ban.endDate).toLocaleDateString() : 'No Limit'}`
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-primary/5">
                   <button
                     onClick={() => handleOpenEdit(ban)}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-primary/10 text-xs font-bold text-primary hover:bg-primary/5 hover:border-primary transition-all cursor-pointer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-primary hover:bg-primary/5 rounded-lg transition-colors cursor-pointer"
                   >
-                    <Edit2 size={12} /> Edit Settings
+                    <Edit2 size={14} /> Edit Banner
                   </button>
                   <button
                     onClick={() => handleOpenDelete(ban.id)}
-                    className="p-2 rounded-lg text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                    title="Remove Banner"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                   >
-                    <Trash2 size={14} />
+                    <Trash2 size={14} /> Delete
                   </button>
                 </div>
               </div>
             </div>
+          );
+        })}
+
+        {banners.length === 0 && (
+          <div className="bg-white rounded-xl border border-primary/10 p-12 text-center space-y-3">
+            <Layers size={36} className="mx-auto text-primary/30" />
+            <h3 className="font-display font-bold text-lg text-primary">No Banners Found</h3>
+            <p className="text-xs text-charcoal-light max-w-sm mx-auto">
+              Create your first Permanent or Floating banner campaign to display on the storefront hero section.
+            </p>
+            <button
+              onClick={handleOpenAdd}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-secondary rounded-lg font-bold text-xs shadow-md hover:bg-primary-light transition-all cursor-pointer"
+            >
+              <Plus size={14} /> Create Banner
+            </button>
           </div>
-        ))}
+        )}
       </div>
 
-      {/* Add / Edit Banner Modal */}
+      {/* Simplified Add / Edit Banner Modal */}
       <Modal
         isOpen={isAddEditOpen}
         onClose={() => setIsAddEditOpen(false)}
-        title={currentBanner ? "Edit Banner Campaign" : "Create Promotional Banner"}
-        size="lg"
+        title={currentBanner ? "Edit Banner Campaign" : "Create Banner Campaign"}
       >
         <form onSubmit={handleSubmitBanner} className="space-y-4">
           {formError && (
-            <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold px-4 py-3 rounded-lg flex items-center gap-2">
-              <AlertTriangle size={16} /> {formError}
+            <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold p-3 rounded-lg">
+              {formError}
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-primary mb-1">
-                  Campaign Title *
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Traditional Sweets 15% Off"
-                  value={formTitle}
-                  onChange={(e) => setFormTitle(e.target.value)}
-                  className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background placeholder-charcoal-light focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-primary mb-1">
-                  Subtitle Details
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Crafted with pure desi ghee and ancient recipe styles."
-                  value={formSubtitle}
-                  onChange={(e) => setFormSubtitle(e.target.value)}
-                  className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background placeholder-charcoal-light focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-primary mb-1">
-                    Button Label *
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Shop Sweets"
-                    value={formButtonText}
-                    onChange={(e) => setFormButtonText(e.target.value)}
-                    className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background placeholder-charcoal-light focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-primary mb-1">
-                    Button URL Link *
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. /category/sweets"
-                    value={formButtonLink}
-                    onChange={(e) => setFormButtonLink(e.target.value)}
-                    className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background placeholder-charcoal-light focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-primary mb-1">
-                    Placement tag *
-                  </label>
-                  <select
-                    value={formPlacement}
-                    onChange={(e) => setFormPlacement(e.target.value)}
-                    className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
-                  >
-                    <option value="Main Hero">Main Hero</option>
-                    <option value="Promo Sidebar">Promo Sidebar</option>
-                    <option value="Homepage Banner 2">Homepage Banner 2</option>
-                    <option value="Promo Footer">Promo Footer</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-primary mb-1">
-                    Default Status *
-                  </label>
-                  <select
-                    value={formStatus}
-                    onChange={(e) => setFormStatus(e.target.value)}
-                    className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
-                  >
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                  </select>
-                </div>
-              </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Banner Type: Permanent vs Floating */}
+            <div>
+              <label className="block text-xs font-bold text-primary mb-1">
+                Banner Type *
+              </label>
+              <select
+                value={formBannerType}
+                onChange={(e) => setFormBannerType(e.target.value)}
+                className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all font-semibold"
+              >
+                <option value="Permanent">📌 Permanent Banner (Main Hero)</option>
+                <option value="Floating">✨ Floating Banner (Offer Campaign)</option>
+              </select>
             </div>
 
-            <div className="space-y-3">
-              {/* Image Input Selection Mode */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-bold text-primary">
-                    Banner Image Source *
-                  </label>
-                  <span className="text-[10px] text-charcoal-light font-medium">
-                    Supports JPG, PNG, WEBP, SVG
-                  </span>
-                </div>
+            {/* Target Device View */}
+            <div>
+              <label className="block text-xs font-bold text-primary mb-1">
+                Target Device View *
+              </label>
+              <select
+                value={formTargetDevice}
+                onChange={(e) => setFormTargetDevice(e.target.value)}
+                className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all font-semibold"
+              >
+                <option value="Both">💻📱 Both (Desktop + Mobile)</option>
+                <option value="Desktop">💻 Laptop / Desktop View Only</option>
+                <option value="Mobile">📱 Mobile View Only</option>
+              </select>
+            </div>
 
-                <div className="space-y-2">
-                  {/* File Upload Box */}
-                  <label className="flex flex-col items-center justify-center border-2 border-dashed border-secondary/40 hover:border-secondary bg-primary-dark/5 hover:bg-primary-dark/10 p-3 rounded-xl cursor-pointer transition-all">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          if (file.size > 10 * 1024 * 1024) {
-                            showToast("Image file size should be less than 10MB");
-                            return;
-                          }
-                          const reader = new FileReader();
-                          reader.onloadend = () => {
-                            setFormImage(reader.result);
-                            showToast("Desktop image loaded successfully!", "success");
-                          };
-                          reader.readAsDataURL(file);
-                        }
-                      }}
-                      className="hidden"
-                    />
-                    <div className="flex items-center gap-2 text-primary font-bold text-xs">
-                      <span className="bg-secondary text-primary px-2.5 py-1 rounded-md text-[11px] shadow-xs">
-                        📁 Choose Image from Desktop
-                      </span>
-                      <span className="text-[10px] text-charcoal-light">or Drag & Drop</span>
-                    </div>
-                  </label>
+            {/* Redirect Link & Status */}
+            <div>
+              <label className="block text-xs font-bold text-primary mb-1">
+                Button Redirect Link *
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. /shop or /category/sweets"
+                value={formButtonLink}
+                onChange={(e) => setFormButtonLink(e.target.value)}
+                className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
+              />
+            </div>
 
-                  {/* Or Paste URL Option */}
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="Or Paste Image URL (https://...)"
-                      value={formImage.startsWith('data:') ? '[Desktop File Selected]' : formImage}
-                      onChange={(e) => setFormImage(e.target.value)}
-                      className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-xs bg-background placeholder-charcoal-light focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all font-mono"
-                    />
-                    {formImage && (
-                      <button
-                        type="button"
-                        onClick={() => setFormImage("")}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-rose-600 hover:underline px-1"
-                      >
-                        Clear
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
+            <div>
+              <label className="block text-xs font-bold text-primary mb-1">
+                Default Status *
+              </label>
+              <select
+                value={formStatus}
+                onChange={(e) => setFormStatus(e.target.value)}
+                className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
+              >
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
 
-              {/* Image Preview Window */}
-              <div className="h-32 border border-dashed border-primary/20 bg-background rounded-xl flex items-center justify-center overflow-hidden relative shadow-inner">
-                {formImage ? (
-                  <img
-                    src={formImage}
-                    alt="Preview"
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      showToast("Invalid image preview.");
-                    }}
-                  />
-                ) : (
-                  <div className="text-center p-2 text-charcoal-light space-y-1">
-                    <span className="text-[10px] block font-bold uppercase text-primary">No Image Selected</span>
-                    <span className="text-[9px] block text-charcoal-light">Upload desktop image file or paste URL above</span>
-                  </div>
-                )}
-              </div>
-
+          {/* Conditional Start Date & End Date (ONLY SHOWN IF FLOATING) */}
+          {formBannerType === "Floating" && (
+            <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl space-y-2">
+              <span className="text-[11px] font-bold text-amber-900 block">
+                ✨ Floating Offer Duration (Auto-Expires when End Date passes)
+              </span>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-primary mb-1">
-                    Start Date
-                  </label>
+                  <label className="block text-xs font-bold text-primary mb-1">Start Date *</label>
                   <input
                     type="date"
                     value={formStartDate}
                     onChange={(e) => setFormStartDate(e.target.value)}
-                    className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
+                    className="w-full px-3 py-1.5 border border-primary/10 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-primary mb-1">
-                    End Date
-                  </label>
+                  <label className="block text-xs font-bold text-primary mb-1">End Date *</label>
                   <input
                     type="date"
                     value={formEndDate}
                     onChange={(e) => setFormEndDate(e.target.value)}
-                    className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
+                    className="w-full px-3 py-1.5 border border-primary/10 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
                   />
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Desktop & Mobile Banner Images Upload */}
+          <div className="space-y-3 pt-2 border-t border-primary/5">
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-bold text-primary">
+                  Desktop / Laptop Banner Image *
+                </label>
+                <span className="text-[10px] text-charcoal-light font-medium">Supports JPG, PNG, WEBP</span>
+              </div>
+
+              <div className="space-y-2">
+                <label className="flex items-center justify-center border border-dashed border-secondary/40 hover:border-secondary bg-primary/5 p-2.5 rounded-lg cursor-pointer transition-all">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        readHighQualityImageFile(file, (dataUrl) => {
+                          setFormDesktopImage(dataUrl);
+                          showToast("Desktop banner image loaded!", "success");
+                        }, showToast);
+                      }
+                    }}
+                    className="hidden"
+                  />
+                  <span className="text-xs font-bold text-primary flex items-center gap-1.5">
+                    📁 Choose Desktop File or Drag & Drop (Max 8MB)
+                  </span>
+                </label>
+
+                {/* Desktop Image Preview */}
+                {formDesktopImage && (
+                  <div className="relative rounded-lg overflow-hidden border border-primary/10 h-24 bg-black/5">
+                    <img
+                      src={getAdminImageUrl(formDesktopImage)}
+                      alt="Desktop Banner Preview"
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setFormDesktopImage("")}
+                      className="absolute top-1 right-1 bg-rose-600 text-white rounded-full w-5 h-5 text-[10px] font-bold flex items-center justify-center shadow-md hover:bg-rose-700"
+                      title="Remove Desktop Image"
+                    >
+                      ✕
+                    </button>
+                    <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded">
+                      Desktop Preview
+                    </span>
+                  </div>
+                )}
+
+                <input
+                  type="text"
+                  placeholder="Or Paste Desktop Image URL (https://...)"
+                  value={formDesktopImage.startsWith('data:') ? '[File Uploaded]' : formDesktopImage}
+                  onChange={(e) => setFormDesktopImage(e.target.value)}
+                  className="w-full px-3 py-1.5 border border-primary/10 rounded-lg text-xs bg-background focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary font-mono"
+                />
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-bold text-primary">
+                  Mobile Banner Image (Optional)
+                </label>
+                <span className="text-[10px] text-charcoal-light font-medium">Auto-fallbacks to Desktop image if empty</span>
+              </div>
+
+              <div className="space-y-2">
+                <label className="flex items-center justify-center border border-dashed border-secondary/40 hover:border-secondary bg-primary/5 p-2.5 rounded-lg cursor-pointer transition-all">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        readHighQualityImageFile(file, (dataUrl) => {
+                          setFormMobileImage(dataUrl);
+                          showToast("Mobile banner image loaded!", "success");
+                        }, showToast);
+                      }
+                    }}
+                    className="hidden"
+                  />
+                  <span className="text-xs font-bold text-primary flex items-center gap-1.5">
+                    📱 Choose Mobile File
+                  </span>
+                </label>
+
+                {/* Mobile Image Preview */}
+                {formMobileImage && (
+                  <div className="relative rounded-lg overflow-hidden border border-primary/10 h-24 bg-black/5">
+                    <img
+                      src={getAdminImageUrl(formMobileImage)}
+                      alt="Mobile Banner Preview"
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setFormMobileImage("")}
+                      className="absolute top-1 right-1 bg-rose-600 text-white rounded-full w-5 h-5 text-[10px] font-bold flex items-center justify-center shadow-md hover:bg-rose-700"
+                      title="Remove Mobile Image"
+                    >
+                      ✕
+                    </button>
+                    <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded">
+                      Mobile Preview
+                    </span>
+                  </div>
+                )}
+
+                <input
+                  type="text"
+                  placeholder="Or Paste Mobile Image URL (https://...)"
+                  value={formMobileImage.startsWith('data:') ? '[Original HD File Uploaded]' : formMobileImage}
+                  onChange={(e) => setFormMobileImage(e.target.value)}
+                  className="w-full px-3 py-1.5 border border-primary/10 rounded-lg text-xs bg-background focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary font-mono"
+                />
               </div>
             </div>
           </div>

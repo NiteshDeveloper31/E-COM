@@ -3,13 +3,11 @@ import mongoose from "mongoose";
 const stockNotificationSchema = new mongoose.Schema(
   {
     product: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Product",
+      type: mongoose.Schema.Types.Mixed,
       required: true
     },
     user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      type: mongoose.Schema.Types.Mixed,
       default: null
     },
     email: {

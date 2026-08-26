@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useReetSutra } from '../context/ReetSutraContext';
 import { Smartphone, Mail, User, ArrowRight, ShieldAlert, MapPin, CheckCircle2, Lock, Sparkles, RefreshCw, KeyRound, Eye, EyeOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 export default function Auth({ initialMode = 'login' }) {
   const { sendOTP, verifyOTPLogin, registerWithOTP, showToast } = useReetSutra();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Mode: 'login' | 'register'
   const [mode, setMode] = useState(initialMode);
@@ -128,10 +129,14 @@ export default function Auth({ initialMode = 'login' }) {
     setIsSubmitting(true);
 
     try {
+      const locationState = location.state || {};
+      const redirectTarget = locationState.from || '/profile';
+
       if (mode === 'login') {
         const success = await verifyOTPLogin(cleanPhone, fullOtp);
         if (success) {
-          navigate('/profile');
+          showToast('Login successful. Welcome back!', 'success');
+          navigate(redirectTarget, { state: locationState });
         }
       } else if (mode === 'register') {
         const addressPayload = {
@@ -153,7 +158,8 @@ export default function Auth({ initialMode = 'login' }) {
           addressPayload
         );
         if (success) {
-          navigate('/profile');
+          showToast('Registration complete. Welcome!', 'success');
+          navigate(redirectTarget, { state: locationState });
         }
       }
     } catch (err) {

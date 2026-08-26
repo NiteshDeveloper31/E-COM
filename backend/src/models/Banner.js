@@ -9,21 +9,38 @@ const bannerSchema = new mongoose.Schema(
     },
     subtitle: {
       type: String,
-      trim: true
+      trim: true,
+      default: ""
+    },
+    bannerType: {
+      type: String,
+      enum: ["Permanent", "Floating"],
+      default: "Permanent"
+    },
+    targetDevice: {
+      type: String,
+      enum: ["Both", "Desktop", "Mobile"],
+      default: "Both"
+    },
+    desktopImage: {
+      type: String,
+      default: ""
+    },
+    mobileImage: {
+      type: String,
+      default: ""
     },
     image: {
       type: String,
-      required: true
+      default: ""
     },
     buttonText: {
       type: String,
-      required: true,
-      trim: true
+      default: "SHOP NOW"
     },
     buttonLink: {
       type: String,
-      required: true,
-      trim: true
+      default: "/shop"
     },
     status: {
       type: String,
@@ -32,17 +49,15 @@ const bannerSchema = new mongoose.Schema(
     },
     placement: {
       type: String,
-      required: true,
       default: "Main Hero"
     },
     startDate: {
       type: Date,
-      required: true,
-      default: Date.now
+      default: null
     },
     endDate: {
       type: Date,
-      required: true
+      default: null
     }
   },
   {

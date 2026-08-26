@@ -3,6 +3,10 @@ import Product from "../models/Product.js";
 import Category from "../models/Category.js";
 import StockNotification from "../models/StockNotification.js";
 import User from "../models/User.js";
+import ProductMySQL from "../models/mysql/Product.js";
+import CategoryMySQL from "../models/mysql/Category.js";
+import UserMySQL from "../models/mysql/User.js";
+import { Op } from "sequelize";
 import { sendBackInStockEmail } from "../services/emailService.js";
 import { getPaginationMeta } from "../utils/pagination.js";
 import { sendSuccess, sendError } from "../utils/response.js";
@@ -17,12 +21,14 @@ export const notifySubscribersIfStockRestocked = async (productDoc) => {
   try {
     if (!productDoc || productDoc.stock <= 0) return;
 
-    const pendingNotifications = await StockNotification.find({
-      product: productDoc._id,
-      status: "Pending"
-    }).populate("user", "name email");
+    const prodIdStr = String(productDoc.id || productDoc._id);
 
-    if (pendingNotifications.length === 0) return;
+    const pendingNotifications = await StockNotification.find({
+      $or: [{ product: prodIdStr }, { product: productDoc._id }, { product: productDoc.id }],
+      status: "Pending"
+    });
+
+    if (!pendingNotifications || pendingNotifications.length === 0) return;
 
     console.log(`🔔 Restock Alert: Sending ${pendingNotifications.length} notifications for ${productDoc.name}`);
 
@@ -30,10 +36,13 @@ export const notifySubscribersIfStockRestocked = async (productDoc) => {
 
     for (const sub of pendingNotifications) {
       let realName = "";
-      if (sub.user && sub.user.name) {
+      if (sub.user && typeof sub.user === "object" && sub.user.name) {
         realName = sub.user.name;
       } else {
-        const foundUser = await User.findOne({ email: sub.email });
+        let foundUser = await UserMySQL.findOne({ where: { email: sub.email } }).catch(() => null);
+        if (!foundUser) {
+          foundUser = await User.findOne({ email: sub.email }).catch(() => null);
+        }
         if (foundUser && foundUser.name) {
           realName = foundUser.name;
         }
@@ -41,13 +50,14 @@ export const notifySubscribersIfStockRestocked = async (productDoc) => {
 
       await sendBackInStockEmail({
         toEmail: sub.email,
-        userName: realName,
+        userName: realName || "Valued Customer",
         productName: productDoc.name,
         productImage: productDoc.image,
         productPrice: discountedPrice,
-        productId: productDoc._id,
+        productId: prodIdStr,
         shortDescription: productDoc.shortDescription || productDoc.description || ""
-      });
+      }).catch(err => console.error("Email send failed:", err));
+
       sub.status = "Notified";
       sub.notifiedAt = new Date();
       await sub.save();
@@ -57,71 +67,117 @@ export const notifySubscribersIfStockRestocked = async (productDoc) => {
   }
 };
 
-/**
- * Add a new Product (Admin only).
- */
-export const addProduct = async (req, res, next) => {
+export const createProduct = async (req, res, next) => {
   try {
-    const required = ["name", "price", "category", "stock", "image"];
+    const required = ["name", "sku", "price", "category"];
     const missing = checkRequiredFields(req.body, required);
     if (missing) {
       return sendError(res, `Required field missing: ${missing}`, 400);
     }
 
-    const { name, sku, description, price, compareAtPrice, category, stock, status, image, images, video, weight, shortDescription, ingredients, benefits, expiryDate, brand, gst, hsnCode, eanCode, size, length, width, height, cessRate, facility, badInventory, shelfLife } = req.body;
-
-    if (!mongoose.Types.ObjectId.isValid(category)) {
-      return sendError(res, "Invalid category selected.", 400);
-    }
-    const categoryDoc = await Category.findById(category);
-    if (!categoryDoc) {
-      return sendError(res, "Selected category does not exist.", 400);
-    }
-
-    // Generate unique SKU if not provided
-    const productSku = sku || `RS-${name.slice(0, 3).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
-
-    const existingProduct = await Product.findOne({ sku: productSku });
-    if (existingProduct) {
-      return sendError(res, `Product with SKU ${productSku} already exists.`, 400);
-    }
-
-    const newProduct = await Product.create({
+    const {
       name,
-      sku: productSku,
+      sku,
       description,
-      price: parseFloat(price),
-      compareAtPrice: compareAtPrice ? parseFloat(compareAtPrice) : null,
-      category: categoryDoc._id,
-      stock: parseInt(stock),
-      status: status || "Active",
+      price,
+      compareAtPrice,
+      category,
+      stock,
+      status,
       image,
-      images: images || [],
-      video: video || "",
-      weight: weight || "",
-      shortDescription: shortDescription || "",
-      ingredients: ingredients || [],
-      benefits: benefits || [],
-      expiryDate: expiryDate || null,
-      brand: brand || "",
-      gst: gst ? parseFloat(gst) : 0,
-      hsnCode: hsnCode || "",
-      eanCode: eanCode || "",
-      size: size || "",
-      length: length ? parseFloat(length) : null,
-      width: width ? parseFloat(width) : null,
-      height: height ? parseFloat(height) : null,
-      cessRate: cessRate ? parseFloat(cessRate) : 0,
-      facility: facility || "Main Warehouse",
-      badInventory: badInventory ? parseInt(badInventory) : 0,
-      shelfLife: shelfLife || ""
-    });
+      images,
+      video,
+      weight,
+      shortDescription,
+      ingredients,
+      benefits,
+      expiryDate,
+      brand,
+      gst,
+      hsnCode,
+      eanCode,
+      size,
+      length,
+      width,
+      height,
+      cessRate,
+      facility,
+      badInventory,
+      shelfLife
+    } = req.body;
 
-    await newProduct.populate(CATEGORY_POPULATE);
+    let sqlCatId = null;
+    if (!isNaN(category)) {
+      sqlCatId = Number(category);
+    }
 
-    // Notify if initial stock > 0
-    if (newProduct.stock > 0) {
-      await notifySubscribersIfStockRestocked(newProduct);
+    let newProduct = null;
+    try {
+      newProduct = await ProductMySQL.create({
+        name,
+        sku,
+        description: description || "",
+        price: parseFloat(price) || 0,
+        compareAtPrice: compareAtPrice ? parseFloat(compareAtPrice) : null,
+        categoryId: sqlCatId,
+        stock: stock ? parseInt(stock) : 0,
+        status: status || "Active",
+        image: image || "",
+        images: images || [],
+        video: video || "",
+        weight: weight || "",
+        shortDescription: shortDescription || "",
+        ingredients: ingredients || [],
+        benefits: benefits || [],
+        expiryDate: expiryDate || null,
+        brand: brand || "",
+        gst: gst ? parseFloat(gst) : 0,
+        hsnCode: hsnCode || "",
+        eanCode: eanCode || "",
+        size: size || "",
+        length: length ? parseFloat(length) : null,
+        width: width ? parseFloat(width) : null,
+        height: height ? parseFloat(height) : null,
+        cessRate: cessRate ? parseFloat(cessRate) : 0,
+        facility: facility || "Main Warehouse",
+        badInventory: badInventory ? parseInt(badInventory) : 0,
+        shelfLife: shelfLife || "",
+        isBundle: Boolean(req.body.isBundle),
+        bundleItems: req.body.bundleItems || []
+      });
+    } catch (mysqlErr) {
+      newProduct = await Product.create({
+        name,
+        sku,
+        description,
+        price,
+        compareAtPrice,
+        category,
+        stock,
+        status,
+        image,
+        images,
+        video,
+        weight,
+        shortDescription,
+        ingredients,
+        benefits,
+        expiryDate,
+        brand,
+        gst,
+        hsnCode,
+        eanCode,
+        size,
+        length,
+        width,
+        height,
+        cessRate,
+        facility,
+        badInventory,
+        shelfLife,
+        isBundle: Boolean(req.body.isBundle),
+        bundleItems: req.body.bundleItems || []
+      });
     }
 
     return sendSuccess(res, "Product created successfully.", newProduct, 201);
@@ -136,76 +192,64 @@ export const addProduct = async (req, res, next) => {
 export const editProduct = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const product = await Product.findById(id);
+    let product = null;
 
-    if (!product) {
-      return sendError(res, "Product not found.", 404);
-    }
-
-    const previousStock = product.stock || 0;
-
-    const fieldsToUpdate = [
-      "name",
-      "sku",
-      "description",
-      "price",
-      "compareAtPrice",
-      "category",
-      "stock",
-      "status",
-      "image",
-      "images",
-      "video",
-      "weight",
-      "shortDescription",
-      "ingredients",
-      "benefits",
-      "expiryDate",
-      "brand",
-      "gst",
-      "hsnCode",
-      "eanCode",
-      "size",
-      "length",
-      "width",
-      "height",
-      "cessRate",
-      "facility",
-      "badInventory",
-      "shelfLife"
-    ];
-
-    if (req.body.category !== undefined) {
-      if (!mongoose.Types.ObjectId.isValid(req.body.category)) {
-        return sendError(res, "Invalid category selected.", 400);
-      }
-      const categoryDoc = await Category.findById(req.body.category);
-      if (!categoryDoc) {
-        return sendError(res, "Selected category does not exist.", 400);
-      }
-    }
-
-    fieldsToUpdate.forEach((field) => {
-      if (req.body[field] !== undefined) {
-        if (field === "price" || field === "compareAtPrice" || field === "gst" || field === "length" || field === "width" || field === "height" || field === "cessRate") {
-          product[field] = req.body[field] ? parseFloat(req.body[field]) : null;
-        } else if (field === "stock" || field === "badInventory") {
-          product[field] = parseInt(req.body[field]) || 0;
-        } else {
-          product[field] = req.body[field];
+    if (!isNaN(id)) {
+      product = await ProductMySQL.findByPk(Number(id));
+      if (product) {
+        const fieldsToUpdate = [
+          "name", "sku", "description", "price", "compareAtPrice", "stock",
+          "status", "image", "images", "video", "weight", "shortDescription",
+          "ingredients", "benefits", "expiryDate", "brand", "gst", "hsnCode",
+          "eanCode", "size", "length", "width", "height", "cessRate", "facility",
+          "badInventory", "shelfLife", "isBundle", "bundleItems"
+        ];
+        fieldsToUpdate.forEach((field) => {
+          if (req.body[field] !== undefined) {
+            if (field === "price" || field === "compareAtPrice" || field === "gst" || field === "length" || field === "width" || field === "height" || field === "cessRate") {
+              product[field] = req.body[field] ? parseFloat(req.body[field]) : null;
+            } else if (field === "stock" || field === "badInventory") {
+              product[field] = parseInt(req.body[field]) || 0;
+            } else {
+              product[field] = req.body[field];
+            }
+          }
+        });
+        if (req.body.category && !isNaN(req.body.category)) {
+          product.categoryId = Number(req.body.category);
         }
+        await product.save();
+        if (product.stock > 0) {
+          notifySubscribersIfStockRestocked(product).catch(err => console.error("Stock notify error:", err));
+        }
+        return sendSuccess(res, "Product updated successfully.", product);
       }
-    });
-
-    await product.save();
-    await product.populate(CATEGORY_POPULATE);
-
-    // Trigger Restock Notification Emails if stock was 0 or restocked > 0
-    if (product.stock > 0 && previousStock <= 0) {
-      await notifySubscribersIfStockRestocked(product);
     }
 
-    return sendSuccess(res, "Product updated successfully.", product);
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      product = await Product.findById(id);
+      if (product) {
+        const fieldsToUpdate = [
+          "name", "sku", "description", "price", "compareAtPrice", "category", "stock",
+          "status", "image", "images", "video", "weight", "shortDescription",
+          "ingredients", "benefits", "expiryDate", "brand", "gst", "hsnCode",
+          "eanCode", "size", "length", "width", "height", "cessRate", "facility",
+          "badInventory", "shelfLife", "isBundle", "bundleItems"
+        ];
+        fieldsToUpdate.forEach((field) => {
+          if (req.body[field] !== undefined) {
+            product[field] = req.body[field];
+          }
+        });
+        await product.save();
+        if (product.stock > 0) {
+          notifySubscribersIfStockRestocked(product).catch(err => console.error("Stock notify error:", err));
+        }
+        return sendSuccess(res, "Product updated successfully.", product);
+      }
+    }
+
+    return sendError(res, "Product not found.", 404);
   } catch (error) {
     next(error);
   }
@@ -217,13 +261,22 @@ export const editProduct = async (req, res, next) => {
 export const deleteProduct = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const product = await Product.findByIdAndDelete(id);
-    
-    if (!product) {
-      return sendError(res, "Product not found.", 404);
+
+    if (!isNaN(id)) {
+      const deletedCount = await ProductMySQL.destroy({ where: { id: Number(id) } });
+      if (deletedCount > 0) {
+        return sendSuccess(res, "Product deleted successfully.", { id });
+      }
     }
 
-    return sendSuccess(res, "Product deleted successfully.", { id });
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      const product = await Product.findByIdAndDelete(id);
+      if (product) {
+        return sendSuccess(res, "Product deleted successfully.", { id });
+      }
+    }
+
+    return sendError(res, "Product not found or already deleted.", 404);
   } catch (error) {
     next(error);
   }
@@ -235,42 +288,43 @@ export const deleteProduct = async (req, res, next) => {
 export const getProducts = async (req, res, next) => {
   try {
     const { search, category, status, page = 1, limit = 50 } = req.query;
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const offset = (pageNum - 1) * limitNum;
 
-    const query = {};
-
+    const where = {};
+    if (status) where.status = status;
     if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: "i" } },
-        { sku: { $regex: search, $options: "i" } },
-        { brand: { $regex: search, $options: "i" } }
+      where[Op.or] = [
+        { name: { [Op.like]: `%${search}%` } },
+        { sku: { [Op.like]: `%${search}%` } },
+        { brand: { [Op.like]: `%${search}%` } }
       ];
     }
 
-    if (category) {
-      if (mongoose.Types.ObjectId.isValid(category)) {
-        query.category = category;
-      } else {
-        const catDoc = await Category.findOne({ name: { $regex: new RegExp(`^${category}$`, "i") } });
-        if (catDoc) query.category = catDoc._id;
-      }
+    let products = [];
+    let total = 0;
+
+    try {
+      const { rows, count } = await ProductMySQL.findAndCountAll({
+        where,
+        include: [{ model: CategoryMySQL, as: "category" }],
+        order: [["id", "DESC"]],
+        limit: limitNum,
+        offset: offset
+      });
+      products = rows;
+      total = count;
+    } catch (mysqlErr) {
+      const query = {};
+      if (status) query.status = status;
+      const [mProds, mTotal] = await Promise.all([
+        Product.find(query).populate(CATEGORY_POPULATE).skip(offset).limit(limitNum),
+        Product.countDocuments(query)
+      ]);
+      products = mProds;
+      total = mTotal;
     }
-
-    if (status) {
-      query.status = status;
-    }
-
-    const pageNum = parseInt(page);
-    const limitNum = parseInt(limit);
-    const skip = (pageNum - 1) * limitNum;
-
-    const [products, total] = await Promise.all([
-      Product.find(query)
-        .populate(CATEGORY_POPULATE)
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limitNum),
-      Product.countDocuments(query)
-    ]);
 
     const meta = getPaginationMeta(total, pageNum, limitNum);
 
@@ -289,7 +343,17 @@ export const getProducts = async (req, res, next) => {
 export const getProductById = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const product = await Product.findById(id).populate(CATEGORY_POPULATE);
+    let product = null;
+
+    if (!isNaN(id)) {
+      product = await ProductMySQL.findByPk(Number(id), {
+        include: [{ model: CategoryMySQL, as: "category" }]
+      });
+    }
+
+    if (!product && mongoose.Types.ObjectId.isValid(id)) {
+      product = await Product.findById(id).populate(CATEGORY_POPULATE);
+    }
 
     if (!product) {
       return sendError(res, "Product not found.", 404);
@@ -313,16 +377,24 @@ export const subscribeStockNotification = async (req, res, next) => {
       return sendError(res, "Email address is required.", 400);
     }
 
-    const product = await Product.findById(id);
+    let product = null;
+    if (!isNaN(id)) {
+      product = await ProductMySQL.findByPk(Number(id));
+    }
+    if (!product) {
+      product = await Product.findById(id).catch(() => null);
+    }
+
     if (!product) {
       return sendError(res, "Product not found.", 404);
     }
 
     const cleanEmail = email.trim().toLowerCase();
+    const prodIdStr = String(product.id || product._id);
 
     // Check if already pending subscription exists
     const existing = await StockNotification.findOne({
-      product: id,
+      product: prodIdStr,
       email: cleanEmail,
       status: "Pending"
     });
@@ -331,9 +403,11 @@ export const subscribeStockNotification = async (req, res, next) => {
       return sendSuccess(res, `You are already subscribed! We will email ${cleanEmail} as soon as ${product.name} is restocked.`, existing);
     }
 
+    const userIdVal = req.user ? String(req.user.id || req.user._id) : null;
+
     const newSub = await StockNotification.create({
-      product: id,
-      user: req.user?._id || null,
+      product: prodIdStr,
+      user: userIdVal,
       email: cleanEmail,
       status: "Pending"
     });
@@ -404,3 +478,5 @@ export const bulkImportProducts = async (req, res, next) => {
     next(error);
   }
 };
+
+export const addProduct = createProduct;

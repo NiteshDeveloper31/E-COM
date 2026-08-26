@@ -6,7 +6,7 @@ import { Trash2, ShoppingBag, ArrowRight, ShieldCheck, Tag } from 'lucide-react'
 import { API_BASE_URL } from '../config';
 
 export default function Cart() {
-  const { cart, updateCartQuantity, removeFromCart } = useReetSutra();
+  const { cart, user, updateCartQuantity, removeFromCart } = useReetSutra();
   const [couponCode, setCouponCode] = useState('');
   const [appliedDiscountAmount, setAppliedDiscountAmount] = useState(0);
   const [appliedCouponData, setAppliedCouponData] = useState(null);
@@ -40,13 +40,19 @@ export default function Cart() {
 
     try {
       setIsValidatingCoupon(true);
+      const activeToken = localStorage.getItem("rs_token");
       const res = await fetch(`${API_BASE_URL}/coupons/validate`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(activeToken ? { "Authorization": `Bearer ${activeToken}` } : {})
+        },
         body: JSON.stringify({
           couponCode: couponCode.trim(),
           cartSubtotal: subtotal,
-          cartItems: cart
+          cartItems: cart,
+          userId: user?.id || user?._id || "",
+          email: user?.email || ""
         })
       });
 
@@ -74,7 +80,7 @@ export default function Cart() {
         setAppliedDiscountAmount(amt);
         setCouponSuccess('✓ Coupon applied: 10% off on all sweets!');
       } else {
-        setCouponError('Error connecting to coupon validation service.');
+        setCouponError(err?.message || 'Invalid or expired coupon code.');
       }
     } finally {
       setIsValidatingCoupon(false);
@@ -267,7 +273,7 @@ export default function Cart() {
               Order Summary
             </h3>
 
-            <div className="space-y-3.5 text-xs md:text-sm text-brand-charcoalLight font-sans">
+            <div className="space-y-3 text-xs md:text-sm text-brand-charcoalLight font-sans">
               
               <div className="flex justify-between">
                 <span>Subtotal</span>
@@ -275,7 +281,7 @@ export default function Cart() {
               </div>
               
               {discountAmount > 0 && (
-                <div className="flex justify-between text-green-600 font-semibold">
+                <div className="flex justify-between text-green-700 font-semibold bg-green-50 px-2.5 py-1.5 rounded border border-green-200">
                   <span>Coupon Discount {appliedCouponData?.code ? `(${appliedCouponData.code})` : ''}</span>
                   <span>-₹{discountAmount}</span>
                 </div>
@@ -283,8 +289,14 @@ export default function Cart() {
 
               <div className="flex justify-between">
                 <span>Estimated Shipping</span>
+                <span className="font-bold text-brand-charcoal">
+                  {deliveryCharge === 0 ? <span className="text-green-600 font-bold uppercase text-[11px]">FREE</span> : `₹${deliveryCharge}`}
+                </span>
+              </div>
+
+              <div className="flex justify-between border-t border-brand-creamDark pt-3 font-serif text-base text-brand-green font-extrabold">
                 <span>Total Amount</span>
-                <span className="text-brand-gold font-black">₹{finalTotal}</span>
+                <span className="text-brand-gold text-lg">₹{finalTotal}</span>
               </div>
 
             </div>

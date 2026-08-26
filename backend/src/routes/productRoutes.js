@@ -11,7 +11,8 @@ import {
 import {
   getProductReviews,
   addProductReview,
-  deleteProductReview
+  deleteProductReview,
+  getHomepageReviews
 } from "../controllers/reviewController.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import { adminMiddleware } from "../middleware/adminMiddleware.js";
@@ -19,6 +20,7 @@ import { adminMiddleware } from "../middleware/adminMiddleware.js";
 const router = express.Router();
 
 // Public routes
+router.get("/reviews/all/latest", getHomepageReviews);
 router.get("/", getProducts);
 router.get("/:id", getProductById);
 router.post("/:id/notify", subscribeStockNotification);

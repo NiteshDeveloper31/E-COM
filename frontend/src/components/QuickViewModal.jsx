@@ -291,7 +291,7 @@ export default function QuickViewModal({ product, onClose }) {
               {/* Link to Full Product Page */}
               <div className="text-center mt-4">
                 <Link
-                  to={`/product/${product.id}`}
+                  to={`/product/${product.id || product._id}`}
                   onClick={onClose}
                   className="inline-flex items-center space-x-1.5 text-xs text-brand-gold hover:text-brand-green font-bold uppercase tracking-wider transition-colors"
                 >

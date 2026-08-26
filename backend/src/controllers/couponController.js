@@ -1,6 +1,9 @@
 import Coupon from "../models/Coupon.js";
 import Product from "../models/Product.js";
 import Category from "../models/Category.js";
+import CategoryMySQL from "../models/mysql/Category.js";
+import ProductMySQL from "../models/mysql/Product.js";
+import OrderMySQL from "../models/mysql/Order.js";
 import { sendSuccess, sendError } from "../utils/response.js";
 
 /**
@@ -68,11 +71,7 @@ export const createCoupon = async (req, res) => {
  */
 export const getCoupons = async (req, res) => {
   try {
-    const coupons = await Coupon.find()
-      .populate("applicableCategories", "name")
-      .populate("applicableProducts", "name image price")
-      .sort({ createdAt: -1 });
-
+    const coupons = await Coupon.find().sort({ createdAt: -1 });
     return sendSuccess(res, "Coupons fetched successfully.", coupons);
   } catch (error) {
     console.error("Error fetching coupons:", error);
@@ -87,9 +86,7 @@ export const getCoupons = async (req, res) => {
  */
 export const getCouponById = async (req, res) => {
   try {
-    const coupon = await Coupon.findById(req.params.id)
-      .populate("applicableCategories", "name")
-      .populate("applicableProducts", "name image price");
+    const coupon = await Coupon.findById(req.params.id);
 
     if (!coupon) {
       return sendError(res, "Coupon not found.", 404);
@@ -220,10 +217,41 @@ export const validateCoupon = async (req, res) => {
       return sendError(res, `Coupon '${cleanCode}' usage limit has been reached.`, 400);
     }
 
-    if (userId && coupon.perUserLimit) {
-      const userUsage = coupon.usedByUsers.find(u => u.userId === String(userId));
-      if (userUsage && userUsage.count >= coupon.perUserLimit) {
-        return sendError(res, `You have already used coupon '${cleanCode}' the maximum number of allowed times (${coupon.perUserLimit}).`, 400);
+    const effectiveUserId = req.user?.id || req.user?._id || userId;
+    const effectiveEmail = req.user?.email || req.body.email || "";
+
+    if (coupon.perUserLimit) {
+      let userUsageCount = 0;
+
+      if (effectiveUserId) {
+        const userUsage = (coupon.usedByUsers || []).find(u => String(u.userId) === String(effectiveUserId));
+        if (userUsage) userUsageCount += userUsage.count;
+      }
+
+      if (effectiveUserId || effectiveEmail) {
+        try {
+          const { Op } = await import("sequelize");
+          const whereConditions = [];
+          if (effectiveUserId && !isNaN(effectiveUserId)) {
+            whereConditions.push({ userId: Number(effectiveUserId) });
+          }
+          if (effectiveEmail) {
+            whereConditions.push({ customerEmail: effectiveEmail });
+          }
+          if (whereConditions.length > 0) {
+            const pastOrdersCount = await OrderMySQL.count({
+              where: {
+                couponCode: cleanCode,
+                [Op.or]: whereConditions
+              }
+            }).catch(() => 0);
+            userUsageCount = Math.max(userUsageCount, pastOrdersCount);
+          }
+        } catch (e) {}
+      }
+
+      if (userUsageCount >= coupon.perUserLimit) {
+        return sendError(res, `You have already used coupon '${cleanCode}'. This promo code is limited to ${coupon.perUserLimit} use per customer.`, 400);
       }
     }
 
@@ -241,13 +269,24 @@ export const validateCoupon = async (req, res) => {
     let applicableSubtotal = numericSubtotal;
 
     if (coupon.applicableScope === "CATEGORY") {
-      const categoryIds = (coupon.applicableCategories || []).map(c => String(c._id || c));
-      const categoryNames = (coupon.applicableCategories || []).map(c => String(c.name || c).toLowerCase());
+      const categoryIds = (coupon.applicableCategories || []).map(c => String(c._id || c.id || c));
+      let categoryNames = (coupon.applicableCategories || []).map(c => String(c.name || c).toLowerCase());
+
+      const numericIds = categoryIds.filter(id => !isNaN(id)).map(Number);
+      if (numericIds.length > 0) {
+        const catDocs = await CategoryMySQL.findAll({ where: { id: numericIds } }).catch(() => []);
+        catDocs.forEach(c => {
+          if (c.name) categoryNames.push(c.name.toLowerCase());
+        });
+      }
 
       const matchingItems = cartItems.filter(item => {
-        const itemCatId = String(item.product?.category?._id || item.product?.category || item.category || "");
+        const itemCatId = String(item.product?.categoryId || item.product?.category?._id || item.product?.category?.id || item.product?.category || item.categoryId || item.category || "");
         const itemCatName = String(item.product?.category?.name || item.product?.category || item.category || "").toLowerCase();
-        return categoryIds.includes(itemCatId) || categoryNames.includes(itemCatName);
+
+        return categoryIds.includes(itemCatId) ||
+               (itemCatName && categoryNames.includes(itemCatName)) ||
+               (itemCatName && categoryNames.some(cn => cn.length > 2 && itemCatName.includes(cn)));
       });
 
       if (matchingItems.length === 0) {

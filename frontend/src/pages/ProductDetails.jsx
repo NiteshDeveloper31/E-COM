@@ -127,7 +127,7 @@ export default function ProductDetails() {
   };
 
   // Find product
-  const product = products.find(p => p.id === id);
+  const product = products.find(p => String(p.id || p._id) === String(id));
 
   const [selectedImage, setSelectedImage] = useState(product?.image || '');
   const [isVideoSelected, setIsVideoSelected] = useState(false);

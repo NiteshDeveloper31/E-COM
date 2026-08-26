@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Plus, Edit2, Trash2, Loader, Eye, AlertTriangle, Upload, FileSpreadsheet, Download } from "lucide-react";
+import { Plus, Edit2, Trash2, Loader, Eye, AlertTriangle, Upload, FileSpreadsheet, Download, Search } from "lucide-react";
 import { useData } from "../context/DataContext";
 import { DataTable } from "../components/DataTable";
 import { Modal } from "../components/Modal";
@@ -49,6 +49,40 @@ export const Products = () => {
   const [formBadInventory, setFormBadInventory] = useState("");
   const [formShelfLife, setFormShelfLife] = useState("");
   const [formError, setFormError] = useState("");
+
+  // Gift Box / Combo Bundle state
+  const [formIsBundle, setFormIsBundle] = useState(false);
+  const [formBundleItems, setFormBundleItems] = useState([]);
+  const [bundleSearchQuery, setBundleSearchQuery] = useState("");
+  const [bundleSelectedProduct, setBundleSelectedProduct] = useState("");
+  const [bundleSelectedQty, setBundleSelectedQty] = useState("1");
+
+  const handleAddBundleItem = () => {
+    if (!bundleSelectedProduct) return;
+    const targetProd = products.find(p => String(p._id || p.id) === String(bundleSelectedProduct));
+    if (!targetProd) return;
+
+    const prodId = targetProd.id || targetProd._id;
+    if (formBundleItems.some(item => String(item.productId || item.productId?._id) === String(prodId))) {
+      showToast("Product is already added to this gift box bundle.");
+      return;
+    }
+
+    const newItem = {
+      productId: prodId,
+      productName: targetProd.name,
+      sku: targetProd.sku || `RS-${targetProd.name.slice(0, 3).toUpperCase()}-9015`,
+      quantity: parseInt(bundleSelectedQty, 10) || 1
+    };
+
+    setFormBundleItems(prev => [...prev, newItem]);
+    setBundleSelectedProduct("");
+    setBundleSelectedQty("1");
+  };
+
+  const handleRemoveBundleItem = (idx) => {
+    setFormBundleItems(prev => prev.filter((_, i) => i !== idx));
+  };
 
   const formatINR = (value) => {
     return new Intl.NumberFormat("en-IN", {
@@ -140,6 +174,10 @@ export const Products = () => {
     setFormFacility("Main Warehouse");
     setFormBadInventory("");
     setFormShelfLife("");
+    setFormIsBundle(false);
+    setFormBundleItems([]);
+    setBundleSelectedProduct("");
+    setBundleSelectedQty("1");
     setFormError("");
     setIsAddEditOpen(true);
   };
@@ -199,6 +237,13 @@ export const Products = () => {
     setFormFacility(product.facility || "Main Warehouse");
     setFormBadInventory(product.badInventory !== undefined && product.badInventory !== null ? String(product.badInventory) : "0");
     setFormShelfLife(product.shelfLife || "");
+
+    // Bundle fields
+    const catName = product.category?.name || "";
+    setFormIsBundle(Boolean(product.isBundle || catName.toLowerCase().includes("gift") || catName.toLowerCase().includes("combo")));
+    setFormBundleItems(product.bundleItems || []);
+    setBundleSelectedProduct("");
+    setBundleSelectedQty("1");
 
     setFormError("");
     setIsAddEditOpen(true);
@@ -470,7 +515,9 @@ export const Products = () => {
       cessRate: formCessRate ? parseFloat(formCessRate) : 0,
       facility: formFacility || "Main Warehouse",
       badInventory: formBadInventory ? parseInt(formBadInventory) : 0,
-      shelfLife: formShelfLife || ""
+      shelfLife: formShelfLife || "",
+      isBundle: formIsBundle,
+      bundleItems: formBundleItems
     };
 
     if (currentProduct) {
@@ -664,7 +711,16 @@ export const Products = () => {
                   </label>
                   <select
                     value={formCategory}
-                    onChange={(e) => setFormCategory(e.target.value)}
+                    onChange={(e) => {
+                      const catId = e.target.value;
+                      setFormCategory(catId);
+                      const catDoc = categories.find(c => String(c._id || c.id) === String(catId));
+                      if (catDoc && (catDoc.name.toLowerCase().includes("gift") || catDoc.name.toLowerCase().includes("combo"))) {
+                        setFormIsBundle(true);
+                      } else {
+                        setFormIsBundle(false);
+                      }
+                    }}
                     className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all disabled:opacity-50"
                     disabled={categories.length === 0}
                   >
@@ -698,6 +754,115 @@ export const Products = () => {
                   />
                 </div>
               </div>
+
+              {/* Gift Box / Combo Bundle Product Items Selector */}
+              {(formIsBundle || Boolean(categories.find(c => String(c._id || c.id) === String(formCategory))?.name.toLowerCase().includes("gift")) || Boolean(categories.find(c => String(c._id || c.id) === String(formCategory))?.name.toLowerCase().includes("combo"))) && (
+                <div className="bg-amber-50/80 border border-amber-300 p-3.5 rounded-xl space-y-3 shadow-2xs">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-black text-amber-950 uppercase tracking-wider flex items-center gap-1.5">
+                      <span>🎁 Add Products to Gift Box</span>
+                    </h4>
+                    <span className="text-[10px] text-amber-800 font-bold">Select items & units inside hamper</span>
+                  </div>
+
+                  {/* Search Product Input */}
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 text-amber-700 absolute left-2.5 top-2.5" />
+                    <input
+                      type="text"
+                      placeholder="Search product by name..."
+                      value={bundleSearchQuery}
+                      onChange={(e) => setBundleSearchQuery(e.target.value)}
+                      className="w-full pl-8 pr-3 py-1.5 border border-amber-300 rounded-lg text-xs bg-white text-primary placeholder-amber-700/60 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    />
+                  </div>
+
+                  {/* Product Dropdown + Unit Quantity Selector + Add Button Side-by-Side Row */}
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
+                    {/* Available Products Dropdown (6 cols) */}
+                    <div className="sm:col-span-6">
+                      <select
+                        value={bundleSelectedProduct}
+                        onChange={(e) => setBundleSelectedProduct(e.target.value)}
+                        className="w-full px-3 py-2 border border-amber-300 rounded-lg text-xs bg-white text-primary font-medium focus:outline-none focus:ring-1 focus:ring-amber-500"
+                      >
+                        <option value="">-- Select Product --</option>
+                        {products
+                          .filter(p => !p.isBundle && (p.category?.name || "").toLowerCase() !== "gift")
+                          .filter(p => !bundleSearchQuery.trim() || p.name.toLowerCase().includes(bundleSearchQuery.toLowerCase()) || (p.sku && p.sku.toLowerCase().includes(bundleSearchQuery.toLowerCase())))
+                          .map(p => (
+                            <option key={p.id || p._id} value={p.id || p._id}>
+                              {p.name} ({p.weight || 'Std'}) — Stock: {p.stock}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+
+                    {/* Unit Quantity Dropdown (3 cols) */}
+                    <div className="sm:col-span-3">
+                      <select
+                        value={bundleSelectedQty}
+                        onChange={(e) => setBundleSelectedQty(e.target.value)}
+                        className="w-full px-2.5 py-2 border border-amber-300 rounded-lg text-xs bg-white text-primary font-bold focus:outline-none"
+                      >
+                        <option value="1">1 Unit</option>
+                        <option value="2">2 Units</option>
+                        <option value="3">3 Units</option>
+                        <option value="4">4 Units</option>
+                        <option value="5">5 Units</option>
+                        <option value="10">10 Units</option>
+                      </select>
+                    </div>
+
+                    {/* Add Button (3 cols) */}
+                    <div className="sm:col-span-3">
+                      <button
+                        type="button"
+                        onClick={handleAddBundleItem}
+                        disabled={!bundleSelectedProduct}
+                        className="w-full py-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-slate-950 font-extrabold text-xs rounded-lg shadow-2xs transition-all cursor-pointer whitespace-nowrap"
+                      >
+                        + Add Item
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Added Bundle Items List */}
+                  {formBundleItems.length > 0 ? (
+                    <div className="space-y-1.5 border-t border-amber-200 pt-2">
+                      <p className="text-[10px] font-extrabold text-amber-900 uppercase">
+                        Added Gift Items ({formBundleItems.length}):
+                      </p>
+                      <div className="space-y-1 max-h-36 overflow-y-auto pr-1">
+                        {formBundleItems.map((item, idx) => (
+                          <div key={idx} className="bg-white border border-amber-200 p-2 rounded-lg flex items-center justify-between text-xs font-semibold">
+                            <div>
+                              <span className="font-bold text-primary">{item.productName}</span>
+                              <span className="text-[10px] text-gray-500 font-mono ml-2">SKU: {item.sku}</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className="bg-amber-100 text-amber-900 px-2.5 py-0.5 rounded font-mono font-bold text-[11px]">
+                                {item.quantity} {item.quantity === 1 ? 'unit' : 'units'}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveBundleItem(idx)}
+                                className="text-rose-600 hover:text-rose-800 text-xs font-bold cursor-pointer"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-[10.5px] italic text-amber-700 text-center py-1">
+                      No items added yet. Select a product and unit quantity above to add.
+                    </p>
+                  )}
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>

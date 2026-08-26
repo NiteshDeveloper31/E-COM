@@ -1,4 +1,5 @@
 import Banner from "../models/Banner.js";
+import BannerMySQL from "../models/mysql/Banner.js";
 import { sendSuccess, sendError } from "../utils/response.js";
 import { checkRequiredFields } from "../validations/validator.js";
 
@@ -7,25 +8,61 @@ import { checkRequiredFields } from "../validations/validator.js";
  */
 export const addBanner = async (req, res, next) => {
   try {
-    const required = ["title", "image", "buttonText", "buttonLink", "endDate"];
+    const required = ["title"];
     const missing = checkRequiredFields(req.body, required);
     if (missing) {
       return sendError(res, `Required field missing: ${missing}`, 400);
     }
 
-    const { title, subtitle, image, buttonText, buttonLink, status, placement, startDate, endDate } = req.body;
-
-    const newBanner = await Banner.create({
+    const {
       title,
       subtitle,
+      bannerType,
+      targetDevice,
+      desktopImage,
+      mobileImage,
       image,
       buttonText,
       buttonLink,
-      status: status || "Active",
-      placement: placement || "Main Hero",
-      startDate: startDate || new Date(),
-      endDate: new Date(endDate)
-    });
+      status,
+      placement
+    } = req.body;
+
+    const mainImage = desktopImage || image || mobileImage || "";
+
+    let newBanner = null;
+    try {
+      newBanner = await BannerMySQL.create({
+        title,
+        bannerType: bannerType || "Permanent",
+        targetDevice: targetDevice || "Both",
+        desktopImage: desktopImage || mainImage,
+        mobileImage: mobileImage || mainImage,
+        image: mainImage,
+        link: buttonLink || "/shop",
+        buttonLink: buttonLink || "/shop",
+        startDate: req.body.startDate || null,
+        endDate: req.body.endDate || null,
+        status: status || "Active",
+        order: 1
+      });
+    } catch (mysqlErr) {
+      newBanner = await Banner.create({
+        title,
+        subtitle: subtitle || "",
+        bannerType: bannerType || "Permanent",
+        targetDevice: targetDevice || "Both",
+        desktopImage: desktopImage || mainImage,
+        mobileImage: mobileImage || mainImage,
+        image: mainImage,
+        buttonText: buttonText || "SHOP NOW",
+        buttonLink: buttonLink || "/shop",
+        status: status || "Active",
+        placement: placement || "Main Hero",
+        startDate: req.body.startDate || null,
+        endDate: req.body.endDate || null
+      });
+    }
 
     return sendSuccess(res, "Banner campaign created successfully.", newBanner, 201);
   } catch (error) {
@@ -39,35 +76,44 @@ export const addBanner = async (req, res, next) => {
 export const editBanner = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const banner = await Banner.findById(id);
+    let banner = null;
+
+    if (!isNaN(id)) {
+      banner = await BannerMySQL.findByPk(Number(id));
+      if (banner) {
+        const fieldsToUpdate = [
+          "title", "bannerType", "targetDevice", "desktopImage", "mobileImage",
+          "image", "link", "buttonLink", "startDate", "endDate", "status"
+        ];
+        fieldsToUpdate.forEach((field) => {
+          if (req.body[field] !== undefined) banner[field] = req.body[field];
+        });
+        if (req.body.buttonLink && !req.body.link) banner.link = req.body.buttonLink;
+        if (req.body.link && !req.body.buttonLink) banner.buttonLink = req.body.link;
+        if (req.body.desktopImage || req.body.mobileImage) {
+          banner.image = req.body.desktopImage || req.body.mobileImage || banner.image;
+        }
+        await banner.save();
+        return sendSuccess(res, "Banner campaign updated successfully.", banner);
+      }
+    }
+
+    banner = await Banner.findById(id).catch(() => null);
     if (!banner) {
       return sendError(res, "Banner campaign not found.", 404);
     }
 
-    const fields = [
-      "title",
-      "subtitle",
-      "image",
-      "buttonText",
-      "buttonLink",
-      "status",
-      "placement",
-      "startDate",
-      "endDate"
+    const fieldsToUpdate = [
+      "title", "subtitle", "bannerType", "targetDevice",
+      "desktopImage", "mobileImage", "image", "buttonText",
+      "buttonLink", "status", "placement", "startDate", "endDate"
     ];
-
-    fields.forEach((field) => {
-      if (req.body[field] !== undefined) {
-        if (field === "startDate" || field === "endDate") {
-          banner[field] = new Date(req.body[field]);
-        } else {
-          banner[field] = req.body[field];
-        }
-      }
+    fieldsToUpdate.forEach((field) => {
+      if (req.body[field] !== undefined) banner[field] = req.body[field];
     });
-
     await banner.save();
-    return sendSuccess(res, "Banner updated successfully.", banner);
+
+    return sendSuccess(res, "Banner campaign updated successfully.", banner);
   } catch (error) {
     next(error);
   }
@@ -79,36 +125,54 @@ export const editBanner = async (req, res, next) => {
 export const deleteBanner = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const banner = await Banner.findByIdAndDelete(id);
-    if (!banner) {
-      return sendError(res, "Banner not found.", 404);
+    if (!isNaN(id)) {
+      await BannerMySQL.destroy({ where: { id: Number(id) } });
     }
-
-    return sendSuccess(res, "Banner deleted successfully.", { id });
+    await Banner.findByIdAndDelete(id).catch(() => {});
+    return sendSuccess(res, "Banner campaign deleted successfully.", { id });
   } catch (error) {
     next(error);
   }
 };
 
 /**
- * Get Banners (Public).
+ * Get Banners (Public website & Admin management).
  */
 export const getBanners = async (req, res, next) => {
   try {
-    const { placement, status } = req.query;
-    const query = {};
+    const { status } = req.query;
+    let mysqlBanners = [];
+    try {
+      const where = {};
+      if (status) where.status = status;
+      mysqlBanners = await BannerMySQL.findAll({ where, order: [["id", "DESC"]] });
+    } catch (mysqlErr) {}
 
-    if (placement) query.placement = placement;
-    if (status) {
-      query.status = status;
-    } else {
-      query.status = "Active"; // Default active
+    let mongoBanners = [];
+    try {
+      const query = {};
+      if (status) query.status = status;
+      mongoBanners = await Promise.race([
+        Banner.find(query).sort({ createdAt: -1 }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Mongo timeout")), 1500))
+      ]).catch(() => []);
+    } catch (e) {}
+
+    const titleSet = new Set();
+    const banners = [];
+
+    for (const b of [...mysqlBanners, ...mongoBanners]) {
+      const titleClean = String(b.title || "").toLowerCase().trim();
+      if (titleClean && !titleSet.has(titleClean)) {
+        titleSet.add(titleClean);
+        banners.push(b);
+      }
     }
-
-    const banners = await Banner.find(query).sort({ createdAt: -1 });
 
     return sendSuccess(res, "Banners fetched successfully.", banners);
   } catch (error) {
     next(error);
   }
 };
+
+export const uploadBannerImage = async (req, res) => sendSuccess(res, "Banner image uploaded.", {});

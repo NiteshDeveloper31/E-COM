@@ -153,14 +153,15 @@ export default function Home() {
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [showFloatingBanner, setShowFloatingBanner] = useState(true);
 
+  const [customerReviews, setCustomerReviews] = useState([]);
+
   useEffect(() => {
     const fetchBanners = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/banners`);
+        const response = await fetch(`${API_BASE_URL}/banners?status=Active`);
         const resJson = await response.json();
-        if (response.ok && resJson.success) {
-          const active = resJson.data.filter(b => b.status === "Active");
-          setHeroBanners(active || []);
+        if (response.ok && resJson.success && Array.isArray(resJson.data) && resJson.data.length > 0) {
+          setHeroBanners(resJson.data);
         }
       } catch (err) {
         console.error("Failed to fetch banners:", err);
@@ -179,53 +180,107 @@ export default function Home() {
       }
     };
 
+    const fetchReviews = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/products/reviews/all/latest`);
+        const resJson = await response.json();
+        if (response.ok && resJson.success && Array.isArray(resJson.data)) {
+          setCustomerReviews(resJson.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch customer reviews:", err);
+      }
+    };
+
     fetchBanners();
     fetchCategories();
+    fetchReviews();
   }, []);
 
-  // Main Default Hero + All Active Admin Banners
-  const displayBanners = [
-    {
-      isDefault: true,
-      title: "The Taste of Bihar,\nCrafted with Tradition",
-      subtitle: "Every Bite, A Story of Bihar,\nShared With Loved Ones.",
-      image: heroBg
-    },
-    ...heroBanners
-  ];
+  // Filter banners for desktop vs mobile views & date validity
+  const now = new Date();
 
-  const currentBanner = displayBanners[currentSlideIndex % displayBanners.length];
+  const activeFloatingBanner = heroBanners.find(b => {
+    if (b.status !== "Active") return false;
+    const isFloating = b.bannerType === "Floating" || b.placement?.includes("Floating");
+    if (!isFloating) return false;
+    if (b.startDate && new Date(b.startDate) > now) return false;
+    if (b.endDate && new Date(b.endDate) < now) return false;
+    return true;
+  });
 
-  // Auto-slide every 3.5 seconds
+  // Top Hero Slider is exclusively for Active Permanent Banners
+  const permanentBanners = heroBanners.filter(b => {
+    if (b.status !== "Active") return false;
+    const isFloating = b.bannerType === "Floating" || b.placement?.includes("Floating");
+    return !isFloating;
+  });
+
+  // Desktop Banners for top hero
+  const hasDedicatedDesktopBanners = permanentBanners.some(b => b.targetDevice === "Desktop");
+  const displayDesktopBanners = permanentBanners.filter(b => {
+    if (b.targetDevice === "Mobile") return false;
+    if (hasDedicatedDesktopBanners) {
+      return b.targetDevice === "Desktop";
+    }
+    return b.targetDevice === "Both" || !b.targetDevice;
+  });
+
+  // Mobile Banners for top hero: If user created dedicated Mobile banner, ONLY show Mobile banners on Mobile!
+  const hasDedicatedMobileBanners = permanentBanners.some(b => b.targetDevice === "Mobile");
+  const displayMobileBanners = permanentBanners.filter(b => {
+    if (b.targetDevice === "Desktop") return false;
+    if (hasDedicatedMobileBanners) {
+      return b.targetDevice === "Mobile";
+    }
+    return b.targetDevice === "Both" || !b.targetDevice;
+  });
+
+  const currentDesktopBanner = displayDesktopBanners.length > 0 ? displayDesktopBanners[currentSlideIndex % displayDesktopBanners.length] : null;
+  const currentMobileBanner = displayMobileBanners.length > 0 ? displayMobileBanners[currentSlideIndex % displayMobileBanners.length] : null;
+
+  // Auto-slide every 3.5 seconds only if multiple permanent banners exist for that view
   useEffect(() => {
-    if (displayBanners.length <= 1) return;
+    const maxLen = Math.max(displayDesktopBanners.length, displayMobileBanners.length);
+    if (maxLen <= 1) return;
     const timer = setInterval(() => {
-      setCurrentSlideIndex(prev => (prev + 1) % displayBanners.length);
+      setCurrentSlideIndex(prev => (prev + 1) % maxLen);
     }, 3500);
     return () => clearInterval(timer);
-  }, [displayBanners.length]);
+  }, [displayDesktopBanners.length, displayMobileBanners.length]);
 
   const nextSlide = () => {
-    setCurrentSlideIndex(prev => (prev + 1) % displayBanners.length);
+    const maxLen = Math.max(displayDesktopBanners.length, displayMobileBanners.length);
+    if (maxLen <= 1) return;
+    setCurrentSlideIndex(prev => (prev + 1) % maxLen);
   };
+
   const prevSlide = () => {
-    setCurrentSlideIndex(prev => (prev - 1 + displayBanners.length) % displayBanners.length);
+    const maxLen = Math.max(displayDesktopBanners.length, displayMobileBanners.length);
+    if (maxLen <= 1) return;
+    setCurrentSlideIndex(prev => (prev - 1 + maxLen) % maxLen);
   };
 
   const getBannerImage = (banner) => {
-    if (!banner || banner.isDefault || !banner.image) return heroBg;
-    if (banner.image.startsWith("data:") || banner.image.startsWith("http://") || banner.image.startsWith("https://")) {
-      return banner.image;
+    if (!banner) return "";
+    const imgPath = banner.desktopImage || banner.image;
+    if (!imgPath) return "";
+    if (imgPath === "/assets/Final_Banner_Img_web.png") return heroBg;
+    if (imgPath.startsWith("data:") || imgPath.startsWith("http://") || imgPath.startsWith("https://")) {
+      return imgPath;
     }
-    return `${BACKEND_URL}${banner.image.startsWith("/") ? "" : "/"}${banner.image}`;
+    return `${BACKEND_URL}${imgPath.startsWith("/") ? "" : "/"}${imgPath}`;
   };
 
   const getMobileBannerImage = (banner) => {
-    if (!banner || banner.isDefault || !banner.image) return mobileHeroBg;
-    if (banner.image.startsWith("data:") || banner.image.startsWith("http://") || banner.image.startsWith("https://")) {
-      return banner.image;
+    if (!banner) return "";
+    const imgPath = banner.mobileImage || banner.image || banner.desktopImage;
+    if (!imgPath) return "";
+    if (imgPath === "/assets/Mobile_view_Banner_image.jpg") return mobileHeroBg;
+    if (imgPath.startsWith("data:") || imgPath.startsWith("http://") || imgPath.startsWith("https://")) {
+      return imgPath;
     }
-    return `${BACKEND_URL}${banner.image.startsWith("/") ? "" : "/"}${banner.image}`;
+    return `${BACKEND_URL}${imgPath.startsWith("/") ? "" : "/"}${imgPath}`;
   };
 
   // Filter bestsellers dynamically
@@ -262,7 +317,7 @@ export default function Home() {
 
   // Default fallback categories
   const defaultCategories = [
-    { name: 'Pickles', displayName: 'Pickle', image: '/images/mango_pickle.jpg' },
+    { name: 'Pickles', displayName: 'Pickle', image: '/images/mixed_pickle.jpg' },
     { name: 'Ghee', displayName: 'Ghee', image: '/images/desi_cow_ghee.jpeg' },
     { name: 'Makhana', displayName: 'Makhana', image: '/images/makhana.jpg' },
     { name: 'Thekua', displayName: 'Thekua', image: '/images/thekua.jpeg' },
@@ -319,7 +374,7 @@ export default function Home() {
       link: '/shop?category=Ghee'
     },
     {
-      image: '/images/mango_pickle.jpg',
+      image: '/images/mixed_pickle.jpg',
       title: 'Traditional Mango Pickle',
       category: 'Pickles',
       link: '/shop?category=Pickles'
@@ -366,159 +421,116 @@ export default function Home() {
 
       {/* 1. Premium Hero Section */}
 
-      {/* 1A. MOBILE VIEW: Dedicated Mobile Hero Layout using Mobile_view_Banner_image.jpg */}
-      <div className="block lg:hidden relative w-full overflow-hidden border-b border-brand-gold/15 bg-[#FAF6EF]">
-        <div className="relative w-full overflow-hidden">
-          {/* Mobile Banner Image */}
-          <img
-            src={getMobileBannerImage(currentBanner)}
-            alt="ReetSutra Mobile Banner"
-            className="w-full h-auto object-contain block"
-          />
+      {/* 1A. MOBILE VIEW: Dedicated Mobile Hero Layout */}
+      {displayMobileBanners.length > 0 && (
+        <div className="block lg:hidden relative w-full overflow-hidden border-b border-brand-gold/15 bg-[#FAF6EF]">
+          <div className="relative w-full overflow-hidden">
+            {/* Mobile Banner Image */}
+            {getMobileBannerImage(currentMobileBanner) && (
+              <img
+                src={getMobileBannerImage(currentMobileBanner)}
+                alt="ReetSutra Mobile Banner"
+                className="w-full h-auto object-contain block"
+              />
+            )}
 
-          {/* Render Text Overlay ONLY for custom active Admin Banners (Default banner has pre-rendered graphic text) */}
-          {!currentBanner.isDefault && (
-            <div className="absolute inset-x-0 top-[15%] px-4 flex flex-col items-center text-center space-y-2.5 z-10">
-              <div className="bg-white/85 backdrop-blur-md p-4 rounded-xl shadow-lg border border-[#C5972E]/30 w-full max-w-[320px]">
-                <h1
-                  className="text-[22px] font-extrabold tracking-tight leading-tight text-[#143021] font-serif"
-                  style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
-                >
-                  {currentBanner.title}
-                </h1>
-                <p
-                  className="text-[12px] text-[#143021] font-medium leading-relaxed font-serif mt-1"
-                  style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
-                >
-                  {currentBanner.subtitle}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Buttons Overlay for Mobile View - Shifted 15px higher up */}
-          <div className="absolute left-[4%] xs:left-[5%] sm:left-[6%] bottom-[23%] xs:bottom-[24%] sm:bottom-[25%] z-20 flex flex-col items-start space-y-1.5 xs:space-y-2">
-            {/* SHOP NOW Button */}
-            <Link
-              to={currentBanner.buttonLink || "/shop"}
-              className="bg-[#143021] hover:bg-[#0E2317] text-[#C5972E] font-extrabold text-[10px] xs:text-[11px] tracking-[0.14em] uppercase py-1.5 xs:py-2 px-3.5 xs:px-4 rounded-md shadow-md flex items-center justify-center space-x-1.5 border border-[#C5972E]/40 active:scale-95 transition-all w-[150px] xs:w-[170px]"
-            >
-              <span>{currentBanner.buttonText || "SHOP NOW"}</span>
-              <Leaf className="w-3.5 h-3.5 text-[#C5972E] fill-current shrink-0" />
-            </Link>
-
-            {/* EXPLORE COLLECTION Button */}
-            <Link
-              to="/shop"
-              className="bg-[#FAF6EF]/95 hover:bg-[#FAF6EF] border border-[#C5972E]/60 text-[#7A5822] font-extrabold text-[10px] xs:text-[11px] tracking-[0.14em] uppercase py-1.5 xs:py-2 px-3.5 xs:px-4 rounded-md shadow-xs flex items-center justify-center space-x-1.5 active:scale-95 transition-all w-[150px] xs:w-[170px]"
-            >
-              <span>EXPLORE COLLECTION</span>
-            </Link>
-          </div>
-
-          {/* Mobile Slider Controls */}
-          {displayBanners.length > 1 && (
-            <>
-              <button
-                onClick={prevSlide}
-                className="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-[#143021]/80 text-[#C5972E] border border-[#C5972E]/40 flex items-center justify-center shadow-md active:scale-95"
-                aria-label="Previous Slide"
-              >
-                <ChevronLeft className="w-4 h-4 text-[#C5972E]" />
-              </button>
-              <button
-                onClick={nextSlide}
-                className="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-[#143021]/80 text-[#C5972E] border border-[#C5972E]/40 flex items-center justify-center shadow-md active:scale-95"
-                aria-label="Next Slide"
-              >
-                <ChevronRight className="w-4 h-4 text-[#C5972E]" />
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* 1B. DESKTOP VIEW: Clean Full-Width Banner Image using new_banner_img.jpg */}
-      <section className="hidden lg:block relative w-full overflow-hidden border-b border-brand-gold/15 bg-[#FAF6EF]">
-        <div className="relative w-full overflow-hidden">
-          <img
-            src={getBannerImage(currentBanner)}
-            alt="ReetSutra Desktop Banner"
-            className="w-full h-auto object-contain block"
-          />
-
-          {/* Overlay Buttons for Default Desktop Banner with reduced compact size */}
-          {currentBanner.isDefault && (
-            <div className="absolute left-[5%] lg:left-[6%] xl:left-[6.5%] bottom-[17%] lg:bottom-[19%] xl:bottom-[20%] z-20 flex flex-row items-center space-x-2.5 xl:space-x-3">
-              {/* SHOP NOW Button */}
+            {/* Buttons Overlay for Mobile View - Stacked vertically in empty space above feature bar */}
+            <div className="absolute left-[4%] xs:left-[4.5%] sm:left-[5%] bottom-[25%] xs:bottom-[26%] sm:bottom-[27%] z-20 flex flex-col items-start space-y-1.5 xs:space-y-2">
+              {/* SHOP NOW Button (Top) */}
               <Link
-                to={currentBanner.buttonLink || "/shop"}
-                className="bg-[#143021] hover:bg-[#0E2317] text-[#C5972E] font-extrabold text-[10px] lg:text-[11px] xl:text-[11.5px] tracking-[0.12em] uppercase py-1.5 lg:py-2 px-4 xl:px-5 rounded-md shadow-md hover:shadow-lg hover:scale-[1.03] transition-all duration-300 flex items-center justify-center space-x-1.5 border border-[#C5972E]/40 cursor-pointer active:scale-95 min-w-[135px] lg:min-w-[155px] xl:min-w-[170px]"
+                to={currentMobileBanner?.buttonLink || "/shop"}
+                className="bg-[#143021] hover:bg-[#0E2317] text-[#C5972E] font-extrabold text-[9.5px] xs:text-[10.5px] tracking-[0.08em] uppercase py-1.5 px-3.5 xs:px-4 rounded shadow-xs flex items-center justify-center space-x-1 border border-[#C5972E]/40 active:scale-95 transition-all min-w-[125px] xs:min-w-[140px]"
               >
-                <span>{currentBanner.buttonText || "SHOP NOW"}</span>
-                <Leaf className="w-3 h-3 lg:w-3.5 lg:h-3.5 text-[#C5972E] fill-current" />
+                <span>{currentMobileBanner?.buttonText || "SHOP NOW"}</span>
+                <Leaf className="w-3 h-3 text-[#C5972E] fill-current shrink-0" />
               </Link>
 
-              {/* EXPLORE COLLECTION Button */}
+              {/* EXPLORE COLLECTION Button (Below SHOP NOW) */}
               <Link
-                to="/shop"
-                className="bg-[#FAF6EF]/95 hover:bg-[#FAF6EF] text-[#7A5822] hover:text-[#5B4017] font-extrabold text-[10px] lg:text-[11px] xl:text-[11.5px] tracking-[0.12em] uppercase py-1.5 lg:py-2 px-4 xl:px-5 rounded-md shadow-xs hover:shadow-sm hover:scale-[1.03] transition-all duration-300 flex items-center justify-center space-x-1.5 border border-[#C5972E]/70 cursor-pointer active:scale-95 min-w-[135px] lg:min-w-[155px] xl:min-w-[170px]"
+                to={currentMobileBanner?.buttonLink || "/shop"}
+                className="bg-[#FAF6EF]/95 hover:bg-[#FAF6EF] border border-[#C5972E]/60 text-[#7A5822] font-extrabold text-[9.5px] xs:text-[10.5px] tracking-[0.08em] uppercase py-1.5 px-3.5 xs:px-4 rounded shadow-2xs flex items-center justify-center active:scale-95 transition-all min-w-[140px] xs:min-w-[155px]"
               >
                 <span>EXPLORE COLLECTION</span>
               </Link>
             </div>
-          )}
 
-          {/* Render Text Overlay ONLY for custom active Admin Banners (Default banner has pre-rendered graphic text) */}
-          {!currentBanner.isDefault && (
-            <div className="absolute inset-0 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 z-10 flex items-center">
-              <div className="max-w-lg space-y-3 flex flex-col items-center text-center p-6 bg-white/85 backdrop-blur-md rounded-2xl shadow-xl border border-[#C5972E]/30">
-                <h1
-                  className="text-[32px] xl:text-[36px] font-extrabold tracking-wide leading-tight text-[#143021] font-serif"
-                  style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+            {/* Mobile Slider Controls */}
+            {displayMobileBanners.length > 1 && (
+              <>
+                <button
+                  onClick={prevSlide}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-[#143021]/80 text-[#C5972E] border border-[#C5972E]/40 flex items-center justify-center shadow-md active:scale-95"
+                  aria-label="Previous Slide"
                 >
-                  {currentBanner.title}
-                </h1>
-                <p
-                  className="text-[14px] text-[#143021] font-medium leading-relaxed tracking-wide font-serif"
-                  style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                  <ChevronLeft className="w-4 h-4 text-[#C5972E]" />
+                </button>
+                <button
+                  onClick={nextSlide}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-[#143021]/80 text-[#C5972E] border border-[#C5972E]/40 flex items-center justify-center shadow-md active:scale-95"
+                  aria-label="Next Slide"
                 >
-                  {currentBanner.subtitle}
-                </p>
-                {currentBanner.buttonText && (
-                  <Link
-                    to={currentBanner.buttonLink || "/shop"}
-                    className="bg-[#143021] hover:bg-[#0E2317] text-[#C5972E] font-extrabold text-[11px] tracking-widest uppercase py-3 px-8 rounded-md shadow-md flex items-center justify-center space-x-2"
-                  >
-                    <span>{currentBanner.buttonText}</span>
-                    <ArrowRight className="w-3.5 h-3.5 text-[#C5972E]" />
-                  </Link>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Desktop Slider Controls */}
-          {displayBanners.length > 1 && (
-            <>
-              <button
-                onClick={prevSlide}
-                className="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-[#143021]/80 hover:bg-[#143021] text-[#C5972E] border border-[#C5972E]/40 flex items-center justify-center shadow-lg active:scale-95 transition-all"
-                aria-label="Previous Slide"
-              >
-                <ChevronLeft className="w-5 h-5 text-[#C5972E]" />
-              </button>
-              <button
-                onClick={nextSlide}
-                className="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-[#143021]/80 hover:bg-[#143021] text-[#C5972E] border border-[#C5972E]/40 flex items-center justify-center shadow-lg active:scale-95 transition-all"
-                aria-label="Next Slide"
-              >
-                <ChevronRight className="w-5 h-5 text-[#C5972E]" />
-              </button>
-            </>
-          )}
+                  <ChevronRight className="w-4 h-4 text-[#C5972E]" />
+                </button>
+              </>
+            )}
+          </div>
         </div>
-      </section>
+      )}
+
+      {/* 1B. DESKTOP VIEW: Clean Full-Width Banner Image */}
+      {displayDesktopBanners.length > 0 && (
+        <section className="hidden lg:block relative w-full overflow-hidden border-b border-brand-gold/15 bg-[#FAF6EF]">
+          <div className="relative w-full overflow-hidden">
+            {getBannerImage(currentDesktopBanner) && (
+              <img
+                src={getBannerImage(currentDesktopBanner)}
+                alt="ReetSutra Desktop Banner"
+                className="w-full h-auto object-contain block"
+              />
+            )}
+
+            {/* Overlay Buttons for Desktop Banner - Standard Luxury E-Commerce Size */}
+            <div className="absolute left-[5%] lg:left-[6%] xl:left-[6.5%] bottom-[15%] lg:bottom-[16.5%] xl:bottom-[18%] z-20 flex flex-row items-center space-x-3.5 lg:space-x-4 xl:space-x-5">
+              {/* SHOP NOW Button */}
+              <Link
+                to={currentDesktopBanner?.buttonLink || "/shop"}
+                className="bg-[#143021] hover:bg-[#0A1A12] text-[#C5972E] font-extrabold text-xs lg:text-sm xl:text-[15px] tracking-[0.1em] uppercase py-2.5 lg:py-3.5 xl:py-4 px-6 lg:px-8 xl:px-10 rounded-lg shadow-md hover:shadow-xl hover:scale-[1.03] transition-all duration-300 flex items-center justify-center space-x-2 border border-[#C5972E]/50 cursor-pointer active:scale-95 min-w-[165px] lg:min-w-[200px] xl:min-w-[225px]"
+              >
+                <span>{currentDesktopBanner?.buttonText || "SHOP NOW"}</span>
+                <Leaf className="w-3.5 h-3.5 lg:w-4 lg:h-4 xl:w-4.5 xl:h-4.5 text-[#C5972E] fill-current shrink-0" />
+              </Link>
+
+              {/* EXPLORE COLLECTION Button */}
+              <Link
+                to={currentDesktopBanner?.buttonLink || "/shop"}
+                className="bg-[#FAF6EF]/95 hover:bg-[#FAF6EF] text-[#7A5822] hover:text-[#4A3412] font-extrabold text-xs lg:text-sm xl:text-[15px] tracking-[0.1em] uppercase py-2.5 lg:py-3.5 xl:py-4 px-6 lg:px-8 xl:px-10 rounded-lg shadow-sm hover:shadow-md hover:scale-[1.03] transition-all duration-300 flex items-center justify-center space-x-2 border-2 border-[#C5972E]/70 cursor-pointer active:scale-95 min-w-[190px] lg:min-w-[230px] xl:min-w-[260px]"
+              >
+                <span>EXPLORE COLLECTION</span>
+              </Link>
+            </div>
+
+            {/* Desktop Slider Controls */}
+            {displayDesktopBanners.length > 1 && (
+              <>
+                <button
+                  onClick={prevSlide}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-[#143021]/80 hover:bg-[#143021] text-[#C5972E] border border-[#C5972E]/40 flex items-center justify-center shadow-lg active:scale-95 transition-all"
+                  aria-label="Previous Slide"
+                >
+                  <ChevronLeft className="w-5 h-5 text-[#C5972E]" />
+                </button>
+                <button
+                  onClick={nextSlide}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-[#143021]/80 hover:bg-[#143021] text-[#C5972E] border border-[#C5972E]/40 flex items-center justify-center shadow-lg active:scale-95 transition-all"
+                  aria-label="Next Slide"
+                >
+                  <ChevronRight className="w-5 h-5 text-[#C5972E]" />
+                </button>
+              </>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* 1.3 Under-Hero 6-Feature Bar - Light ivory cream background, gold dividers, matching reference image */}
       <section className="bg-[#FAF6EF] border-y border-[#B8934E]/20 py-5 sm:py-6 px-3 sm:px-6 overflow-hidden">
@@ -763,7 +775,7 @@ export default function Home() {
                 <Award className="w-6 h-6" />
               </div>
               <h3 className="text-lg font-bold text-brand-green font-serif">
-                Authentic Bihar Recipes
+                Authentic Recipes
               </h3>
               <p className="text-xs md:text-sm text-brand-charcoalLight leading-relaxed font-sans">
                 No compromises on flavor. We strictly preserve age-old spices and cooking dynamics handed down through grandma generations.
@@ -776,10 +788,10 @@ export default function Home() {
                 <Map className="w-6 h-6" />
               </div>
               <h3 className="text-lg font-bold text-brand-green font-serif">
-                From Bihar With Pride
+                Made With Love & Pride
               </h3>
               <p className="text-xs md:text-sm text-brand-charcoalLight leading-relaxed font-sans">
-                We proudly celebrate Bihar's deep food heritage—from Silaao's layered Khajas to Gaya's hand-pounded tilkuts and Mithila's giant Makhana fields.
+                We proudly celebrate India's rich food heritage—from layered Khajas to hand-pounded Tilkuts and the finest Makhana harvested from pristine fields.
               </p>
             </div>
 
@@ -887,16 +899,16 @@ export default function Home() {
               <div className="aspect-[4/3] rounded overflow-hidden shadow-md border border-brand-gold/15 bg-white group-hover:border-brand-gold transition-all duration-300">
                 <img
                   src="/images/thekua.jpeg"
-                  alt="Authentic Bihar Thekua"
+                  alt="Authentic Thekua"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
               </div>
               <h3 className="text-lg font-bold text-brand-green font-serif group-hover:text-brand-gold transition-colors flex items-center justify-between">
-                <span>Authentic Bihar Thekua & Sweets</span>
+                <span>Authentic Thekua & Sweets</span>
                 <ArrowRight className="w-4 h-4 text-brand-gold opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
               </h3>
               <p className="text-xs md:text-sm text-brand-charcoalLight leading-relaxed font-sans">
-                Handmade traditional Bihari Thekua prepared using pure organic jaggery (gur), whole wheat, cardamoms, and fried in pure desi ghee using traditional carved wooden molds (Saancha).
+                Handmade traditional Thekua prepared using pure organic jaggery (gur), whole wheat, cardamoms, and fried in pure desi ghee using traditional carved wooden molds (Saancha).
               </p>
             </Link>
 
@@ -940,50 +952,79 @@ export default function Home() {
 
         </section>
 
-        {/* 7. Customer Testimonials Section */}
+        {/* 7. Verified Real Customer Reviews Section */}
         <section className="bg-brand-ivory border-y border-brand-gold/15 py-20 px-4">
           <div className="max-w-7xl mx-auto space-y-12">
 
             <div className="text-center space-y-2">
               <span className="text-xs text-brand-gold font-bold tracking-[0.25em] uppercase block">
-                TESTIMONIALS
+                VERIFIED CUSTOMER REVIEWS
               </span>
               <h2 className="text-3xl md:text-4xl font-extrabold text-brand-green serif-header">
-                Loved by Thousands
+                Loved by Real Customers
               </h2>
               <div className="w-16 h-[2px] bg-brand-gold mx-auto mt-2" />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {testimonials.map((test, idx) => (
-                <div
-                  key={idx}
-                  className="bg-white p-6 rounded-lg shadow-premium border border-brand-gold/10 flex flex-col justify-between items-center text-center space-y-4"
-                >
-                  <div className="flex flex-col items-center space-y-3">
-                    <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-brand-gold/30">
-                      <img src={test.avatar} alt={test.name} className="w-full h-full object-cover" />
+            {customerReviews.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {customerReviews.slice(0, 6).map((rev) => (
+                  <div
+                    key={rev._id}
+                    className="bg-white p-6 rounded-lg shadow-premium border border-brand-gold/10 flex flex-col justify-between items-center text-center space-y-4"
+                  >
+                    <div className="flex flex-col items-center space-y-3">
+                      <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-brand-gold/30 bg-brand-green/10 flex items-center justify-center text-brand-green font-bold text-lg">
+                        {rev.userAvatar && !rev.userAvatar.includes('unsplash') ? (
+                          <img src={rev.userAvatar} alt={rev.userName} className="w-full h-full object-cover" />
+                        ) : (
+                          <span>{rev.userName ? rev.userName.charAt(0).toUpperCase() : 'C'}</span>
+                        )}
+                      </div>
+
+                      {/* Rating Stars */}
+                      <div className="flex items-center text-brand-gold">
+                        {[...Array(rev.rating || 5)].map((_, i) => (
+                          <Star key={i} className="w-4 h-4 fill-current" />
+                        ))}
+                      </div>
+
+                      <p className="text-xs md:text-sm text-brand-charcoalLight font-sans italic leading-relaxed">
+                        "{rev.comment}"
+                      </p>
                     </div>
 
-                    {/* Rating Stars */}
-                    <div className="flex items-center text-brand-gold">
-                      {[...Array(test.rating)].map((_, i) => (
-                        <Star key={i} className="w-3.5 h-3.5 fill-current" />
-                      ))}
+                    <div className="pt-3 border-t border-brand-creamDark w-full">
+                      <h4 className="font-bold text-xs text-brand-green font-serif">{rev.userName}</h4>
+                      {rev.productId && (
+                        <p className="text-[10px] text-brand-gold font-bold uppercase tracking-wider mt-0.5">
+                          Verified Buyer • {rev.productId.title || "Vrindesha Delicacy"}
+                        </p>
+                      )}
                     </div>
-
-                    <p className="text-xs text-brand-charcoalLight font-sans italic leading-relaxed">
-                      "{test.comment}"
-                    </p>
                   </div>
-
-                  <div className="pt-2 border-t border-brand-creamDark w-full">
-                    <h4 className="font-bold text-xs text-brand-green font-serif">{test.name}</h4>
-                    <p className="text-[9px] text-brand-gold font-bold uppercase tracking-wider">{test.role} • {test.city}</p>
-                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="bg-white p-8 sm:p-12 rounded-xl shadow-md border border-brand-gold/20 text-center max-w-2xl mx-auto space-y-4">
+                <div className="w-12 h-12 bg-amber-50 rounded-full flex items-center justify-center mx-auto border border-brand-gold/30">
+                  <Star className="w-6 h-6 text-brand-gold fill-current" />
                 </div>
-              ))}
-            </div>
+                <h3 className="text-xl font-extrabold text-brand-green font-serif">
+                  Be the First Verified Customer to Write a Review!
+                </h3>
+                <p className="text-xs sm:text-sm text-brand-charcoalLight leading-relaxed">
+                  We display 100% real, authentic customer reviews. Try our organic products at home, and share your experience with food lovers!
+                </p>
+                <Link
+                  to="/shop"
+                  className="inline-flex items-center space-x-2 px-6 py-3 bg-brand-green hover:bg-[#0E2317] text-brand-gold font-bold text-xs uppercase tracking-wider rounded-lg shadow-md transition-all active:scale-95 cursor-pointer mt-2"
+                >
+                  <span>Explore Products & Leave a Review</span>
+                  <ArrowRight className="w-4 h-4 text-brand-gold" />
+                </Link>
+              </div>
+            )}
 
           </div>
         </section>
@@ -1032,17 +1073,14 @@ export default function Home() {
 
       </div>
 
-      {/* Animated Floating Promotional Offer Banner */}
+      {/* Floating Offer Banner Modal (Only if Floating Banner is created in Admin) */}
       <AnimatePresence>
-        {showFloatingBanner && heroBanners.length > 0 && (
+        {showFloatingBanner && activeFloatingBanner && (
           <motion.div
             initial={{ opacity: 0, y: 50, scale: 0.9 }}
-            animate={{ opacity: 1, y: [0, -8, 0], scale: 1 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 50, scale: 0.9 }}
-            transition={{
-              y: { repeat: Infinity, duration: 2.5, ease: "easeInOut" },
-              opacity: { duration: 0.4 }
-            }}
+            transition={{ duration: 0.3 }}
             className="fixed bottom-6 left-6 z-[9999] max-w-xs sm:max-w-sm w-full bg-[#1E3926] text-white p-4 rounded-2xl border-2 border-[#C8A25D] shadow-2xl overflow-hidden"
           >
             {/* Glowing Accent Top Bar */}
@@ -1058,11 +1096,11 @@ export default function Home() {
 
             <div className="flex items-center space-x-3.5">
               {/* Banner Image Thumbnail */}
-              {currentBanner?.image && (
+              {activeFloatingBanner?.image && (
                 <div className="w-16 h-16 rounded-xl overflow-hidden border border-[#C8A25D]/40 shrink-0 bg-black/20">
                   <img
-                    src={getBannerImage(currentBanner)}
-                    alt={currentBanner.title}
+                    src={getBannerImage(activeFloatingBanner)}
+                    alt={activeFloatingBanner.title}
                     className="w-full h-full object-cover"
                   />
                 </div>
@@ -1073,17 +1111,17 @@ export default function Home() {
                   ⚡ FESTIVE OFFER
                 </span>
                 <h4 className="font-serif font-extrabold text-xs text-white truncate leading-tight">
-                  {currentBanner?.title || 'Special Heritage Discount'}
+                  {activeFloatingBanner?.title || 'Special Heritage Discount'}
                 </h4>
                 <p className="text-[10px] text-[#FAF7F2]/80 line-clamp-1 font-sans">
-                  {currentBanner?.subtitle || 'Order now and enjoy fresh Bihari delicacies!'}
+                  {activeFloatingBanner?.subtitle || 'Order now and enjoy fresh Bihari delicacies!'}
                 </p>
                 <Link
-                  to={currentBanner?.buttonLink || '/shop'}
+                  to={activeFloatingBanner?.buttonLink || '/shop'}
                   onClick={() => setShowFloatingBanner(false)}
                   className="inline-flex items-center space-x-1 text-[10px] font-extrabold text-[#C8A25D] hover:underline uppercase tracking-wider pt-0.5"
                 >
-                  <span>{currentBanner?.buttonText || 'Shop Now'}</span>
+                  <span>{activeFloatingBanner?.buttonText || 'Shop Now'}</span>
                   <ArrowRight size={11} />
                 </Link>
               </div>

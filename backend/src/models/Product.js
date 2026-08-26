@@ -38,6 +38,29 @@ const productSchema = new mongoose.Schema(
       default: 0,
       min: 0
     },
+    blockedInOrders: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
+    isBundle: {
+      type: Boolean,
+      default: false
+    },
+    bundleItems: [
+      {
+        productId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Product"
+        },
+        productName: String,
+        sku: String,
+        quantity: {
+          type: Number,
+          default: 1
+        }
+      }
+    ],
     status: {
       type: String,
       enum: ["Active", "Inactive"],

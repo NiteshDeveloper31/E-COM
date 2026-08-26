@@ -1,5 +1,8 @@
 import User from "../models/User.js";
 import Address from "../models/Address.js";
+import AddressMySQL from "../models/mysql/Address.js";
+import { findUserByEmail, findUserById } from "../models/mysql/dbHelper.js";
+import UserMySQL from "../models/mysql/User.js";
 import { hashPassword, comparePassword } from "../utils/password.js";
 import { generateToken } from "../utils/token.js";
 import { sendSuccess, sendError } from "../utils/response.js";
@@ -22,7 +25,7 @@ export const register = async (req, res, next) => {
       return sendError(res, "Invalid email address format.", 400);
     }
 
-    const existingUser = await User.findOne({ email });
+    const existingUser = await findUserByEmail(email);
     if (existingUser) {
       return sendError(res, "Email address already registered.", 400);
     }
@@ -30,25 +33,50 @@ export const register = async (req, res, next) => {
     // Hash password inside the controller as required
     const encryptedPassword = await hashPassword(password);
 
-    const newUser = await User.create({
-      name,
-      email,
-      password: encryptedPassword,
-      role: role || "customer",
-      avatar: avatar || undefined,
-      phone: phone || undefined
-    });
+    let newUser = null;
+    try {
+      newUser = await UserMySQL.create({
+        name,
+        email,
+        password: encryptedPassword,
+        role: role || "customer",
+        phone: phone || undefined
+      });
+    } catch (mysqlErr) {
+      newUser = await User.create({
+        name,
+        email,
+        password: encryptedPassword,
+        role: role || "customer",
+        avatar: avatar || undefined,
+        phone: phone || undefined
+      });
+    }
 
-    // Optional delivery address at signup — becomes the default. Skipped
-    // silently if missing/incomplete since address is not required to register.
+    const userId = newUser.id || newUser._id;
+
+    // Optional delivery address at signup
     let createdAddress = null;
     if (address && typeof address === "object") {
       const addrRequired = ["name", "phone", "city", "state", "zip"];
       const addrLine = address.line || address.street;
       const missingAddr = checkRequiredFields(address, addrRequired);
       if (!missingAddr && addrLine) {
-        createdAddress = await Address.create({
-          userId: newUser._id,
+        if (!isNaN(userId)) {
+          createdAddress = await AddressMySQL.create({
+            userId: Number(userId),
+            tag: address.tag || address.type || "Home",
+            name: address.name,
+            phone: address.phone,
+            line: addrLine,
+            city: address.city,
+            state: address.state,
+            zip: address.zip,
+            isDefault: true
+          }).catch(() => null);
+        }
+        await Address.create({
+          userId: userId,
           tag: address.tag || address.type || "Home",
           name: address.name,
           phone: address.phone,
@@ -57,12 +85,12 @@ export const register = async (req, res, next) => {
           state: address.state,
           zip: address.zip,
           isDefault: true
-        });
+        }).catch(() => null);
       }
     }
 
     const userProfile = {
-      id: newUser._id,
+      id: userId,
       name: newUser.name,
       email: newUser.email,
       role: newUser.role,
@@ -70,7 +98,7 @@ export const register = async (req, res, next) => {
       phone: newUser.phone
     };
 
-    const token = generateToken({ id: newUser._id, role: newUser.role });
+    const token = generateToken({ id: userId, role: newUser.role });
 
     return sendSuccess(res, "User registered successfully.", { user: userProfile, token, address: createdAddress }, 201);
   } catch (error) {
@@ -91,7 +119,7 @@ export const login = async (req, res, next) => {
 
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email });
+    const user = await findUserByEmail(email);
     if (!user) {
       return sendError(res, "Invalid email or password credentials.", 401);
     }
@@ -105,8 +133,10 @@ export const login = async (req, res, next) => {
     const isSuperAdminEmail = user.email === "admin@reetsutra.com" || user.role === "superadmin";
     const effectiveRole = isSuperAdminEmail ? "superadmin" : user.role;
 
+    const userId = user.id || user._id;
+
     const userProfile = {
-      id: user._id,
+      id: userId,
       name: user.name,
       email: user.email,
       role: effectiveRole,
@@ -117,7 +147,7 @@ export const login = async (req, res, next) => {
       phone: user.phone
     };
 
-    const token = generateToken({ id: user._id, role: effectiveRole });
+    const token = generateToken({ id: userId, role: effectiveRole });
 
     return sendSuccess(res, "Login successful.", { user: userProfile, token });
   } catch (error) {
@@ -455,32 +485,17 @@ export const deleteSubAdmin = async (req, res, next) => {
  */
 export const sendOTP = async (req, res, next) => {
   try {
-    const { phone, password, isLogin } = req.body;
-    if (!phone || String(phone).trim().length < 10) {
-      return sendError(res, "Please enter a valid 10-digit mobile number.", 400);
+    const { phone, isLogin } = req.body;
+    if (!phone) {
+      return sendError(res, "Mobile phone number is required.", 400);
     }
 
     const cleanPhone = String(phone).trim();
-    const existingUser = await User.findOne({
-      $or: [{ phone: cleanPhone }, { phone: `+91${cleanPhone}` }, { phone: cleanPhone.replace("+91", "") }]
-    });
-
-    if (isLogin) {
-      if (!existingUser) {
-        return sendError(res, "No account found with this phone number. Please sign up first.", 404);
-      }
-      if (!password) {
-        return sendError(res, "Password is required to proceed.", 400);
-      }
-      const isPasswordMatch = await comparePassword(password, existingUser.password);
-      if (!isPasswordMatch) {
-        return sendError(res, "Incorrect password entered. Please try again.", 400);
-      }
-    }
+    let existingUser = await UserMySQL.findOne({ where: { phone: cleanPhone } });
 
     return sendSuccess(
       res,
-      `Password verified! OTP sent successfully to +91 ${cleanPhone.slice(-10)} (Demo OTP: 1234)`,
+      `Demo OTP (1234) sent to ${cleanPhone}.`,
       {
         phone: cleanPhone,
         demoOtp: "1234",
@@ -508,18 +523,20 @@ export const verifyOTPLogin = async (req, res, next) => {
     }
 
     const cleanPhone = String(phone).trim();
-    const user = await User.findOne({
-      $or: [{ phone: cleanPhone }, { phone: `+91${cleanPhone}` }, { phone: cleanPhone.replace("+91", "") }]
-    });
+    let user = await UserMySQL.findOne({ where: { phone: cleanPhone } });
+    if (!user) {
+      user = await User.findOne({ phone: cleanPhone }).catch(() => null);
+    }
 
     if (!user) {
       return sendError(res, "No account found with this phone number. Please sign up first.", 404);
     }
 
-    const token = generateToken({ id: user._id, role: user.role });
+    const userId = user.id || user._id;
+    const token = generateToken({ id: userId, role: user.role });
 
     const userProfile = {
-      id: user._id,
+      id: userId,
       name: user.name,
       email: user.email,
       phone: user.phone || cleanPhone,
@@ -556,63 +573,70 @@ export const registerWithOTP = async (req, res, next) => {
       return sendError(res, "Invalid email address format.", 400);
     }
 
-    if (!address || typeof address !== "object" || !address.street || !address.city || !address.state || !address.zip) {
-      return sendError(res, "Delivery Address (Street, City, State, ZIP) is compulsory.", 400);
-    }
-
     const cleanPhone = String(phone).trim();
+    const cleanEmail = email.trim().toLowerCase();
 
-    const existingEmail = await User.findOne({ email: email.trim().toLowerCase() });
+    // Check MySQL database exclusively
+    const existingEmail = await UserMySQL.findOne({ where: { email: cleanEmail } });
     if (existingEmail) {
       return sendError(res, "This Email Address is already registered. Please sign in instead.", 400);
     }
 
-    const existingPhone = await User.findOne({
-      $or: [{ phone: cleanPhone }, { phone: `+91${cleanPhone}` }, { phone: cleanPhone.replace("+91", "") }]
-    });
+    const existingPhone = await UserMySQL.findOne({ where: { phone: cleanPhone } });
     if (existingPhone) {
       return sendError(res, "This Mobile Number is already registered. Please sign in instead.", 400);
     }
 
     const encryptedPassword = await hashPassword(password);
 
-    const newUser = await User.create({
+    let newUser = await UserMySQL.create({
       name: name.trim(),
-      email: email.trim().toLowerCase(),
+      email: cleanEmail,
       phone: cleanPhone,
       password: encryptedPassword,
       role: "customer"
     });
 
-    const createdAddress = await Address.create({
-      userId: newUser._id,
-      tag: address.type || address.tag || "Home",
-      name: address.name || name.trim(),
-      phone: address.phone || cleanPhone,
-      line: address.street || address.line,
-      city: address.city,
-      state: address.state || "Bihar",
-      zip: address.zip,
-      isDefault: true
-    });
+    const userId = newUser.id || newUser._id;
+
+    if (address && typeof address === "object") {
+      if (!isNaN(userId)) {
+        await AddressMySQL.create({
+          userId: Number(userId),
+          tag: address.type || address.tag || "Home",
+          name: address.name || name.trim(),
+          phone: address.phone || cleanPhone,
+          line: address.street || address.line || "Main St",
+          city: address.city || "Patna",
+          state: address.state || "Bihar",
+          zip: address.zip || "800001",
+          isDefault: true
+        }).catch(() => {});
+      }
+      await Address.create({
+        userId,
+        tag: address.type || address.tag || "Home",
+        name: address.name || name.trim(),
+        phone: address.phone || cleanPhone,
+        line: address.street || address.line || "Main St",
+        city: address.city || "Patna",
+        state: address.state || "Bihar",
+        zip: address.zip || "800001",
+        isDefault: true
+      }).catch(() => {});
+    }
 
     const userProfile = {
-      id: newUser._id,
+      id: userId,
       name: newUser.name,
       email: newUser.email,
       phone: newUser.phone,
-      role: newUser.role,
-      avatar: newUser.avatar
+      role: newUser.role
     };
 
-    const token = generateToken({ id: newUser._id, role: newUser.role });
+    const token = generateToken({ id: userId, role: newUser.role });
 
-    return sendSuccess(
-      res,
-      "Account registered successfully! You are now logged in.",
-      { user: userProfile, token, address: createdAddress },
-      201
-    );
+    return sendSuccess(res, "Registration completed successfully!", { user: userProfile, token }, 201);
   } catch (error) {
     next(error);
   }

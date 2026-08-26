@@ -1,6 +1,6 @@
 import { verifyToken } from "../utils/token.js";
 import { sendError } from "../utils/response.js";
-import User from "../models/User.js";
+import { findUserById } from "../models/mysql/dbHelper.js";
 
 /**
  * Middleware to protect routes via JWT token authorization.
@@ -20,7 +20,7 @@ export const authMiddleware = async (req, res, next) => {
       return sendError(res, "Token verification failed. Access denied.", 401);
     }
 
-    const user = await User.findById(decoded.id).select("-password");
+    const user = await findUserById(decoded.id);
     if (!user) {
       return sendError(res, "Account associated with token no longer exists.", 401);
     }

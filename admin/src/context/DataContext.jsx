@@ -38,6 +38,7 @@ export const DataProvider = ({ children }) => {
   const [orders, setOrders] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [banners, setBanners] = useState([]);
+  const [recipes, setRecipes] = useState([]);
   const [subAdmins, setSubAdmins] = useState([]);
   const [grnLogs, setGrnLogs] = useState([]);
   const [dashboardStats, setDashboardStats] = useState(null);
@@ -49,16 +50,15 @@ export const DataProvider = ({ children }) => {
 
   // Toast System state
   const [toast, setToast] = useState(null);
-  const [toastTimeoutId, setToastTimeoutId] = useState(null);
+  const toastTimeoutRef = React.useRef(null);
 
   const showToast = useCallback((message, type = 'error') => {
-    if (toastTimeoutId) clearTimeout(toastTimeoutId);
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
     setToast({ message, type });
-    const id = setTimeout(() => {
+    toastTimeoutRef.current = setTimeout(() => {
       setToast(null);
     }, 4000);
-    setToastTimeoutId(id);
-  }, [toastTimeoutId]);
+  }, []);
 
   const logoutAdmin = useCallback(() => {
     localStorage.removeItem("rs_admin_token");
@@ -137,13 +137,13 @@ export const DataProvider = ({ children }) => {
     try {
       const data = await apiRequest("/orders?limit=100");
       const mappedOrders = (data.orders || []).map((order) => {
-        const u = order.userId || {};
+        const u = typeof order.userId === "object" && order.userId !== null ? order.userId : {};
         return {
           ...order,
-          id: order._id || order.id,
-          customerName: u.name || "N/A",
-          customerEmail: u.email || "",
-          customerPhone: u.phone || order.shippingAddress?.phone || "N/A",
+          id: order.id || order._id,
+          customerName: order.customerName || u.name || "N/A",
+          customerEmail: order.customerEmail || u.email || "",
+          customerPhone: order.customerPhone || u.phone || order.shippingAddress?.phone || "N/A",
           date: order.createdAt
             ? new Date(order.createdAt).toLocaleDateString("en-IN", {
                 day: "numeric",
@@ -181,6 +181,15 @@ export const DataProvider = ({ children }) => {
     }
   }, [apiRequest]);
 
+  const fetchRecipes = useCallback(async () => {
+    try {
+      const data = await apiRequest("/recipes/admin");
+      setRecipes(data || []);
+    } catch (err) {
+      console.error("Failed to fetch recipes:", err);
+    }
+  }, [apiRequest]);
+
   const fetchDashboardStats = useCallback(async () => {
     try {
       const data = await apiRequest("/dashboard/stats");
@@ -215,6 +224,7 @@ export const DataProvider = ({ children }) => {
       fetchOrders(),
       fetchCustomers(),
       fetchBanners(),
+      fetchRecipes(),
       fetchDashboardStats(),
       fetchSettings()
     ]).finally(() => setLoading(false));
@@ -228,7 +238,7 @@ export const DataProvider = ({ children }) => {
     }, 30000);
 
     return () => clearInterval(pollingInterval);
-  }, [token, fetchCurrentProfile, fetchProducts, fetchCategories, fetchOrders, fetchCustomers, fetchBanners, fetchDashboardStats]);
+  }, [token]);
 
   // --- CRUD HANDLERS ---
 
@@ -347,11 +357,35 @@ export const DataProvider = ({ children }) => {
   };
 
   // Banner CRUD
+  const uploadBannerImageFile = async (base64Data) => {
+    if (!base64Data || !base64Data.startsWith("data:")) return base64Data;
+    const res = await apiRequest("/banners/upload", "POST", { base64Data });
+    return res?.url || base64Data;
+  };
+
   const addBanner = async (bannerData) => {
     try {
-      const newBanner = await apiRequest("/banners", "POST", bannerData);
+      showToast("Saving original HD banner image to server...", "info");
+      let desktopUrl = bannerData.desktopImage;
+      let mobileUrl = bannerData.mobileImage;
+
+      if (desktopUrl && desktopUrl.startsWith("data:")) {
+        desktopUrl = await uploadBannerImageFile(desktopUrl);
+      }
+      if (mobileUrl && mobileUrl.startsWith("data:")) {
+        mobileUrl = await uploadBannerImageFile(mobileUrl);
+      }
+
+      const finalPayload = {
+        ...bannerData,
+        desktopImage: desktopUrl,
+        mobileImage: mobileUrl,
+        image: desktopUrl || mobileUrl || ""
+      };
+
+      const newBanner = await apiRequest("/banners", "POST", finalPayload);
       setBanners((prev) => [newBanner, ...prev]);
-      showToast("Banner uploaded successfully.", "success");
+      showToast("Banner campaign created successfully in original HD quality!", "success");
     } catch (err) {
       showToast(`Failed to upload banner: ${err.message}`);
     }
@@ -359,9 +393,27 @@ export const DataProvider = ({ children }) => {
 
   const updateBanner = async (id, updatedFields) => {
     try {
-      const updated = await apiRequest(`/banners/${id}`, "PUT", updatedFields);
+      showToast("Saving original HD banner image to server...", "info");
+      let desktopUrl = updatedFields.desktopImage;
+      let mobileUrl = updatedFields.mobileImage;
+
+      if (desktopUrl && desktopUrl.startsWith("data:")) {
+        desktopUrl = await uploadBannerImageFile(desktopUrl);
+      }
+      if (mobileUrl && mobileUrl.startsWith("data:")) {
+        mobileUrl = await uploadBannerImageFile(mobileUrl);
+      }
+
+      const finalPayload = {
+        ...updatedFields,
+        desktopImage: desktopUrl,
+        mobileImage: mobileUrl,
+        image: desktopUrl || mobileUrl || ""
+      };
+
+      const updated = await apiRequest(`/banners/${id}`, "PUT", finalPayload);
       setBanners((prev) => prev.map((b) => (b._id === id || b.id === id ? updated : b)));
-      showToast("Banner updated successfully.", "success");
+      showToast("Banner campaign updated successfully in original HD quality!", "success");
     } catch (err) {
       showToast(`Failed to edit banner: ${err.message}`);
     }
@@ -500,6 +552,41 @@ export const DataProvider = ({ children }) => {
     }
   };
 
+  const addRecipe = async (recipeData) => {
+    try {
+      const newRecipe = await apiRequest("/recipes", "POST", recipeData);
+      setRecipes(prev => [newRecipe, ...prev]);
+      showToast("Recipe card created successfully!", "success");
+      return newRecipe;
+    } catch (err) {
+      showToast(`Failed to create recipe: ${err.message}`);
+      throw err;
+    }
+  };
+
+  const updateRecipe = async (id, recipeData) => {
+    try {
+      const updated = await apiRequest(`/recipes/${id}`, "PUT", recipeData);
+      setRecipes(prev => prev.map(r => (r._id === id || r.id === id) ? updated : r));
+      showToast("Recipe card updated successfully!", "success");
+      return updated;
+    } catch (err) {
+      showToast(`Failed to update recipe: ${err.message}`);
+      throw err;
+    }
+  };
+
+  const deleteRecipe = async (id) => {
+    try {
+      await apiRequest(`/recipes/${id}`, "DELETE");
+      setRecipes(prev => prev.filter(r => r._id !== id && r.id !== id));
+      showToast("Recipe card deleted successfully!", "success");
+    } catch (err) {
+      showToast(`Failed to delete recipe: ${err.message}`);
+      throw err;
+    }
+  };
+
   return (
     <DataContext.Provider
       value={{
@@ -510,6 +597,7 @@ export const DataProvider = ({ children }) => {
         orders,
         customers,
         banners,
+        recipes,
         subAdmins,
         grnLogs,
         dashboardStats,
@@ -536,6 +624,10 @@ export const DataProvider = ({ children }) => {
         addBanner,
         updateBanner,
         deleteBanner,
+        fetchRecipes,
+        addRecipe,
+        updateRecipe,
+        deleteRecipe,
         updateSettings,
         markAllNotificationsRead,
         showToast

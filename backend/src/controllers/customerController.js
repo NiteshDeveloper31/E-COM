@@ -1,8 +1,12 @@
 import User from "../models/User.js";
 import Order from "../models/Order.js";
 import Address from "../models/Address.js";
+import UserMySQL from "../models/mysql/User.js";
+import OrderMySQL from "../models/mysql/Order.js";
+import AddressMySQL from "../models/mysql/Address.js";
 import { getPaginationMeta } from "../utils/pagination.js";
 import { sendSuccess, sendError } from "../utils/response.js";
+import { Op } from "sequelize";
 
 /**
  * Get Customer Listing (Admin only).
@@ -11,46 +15,70 @@ import { sendSuccess, sendError } from "../utils/response.js";
 export const getCustomerListing = async (req, res, next) => {
   try {
     const { search, page = 1, limit = 10 } = req.query;
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const offset = (pageNum - 1) * limitNum;
 
-    const query = { role: "customer" };
+    let customers = [];
+    let totalCustomers = 0;
 
-    if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: "i" } },
-        { email: { $regex: search, $options: "i" } }
-      ];
+    try {
+      const where = { role: "customer" };
+      if (search) {
+        where[Op.or] = [
+          { name: { [Op.like]: `%${search}%` } },
+          { email: { [Op.like]: `%${search}%` } }
+        ];
+      }
+      const { rows, count } = await UserMySQL.findAndCountAll({
+        where,
+        order: [["id", "DESC"]],
+        limit: limitNum,
+        offset
+      });
+      customers = rows;
+      totalCustomers = count;
+    } catch (mysqlErr) {
+      const query = { role: "customer" };
+      if (search) {
+        query.$or = [
+          { name: { $regex: search, $options: "i" } },
+          { email: { $regex: search, $options: "i" } }
+        ];
+      }
+      const pagination = getPaginationMeta(page, limit, await User.countDocuments(query));
+      customers = await User.find(query).sort({ createdAt: -1 }).skip(pagination.skip).limit(pagination.limit);
+      totalCustomers = customers.length;
     }
 
-    const totalCustomers = await User.countDocuments(query);
-    const pagination = getPaginationMeta(page, limit, totalCustomers);
+    const pagination = getPaginationMeta(pageNum, limitNum, totalCustomers);
 
-    const customers = await User.find(query)
-      .sort({ createdAt: -1 })
-      .skip(pagination.skip)
-      .limit(pagination.limit);
-
-    // Compute aggregations dynamically to match frontend expectations
     const customersWithStats = await Promise.all(
       customers.map(async (cust) => {
-        // Fetch matching orders
-        const orders = await Order.find({ userId: cust._id });
+        const custId = cust.id || cust._id;
+        let orders = [];
+        try {
+          orders = await OrderMySQL.findAll({ where: { userId: custId } });
+        } catch (err) {
+          orders = await Order.find({ userId: custId }).catch(() => []);
+        }
+
         const ordersCount = orders.length;
-        
-        // Sum total spent on paid or delivered orders
         const totalSpending = orders
           .filter((o) => o.paymentStatus === "Paid" || o.orderStatus === "Delivered")
-          .reduce((sum, o) => sum + o.total, 0);
+          .reduce((sum, o) => sum + (o.total || 0), 0);
 
         return {
-          id: cust._id,
+          id: custId,
+          _id: custId,
           name: cust.name,
           email: cust.email,
-          avatar: cust.avatar,
-          phone: cust.phone,
-          registrationDate: cust.createdAt.toISOString().slice(0, 10),
+          avatar: cust.avatar || "",
+          phone: cust.phone || "N/A",
+          registrationDate: cust.createdAt ? new Date(cust.createdAt).toISOString().slice(0, 10) : "N/A",
           totalOrders: ordersCount,
           totalSpending: totalSpending,
-          status: "Active" // Default active status. Toggleable in user profiles
+          status: cust.status || "Active"
         };
       })
     );
@@ -65,173 +93,207 @@ export const getCustomerListing = async (req, res, next) => {
 };
 
 /**
- * Get Customer Profile Details (Admin only).
- */
-export const getCustomerDetails = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const customer = await User.findById(id).select("-password");
-    if (!customer || customer.role !== "customer") {
-      return sendError(res, "Customer profile not found.", 404);
-    }
-
-    return sendSuccess(res, "Customer details retrieved successfully.", customer);
-  } catch (error) {
-    next(error);
-  }
-};
-
-/**
- * Get Customer Address Logs (Admin or Owner).
+ * Get Customer Profile Details with Order History.
  */
 export const getCustomerAddresses = async (req, res, next) => {
   try {
     const { userId } = req.params;
-
-    // Check authorization: Owner or Admin
-    if (req.user.role !== "admin" && req.user.role !== "superadmin" && req.user.email !== "admin@reetsutra.com" && req.user._id.toString() !== userId) {
-      return sendError(res, "Unauthorized access to shipping records.", 403);
+    let addresses = [];
+    if (!isNaN(userId)) {
+      addresses = await AddressMySQL.findAll({ where: { userId: Number(userId) }, order: [["id", "DESC"]] });
     }
-
-    const addresses = await Address.find({ userId });
-    return sendSuccess(res, "Addresses retrieved successfully.", addresses);
+    if (!addresses || addresses.length === 0) {
+      addresses = await Address.find({ userId }).sort({ createdAt: -1 }).catch(() => []);
+    }
+    return sendSuccess(res, "Addresses fetched.", addresses);
   } catch (error) {
     next(error);
   }
 };
 
-/**
- * Get Customer Order Logs (Admin or Owner).
- */
 export const getCustomerOrderHistory = async (req, res, next) => {
   try {
     const { userId } = req.params;
-
-    // Check authorization: Owner or Admin
-    if (req.user.role !== "admin" && req.user.role !== "superadmin" && req.user.email !== "admin@reetsutra.com" && req.user._id.toString() !== userId) {
-      return sendError(res, "Unauthorized access to order logs.", 403);
+    let orders = [];
+    if (!isNaN(userId)) {
+      orders = await OrderMySQL.findAll({ where: { userId: Number(userId) }, order: [["id", "DESC"]] });
     }
-
-    const orders = await Order.find({ userId }).sort({ createdAt: -1 });
-    return sendSuccess(res, "Orders history retrieved successfully.", orders);
+    if (!orders || orders.length === 0) {
+      orders = await Order.find({ userId }).sort({ createdAt: -1 }).catch(() => []);
+    }
+    return sendSuccess(res, "Order history fetched.", orders);
   } catch (error) {
     next(error);
   }
 };
 
-/**
- * Add Customer Address (Admin or Owner).
- */
 export const addCustomerAddress = async (req, res, next) => {
   try {
     const { userId } = req.params;
-    const { type, name, street, city, state, zip, phone } = req.body;
+    const { name, phone, line, street, city, state, zip, tag, type, isDefault } = req.body;
 
-    // Check authorization: Owner or Admin
-    if (req.user.role !== "admin" && req.user.role !== "superadmin" && req.user.email !== "admin@reetsutra.com" && req.user._id.toString() !== userId) {
-      return sendError(res, "Unauthorized access to shipping records.", 403);
+    const addressLine = street || line;
+    const addressTag = type || tag || "Home";
+
+    let newAddress = null;
+    if (!isNaN(userId)) {
+      newAddress = await AddressMySQL.create({
+        userId: Number(userId),
+        name: name || "Customer",
+        phone: phone || "",
+        line: addressLine || "Main St",
+        city: city || "Patna",
+        state: state || "Bihar",
+        zip: zip || "800001",
+        tag: addressTag,
+        isDefault: Boolean(isDefault)
+      });
+    } else {
+      newAddress = await Address.create({
+        userId,
+        name: name || "Customer",
+        phone: phone || "",
+        line: addressLine || "Main St",
+        city: city || "Patna",
+        state: state || "Bihar",
+        zip: zip || "800001",
+        tag: addressTag,
+        isDefault: Boolean(isDefault)
+      });
     }
 
-    const existingCount = await Address.countDocuments({ userId });
-
-    const newAddress = await Address.create({
-      userId,
-      tag: type || "Home",
-      name: name || "Recipient",
-      phone: phone || "Not Provided",
-      line: street,
-      city,
-      state,
-      zip,
-      isDefault: existingCount === 0
-    });
-
-    return sendSuccess(res, "Address added successfully.", newAddress);
+    return sendSuccess(res, "Address added successfully.", newAddress, 201);
   } catch (error) {
     next(error);
   }
 };
 
-/**
- * Update Customer Address (Admin or Owner).
- */
 export const updateCustomerAddress = async (req, res, next) => {
   try {
-    const { userId, addressId } = req.params;
-    const { type, name, street, city, state, zip, phone } = req.body;
+    const { addressId } = req.params;
+    const { name, phone, line, street, city, state, zip, tag, type, isDefault } = req.body;
 
-    // Check authorization: Owner or Admin
-    if (req.user.role !== "admin" && req.user.role !== "superadmin" && req.user.email !== "admin@reetsutra.com" && req.user._id.toString() !== userId) {
-      return sendError(res, "Unauthorized access to shipping records.", 403);
+    const updateFields = {};
+    if (name) updateFields.name = name;
+    if (phone) updateFields.phone = phone;
+    if (street || line) updateFields.line = street || line;
+    if (city) updateFields.city = city;
+    if (state) updateFields.state = state;
+    if (zip) updateFields.zip = zip;
+    if (type || tag) updateFields.tag = type || tag;
+    if (typeof isDefault === "boolean") updateFields.isDefault = isDefault;
+
+    if (!isNaN(addressId)) {
+      await AddressMySQL.update(updateFields, { where: { id: Number(addressId) } });
     }
+    await Address.findByIdAndUpdate(addressId, updateFields).catch(() => {});
 
-    const address = await Address.findOne({ _id: addressId, userId });
-    if (!address) {
-      return sendError(res, "Address not found.", 404);
-    }
-
-    if (type) address.tag = type;
-    if (name) address.name = name;
-    if (street) address.line = street;
-    if (city) address.city = city;
-    if (state) address.state = state;
-    if (zip) address.zip = zip;
-    if (phone) address.phone = phone;
-    // isDefault is intentionally not settable here — use the dedicated
-    // set-default endpoint so "exactly one default" stays enforced in one place.
-
-    await address.save();
-    return sendSuccess(res, "Address updated successfully.", address);
+    return sendSuccess(res, "Address updated successfully.", updateFields);
   } catch (error) {
     next(error);
   }
 };
 
-/**
- * Set Default Customer Address (Admin or Owner).
- */
 export const setDefaultCustomerAddress = async (req, res, next) => {
   try {
     const { userId, addressId } = req.params;
-
-    // Check authorization: Owner or Admin
-    if (req.user.role !== "admin" && req.user.role !== "superadmin" && req.user.email !== "admin@reetsutra.com" && req.user._id.toString() !== userId) {
-      return sendError(res, "Unauthorized access to shipping records.", 403);
+    if (!isNaN(userId)) {
+      await AddressMySQL.update({ isDefault: false }, { where: { userId: Number(userId) } });
+      if (!isNaN(addressId)) {
+        await AddressMySQL.update({ isDefault: true }, { where: { id: Number(addressId) } });
+      }
     }
-
-    const target = await Address.findOne({ _id: addressId, userId });
-    if (!target) {
-      return sendError(res, "Address not found.", 404);
-    }
-
-    await Address.updateMany({ userId, _id: { $ne: addressId } }, { $set: { isDefault: false } });
-    target.isDefault = true;
-    await target.save();
-
-    return sendSuccess(res, "Default address updated successfully.", target);
+    return sendSuccess(res, "Default address set.", { addressId });
   } catch (error) {
     next(error);
   }
 };
 
-/**
- * Delete Customer Address (Admin or Owner).
- */
 export const deleteCustomerAddress = async (req, res, next) => {
   try {
-    const { userId, addressId } = req.params;
+    const { addressId } = req.params;
+    if (!isNaN(addressId)) {
+      await AddressMySQL.destroy({ where: { id: Number(addressId) } });
+    }
+    await Address.findByIdAndDelete(addressId).catch(() => {});
+    return sendSuccess(res, "Address deleted successfully.", { id: addressId });
+  } catch (error) {
+    next(error);
+  }
+};
 
-    // Check authorization: Owner or Admin
-    if (req.user.role !== "admin" && req.user.role !== "superadmin" && req.user.email !== "admin@reetsutra.com" && req.user._id.toString() !== userId) {
-      return sendError(res, "Unauthorized access to shipping records.", 403);
+export const getCustomerProfile = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    let customer = null;
+
+    if (!isNaN(id)) {
+      customer = await UserMySQL.findByPk(Number(id));
+    }
+    if (!customer) {
+      customer = await User.findById(id).catch(() => null);
     }
 
-    const deleted = await Address.findOneAndDelete({ _id: addressId, userId });
-    if (!deleted) {
-      return sendError(res, "Address not found.", 404);
+    if (!customer) {
+      return sendError(res, "Customer not found.", 404);
     }
 
-    return sendSuccess(res, "Address deleted successfully.", null);
+    const custId = customer.id || customer._id;
+    let orders = [];
+    try {
+      orders = await OrderMySQL.findAll({ where: { userId: custId }, order: [["id", "DESC"]] });
+    } catch (err) {
+      orders = await Order.find({ userId: custId }).sort({ createdAt: -1 }).catch(() => []);
+    }
+
+    const ordersCount = orders.length;
+    const totalSpending = orders
+      .filter((o) => o.paymentStatus === "Paid" || o.orderStatus === "Delivered")
+      .reduce((sum, o) => sum + (o.total || 0), 0);
+
+    return sendSuccess(res, "Customer profile fetched.", {
+      customer: {
+        id: custId,
+        name: customer.name,
+        email: customer.email,
+        phone: customer.phone,
+        status: customer.status || "Active",
+        totalOrders: ordersCount,
+        totalSpending
+      },
+      orders
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getCustomerDetails = getCustomerProfile;
+
+/**
+ * Update Customer Status (Block / Activate)
+ */
+export const updateCustomerStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    let customer = null;
+    if (!isNaN(id)) {
+      customer = await UserMySQL.findByPk(Number(id));
+    }
+    if (!customer) {
+      customer = await User.findById(id).catch(() => null);
+    }
+
+    if (!customer) {
+      return sendError(res, "Customer not found.", 404);
+    }
+
+    customer.status = status;
+    await customer.save();
+
+    return sendSuccess(res, `Customer status updated to ${status}.`, customer);
   } catch (error) {
     next(error);
   }

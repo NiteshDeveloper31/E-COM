@@ -19,10 +19,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import logoImg from '../assets/rs_monogram_logo.png';
 
 const LogoMonogram = () => (
-  <img 
-    src={logoImg} 
-    alt="ReetSutra Monogram Logo" 
-    className="h-8 md:h-9 object-contain shrink-0 mix-blend-multiply" 
+  <img
+    src={logoImg}
+    alt="ReetSutra Monogram Logo"
+    className="h-8 md:h-9 object-contain shrink-0 mix-blend-multiply"
   />
 );
 
@@ -57,7 +57,7 @@ export default function Header() {
     { name: 'Gift Boxes', path: '/shop?category=Gift Boxes' },
     { name: 'Combo Offers', path: '/shop?category=Combos' },
     { name: 'Our Story', path: '/about' },
-    { name: 'Recipes & Blog', path: '#' }
+    { name: 'Recipes & Blog', path: '/recipes-blog' }
   ];
 
   return (
@@ -67,7 +67,7 @@ export default function Header() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-8 flex justify-between items-center text-[10.5px] font-extrabold tracking-wider uppercase">
           <div className="flex items-center gap-1.5 text-[#C5972E]">
             <Leaf className="w-3 h-3 text-[#C5972E] fill-current shrink-0" />
-            <span className="text-[#FAF6EF]">Made with Tradition, Shared with Love, From Bihar to Your Home.</span>
+            <span className="text-[#FAF6EF]">Made with Tradition, Shared with Love.</span>
           </div>
           <div className="flex items-center gap-4 text-[#FAF6EF]">
             <span className="flex items-center gap-1.5">
@@ -104,7 +104,7 @@ export default function Header() {
           {/* Logo Brand: Vertically Stacked RS Monogram + ReetSutra + Tagline */}
           <Link to="/" className="flex flex-col items-center justify-center text-center group shrink-0 py-0.5">
             <LogoMonogram />
-            <span 
+            <span
               className="text-lg md:text-2xl font-extrabold tracking-tight transition-all duration-300 leading-none mt-1"
               style={{ fontFamily: "'Playfair Display', 'Georgia', serif" }}
             >
@@ -112,12 +112,12 @@ export default function Header() {
               <span className="text-[#C5972E]">Sutra</span>
             </span>
             <span className="text-[7.5px] md:text-[8.5px] font-sans font-bold tracking-[0.24em] text-[#143021]/85 uppercase mt-0.5">
-              THE TASTE OF BIHAR
+              Where Tradition Meets Purity
             </span>
           </Link>
 
           {/* Desktop Navigation: Matching Reference Image Color & Serif Typography */}
-          <nav className="hidden lg:flex items-center space-x-2.5 xl:space-x-4">
+          <nav className="hidden lg:flex items-center space-x-1.5 xl:space-x-3 shrink min-w-0">
             {menuItems.map((item) => {
               const currentFullPath = location.pathname + location.search;
               const isActive = item.path === '/'
@@ -128,9 +128,8 @@ export default function Header() {
                   key={item.name}
                   to={item.path}
                   style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
-                  className={`relative text-[11px] xl:text-[12.5px] tracking-wider uppercase font-extrabold transition-colors duration-200 py-2 shrink-0 ${
-                    isActive ? 'text-[#143021]' : 'text-[#2C2216]/85 hover:text-[#C5972E]'
-                  }`}
+                  className={`relative text-[10px] xl:text-[11.5px] tracking-wider uppercase font-extrabold transition-colors duration-200 py-1.5 whitespace-nowrap shrink-0 ${isActive ? 'text-[#143021]' : 'text-[#2C2216]/85 hover:text-[#C5972E]'
+                    }`}
                 >
                   {item.name}
                   {item.name === 'Shop' && (
@@ -149,7 +148,7 @@ export default function Header() {
           </nav>
 
           {/* Action Icons */}
-          <div className="flex items-center space-x-2 md:space-x-3">
+          <div className="flex items-center space-x-1 sm:space-x-2 md:space-x-2.5 shrink-0 z-10 ml-2">
 
             {/* Search Toggle */}
             <button
@@ -296,7 +295,7 @@ export default function Header() {
                 <div className="flex items-center space-x-2">
                   <LogoMonogram />
                   <div className="flex flex-col items-start leading-none">
-                    <span 
+                    <span
                       className="font-serif text-xl font-extrabold tracking-tight"
                       style={{ fontFamily: "'Playfair Display', 'Georgia', serif" }}
                     >

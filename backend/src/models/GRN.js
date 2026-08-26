@@ -3,8 +3,7 @@ import mongoose from "mongoose";
 const grnSchema = new mongoose.Schema(
   {
     productId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Product",
+      type: mongoose.Schema.Types.Mixed,
       required: true
     },
     productName: {

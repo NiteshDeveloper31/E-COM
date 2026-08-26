@@ -30,12 +30,13 @@ export const Inventory = () => {
     if (!orders || !Array.isArray(orders)) return map;
 
     orders.forEach((order) => {
-      // Consider orders that are not Delivered and not Cancelled as "Blocked / In-Process"
-      if (order.orderStatus === "Pending" || order.orderStatus === "Processing" || order.orderStatus === "Shipped" || order.orderStatus === "On Hold") {
+      // Consider orders that are Pending, Processing, or On Hold as "Blocked in Orders"
+      if (order.orderStatus === "Pending" || order.orderStatus === "Processing" || order.orderStatus === "On Hold") {
         (order.items || []).forEach((item) => {
-          const pId = item.productId?._id || item.productId?.id || item.productId;
-          if (pId) {
-            const qty = item.quantity || 0;
+          const rawId = item.productId?._id || item.productId?.id || item.productId;
+          if (rawId) {
+            const pId = String(rawId);
+            const qty = Number(item.quantity || 0);
             map[pId] = (map[pId] || 0) + qty;
           }
         });
@@ -48,18 +49,18 @@ export const Inventory = () => {
   // Transform products with inventory stats
   const inventoryData = useMemo(() => {
     return products.map((p) => {
-      const pId = p._id || p.id;
+      const pId = String(p._id || p.id);
       const goodStock = Number(p.stock || 0);
-      const blocked = Number(blockedStockMap[pId] || 0);
+      const blocked = Number(blockedStockMap[pId] !== undefined ? blockedStockMap[pId] : (p.blockedInOrders || 0));
       const bad = Number(p.badInventory || 0);
-      const totalStock = goodStock + bad;
+      const totalStock = goodStock;
       const available = Math.max(0, goodStock - blocked);
       const categoryName = p.category?.name || (typeof p.category === "string" ? p.category : "Uncategorized");
       const categoryId = p.category?._id || p.category?.id || (typeof p.category === "string" ? p.category : "");
 
       return {
         ...p,
-        id: pId,
+        id: p._id || p.id,
         totalStock,
         blocked,
         bad,

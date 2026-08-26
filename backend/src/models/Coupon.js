@@ -35,14 +35,12 @@ const couponSchema = new mongoose.Schema(
     },
     applicableCategories: [
       {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Category"
+        type: mongoose.Schema.Types.Mixed
       }
     ],
     applicableProducts: [
       {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Product"
+        type: mongoose.Schema.Types.Mixed
       }
     ],
     minOrderAmount: {

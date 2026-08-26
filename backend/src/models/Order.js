@@ -84,6 +84,14 @@ const orderSchema = new mongoose.Schema(
       enum: ["Pending", "Processing", "On Hold", "Shipped", "Delivered", "Cancelled"],
       default: "Pending"
     },
+    isStockDeducted: {
+      type: Boolean,
+      default: false
+    },
+    isSkuVerified: {
+      type: Boolean,
+      default: false
+    },
     shippingAddress: {
       name: { type: String },
       phone: { type: String },
