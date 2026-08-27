@@ -2,6 +2,7 @@ import Banner from "../models/Banner.js";
 import BannerMySQL from "../models/mysql/Banner.js";
 import { sendSuccess, sendError } from "../utils/response.js";
 import { checkRequiredFields } from "../validations/validator.js";
+import { saveBase64Image } from "../utils/fileUpload.js";
 
 /**
  * Add Banner (Admin only).
@@ -28,7 +29,11 @@ export const addBanner = async (req, res, next) => {
       placement
     } = req.body;
 
-    const mainImage = desktopImage || image || mobileImage || "";
+    const savedDesktop = saveBase64Image(desktopImage, 'banners');
+    const savedMobile = saveBase64Image(mobileImage, 'banners');
+    const savedImage = saveBase64Image(image, 'banners');
+
+    const mainImage = savedDesktop || savedImage || savedMobile || "";
 
     let newBanner = null;
     try {
@@ -36,8 +41,8 @@ export const addBanner = async (req, res, next) => {
         title,
         bannerType: bannerType || "Permanent",
         targetDevice: targetDevice || "Both",
-        desktopImage: desktopImage || mainImage,
-        mobileImage: mobileImage || mainImage,
+        desktopImage: savedDesktop || mainImage,
+        mobileImage: savedMobile || mainImage,
         image: mainImage,
         link: buttonLink || "/shop",
         buttonLink: buttonLink || "/shop",
@@ -52,8 +57,8 @@ export const addBanner = async (req, res, next) => {
         subtitle: subtitle || "",
         bannerType: bannerType || "Permanent",
         targetDevice: targetDevice || "Both",
-        desktopImage: desktopImage || mainImage,
-        mobileImage: mobileImage || mainImage,
+        desktopImage: savedDesktop || mainImage,
+        mobileImage: savedMobile || mainImage,
         image: mainImage,
         buttonText: buttonText || "SHOP NOW",
         buttonLink: buttonLink || "/shop",
@@ -77,6 +82,10 @@ export const editBanner = async (req, res, next) => {
   try {
     const { id } = req.params;
     let banner = null;
+
+    if (req.body.desktopImage) req.body.desktopImage = saveBase64Image(req.body.desktopImage, 'banners');
+    if (req.body.mobileImage) req.body.mobileImage = saveBase64Image(req.body.mobileImage, 'banners');
+    if (req.body.image) req.body.image = saveBase64Image(req.body.image, 'banners');
 
     if (!isNaN(id)) {
       banner = await BannerMySQL.findByPk(Number(id));

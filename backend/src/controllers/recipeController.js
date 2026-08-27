@@ -1,6 +1,7 @@
 import Recipe from "../models/Recipe.js";
 import RecipeMySQL from "../models/mysql/Recipe.js";
 import { sendSuccess, sendError } from "../utils/response.js";
+import { saveBase64Image } from "../utils/fileUpload.js";
 
 export const getPublicRecipes = async (req, res, next) => {
   try {
@@ -62,13 +63,14 @@ export const createRecipe = async (req, res, next) => {
       return sendError(res, "Title is required.", 400);
     }
     const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    const savedImage = saveBase64Image(image, 'recipes');
 
     let newRecipe = null;
     try {
       newRecipe = await RecipeMySQL.create({
         title,
         slug,
-        image: image || "",
+        image: savedImage || "",
         description: shortDescription || "",
         prepTime: prepTime || "",
         cookTime: cookTime || "",
@@ -108,6 +110,11 @@ export const editRecipe = async (req, res, next) => {
   try {
     const { id } = req.params;
     let recipe = null;
+
+    if (req.body.image) {
+      req.body.image = saveBase64Image(req.body.image, 'recipes');
+    }
+
     if (!isNaN(id)) {
       recipe = await RecipeMySQL.findByPk(Number(id));
       if (recipe) {

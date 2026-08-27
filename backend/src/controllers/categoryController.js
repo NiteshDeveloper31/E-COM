@@ -3,6 +3,7 @@ import CategoryMySQL from "../models/mysql/Category.js";
 import Product from "../models/Product.js";
 import { sendSuccess, sendError } from "../utils/response.js";
 import { checkRequiredFields } from "../validations/validator.js";
+import { saveBase64Image } from "../utils/fileUpload.js";
 
 /**
  * Add Category (Admin only).
@@ -17,12 +18,13 @@ export const addCategory = async (req, res, next) => {
 
     const { name, displayName, image, description, status } = req.body;
     const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    const savedImage = saveBase64Image(image, 'categories');
 
     let newCategory = null;
     try {
       newCategory = await CategoryMySQL.create({
         name,
-        image,
+        image: savedImage,
         status: status || "Active",
         slug
       });
@@ -30,7 +32,7 @@ export const addCategory = async (req, res, next) => {
       newCategory = await Category.create({
         name,
         displayName: displayName || name,
-        image,
+        image: savedImage,
         description,
         status: status || "Active",
         slug
@@ -77,7 +79,7 @@ export const editCategory = async (req, res, next) => {
       if (!image) {
         return sendError(res, "Category image is compulsory.", 400);
       }
-      category.image = image;
+      category.image = saveBase64Image(image, 'categories');
     }
     if (description !== undefined && category.description !== undefined) category.description = description;
     if (status !== undefined) category.status = status;

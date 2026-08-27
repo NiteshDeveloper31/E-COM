@@ -306,12 +306,13 @@ export default function Home() {
     }
   };
 
-  // Helper to ensure .jpeg is used for ghee & thekua even if backend returns legacy .jpg URLs
   const fixImageUrl = (url) => {
     if (!url) return '';
+    if (url.startsWith('data:') || url.startsWith('http://') || url.startsWith('https://')) return url;
     let fixed = url;
     if (fixed.includes('thekua.jpg')) fixed = fixed.replace('thekua.jpg', 'thekua.jpeg');
     if (fixed.includes('desi_cow_ghee.jpg')) fixed = fixed.replace('desi_cow_ghee.jpg', 'desi_cow_ghee.jpeg');
+    if (fixed.startsWith('/uploads/')) return `${BACKEND_URL}${fixed}`;
     return fixed;
   };
 

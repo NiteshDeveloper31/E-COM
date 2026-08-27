@@ -11,6 +11,7 @@ import { sendBackInStockEmail } from "../services/emailService.js";
 import { getPaginationMeta } from "../utils/pagination.js";
 import { sendSuccess, sendError } from "../utils/response.js";
 import { checkRequiredFields } from "../validations/validator.js";
+import { saveBase64Image, processImagesArray } from "../utils/fileUpload.js";
 
 const CATEGORY_POPULATE = { path: "category", select: "name slug status" };
 
@@ -106,6 +107,9 @@ export const createProduct = async (req, res, next) => {
       shelfLife
     } = req.body;
 
+    const processedImage = saveBase64Image(image, 'products');
+    const processedImages = processImagesArray(images, 'products');
+
     let sqlCatId = null;
     if (!isNaN(category)) {
       sqlCatId = Number(category);
@@ -122,8 +126,8 @@ export const createProduct = async (req, res, next) => {
         categoryId: sqlCatId,
         stock: stock ? parseInt(stock) : 0,
         status: status || "Active",
-        image: image || "",
-        images: images || [],
+        image: processedImage || "",
+        images: processedImages || [],
         video: video || "",
         weight: weight || "",
         shortDescription: shortDescription || "",
@@ -155,8 +159,8 @@ export const createProduct = async (req, res, next) => {
         category,
         stock,
         status,
-        image,
-        images,
+        image: processedImage || "",
+        images: processedImages || [],
         video,
         weight,
         shortDescription,
@@ -193,6 +197,13 @@ export const editProduct = async (req, res, next) => {
   try {
     const { id } = req.params;
     let product = null;
+
+    if (req.body.image) {
+      req.body.image = saveBase64Image(req.body.image, 'products');
+    }
+    if (req.body.images && Array.isArray(req.body.images)) {
+      req.body.images = processImagesArray(req.body.images, 'products');
+    }
 
     if (!isNaN(id)) {
       product = await ProductMySQL.findByPk(Number(id));
