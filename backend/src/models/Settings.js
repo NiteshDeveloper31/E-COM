@@ -6,6 +6,7 @@ const settingsSchema = new mongoose.Schema({
   contactEmail: { type: String, default: "hello@reetsutra.com" },
   contactPhone: { type: String, default: "+91 91234 56789" },
   contactAddress: { type: String, default: "Patna, Bihar, India" },
+  freeSampleOffer: { type: Boolean, default: true },
 
   // Social Media Links
   socialInstagram: { type: String, default: "https://instagram.com/reetsutra" },

@@ -7,6 +7,7 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import ScrollToTop from './components/ScrollToTop';
 import CartNotification from './components/CartNotification';
+import WhatsAppButton from './components/WhatsAppButton';
 
 // Page Components
 import Home from './pages/Home';
@@ -77,6 +78,9 @@ export default function App() {
 
           {/* Footer */}
           <Footer />
+
+          {/* Floating Sticky WhatsApp Button */}
+          <WhatsAppButton />
 
         </div>
       </Router>

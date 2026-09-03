@@ -27,6 +27,18 @@ const orderSchema = new mongoose.Schema(
           type: Number,
           required: true
         },
+        originalPrice: {
+          type: Number,
+          default: 0
+        },
+        hasFloatingOffer: {
+          type: Boolean,
+          default: false
+        },
+        floatingOfferDiscount: {
+          type: Number,
+          default: 0
+        },
         quantity: {
           type: Number,
           required: true,
@@ -42,6 +54,22 @@ const orderSchema = new mongoose.Schema(
       type: Number,
       required: true,
       min: 0
+    },
+    originalSubtotal: {
+      type: Number,
+      default: 0
+    },
+    floatingDiscountTotal: {
+      type: Number,
+      default: 0
+    },
+    discount: {
+      type: Number,
+      default: 0
+    },
+    couponCode: {
+      type: String,
+      default: ""
     },
     tax: {
       type: Number,

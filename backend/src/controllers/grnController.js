@@ -1,6 +1,7 @@
-import GRN from "../models/GRN.js";
+import GRNMongo from "../models/GRN.js";
 import Product from "../models/Product.js";
 import ProductMySQL from "../models/mysql/Product.js";
+import GRNMySQL from "../models/mysql/GRN.js";
 import { sendSuccess, sendError } from "../utils/response.js";
 import { notifySubscribersIfStockRestocked } from "./productController.js";
 
@@ -55,20 +56,37 @@ export const createGRN = async (req, res, next) => {
 
     const prodId = product.id || product._id;
 
-    // Create GRN Audit Log Entry
-    const grnRecord = await GRN.create({
-      productId: String(prodId),
-      productName: product.name,
-      sku: product.sku || "N/A",
-      weight: product.weight || "",
-      previousStock,
-      receivedQty: recQtyNum,
-      goodQty: goodQtyNum,
-      badQty: badQtyNum,
-      newStock,
-      notes: notes || "",
-      processedBy: req.user ? `${req.user.name} (${req.user.email})` : "Admin User"
-    });
+    // Create GRN Audit Log Entry in MySQL with Mongo Fallback
+    let grnRecord = null;
+    try {
+      grnRecord = await GRNMySQL.create({
+        productId: String(prodId),
+        productName: product.name,
+        sku: product.sku || "N/A",
+        weight: product.weight || "",
+        previousStock,
+        receivedQty: recQtyNum,
+        goodQty: goodQtyNum,
+        badQty: badQtyNum,
+        newStock,
+        notes: notes || "",
+        processedBy: req.user ? `${req.user.name} (${req.user.email})` : "Admin User"
+      });
+    } catch (mysqlErr) {
+      grnRecord = await GRNMongo.create({
+        productId: String(prodId),
+        productName: product.name,
+        sku: product.sku || "N/A",
+        weight: product.weight || "",
+        previousStock,
+        receivedQty: recQtyNum,
+        goodQty: goodQtyNum,
+        badQty: badQtyNum,
+        newStock,
+        notes: notes || "",
+        processedBy: req.user ? `${req.user.name} (${req.user.email})` : "Admin User"
+      }).catch(() => null);
+    }
 
     return sendSuccess(
       res,
@@ -86,10 +104,16 @@ export const createGRN = async (req, res, next) => {
  */
 export const getGRNLogs = async (req, res, next) => {
   try {
-    const logs = await GRN.find()
-      .populate("productId", "name sku image weight stock")
-      .sort({ createdAt: -1 })
-      .limit(200);
+    let logs = [];
+    try {
+      logs = await GRNMySQL.findAll({ order: [["id", "DESC"]], limit: 200 });
+    } catch (mysqlErr) {
+      logs = await GRNMongo.find()
+        .populate("productId", "name sku image weight stock")
+        .sort({ createdAt: -1 })
+        .limit(200)
+        .catch(() => []);
+    }
 
     return sendSuccess(res, "GRN audit history fetched successfully.", logs);
   } catch (error) {

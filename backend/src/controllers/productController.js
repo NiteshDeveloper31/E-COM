@@ -11,9 +11,18 @@ import { sendBackInStockEmail } from "../services/emailService.js";
 import { getPaginationMeta } from "../utils/pagination.js";
 import { sendSuccess, sendError } from "../utils/response.js";
 import { checkRequiredFields } from "../validations/validator.js";
-import { saveBase64Image, processImagesArray } from "../utils/fileUpload.js";
+import { saveBase64Image, processImagesArray, deleteLocalFile, deleteLocalFiles } from "../utils/fileUpload.js";
 
 const CATEGORY_POPULATE = { path: "category", select: "name slug status" };
+
+const sanitizeExpiryDate = (dateVal) => {
+  if (!dateVal) return null;
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return null;
+  const year = d.getFullYear();
+  if (year < 1900 || year > 9999) return null;
+  return d;
+};
 
 /**
  * Trigger Back in Stock Emails if product stock restocked > 0
@@ -24,10 +33,17 @@ export const notifySubscribersIfStockRestocked = async (productDoc) => {
 
     const prodIdStr = String(productDoc.id || productDoc._id);
 
-    const pendingNotifications = await StockNotification.find({
-      $or: [{ product: prodIdStr }, { product: productDoc._id }, { product: productDoc.id }],
-      status: "Pending"
-    });
+    let pendingNotifications = [];
+    try {
+      pendingNotifications = await StockNotificationMySQL.findAll({
+        where: { product: prodIdStr, status: "Pending" }
+      });
+    } catch (sqlErr) {
+      pendingNotifications = await StockNotification.find({
+        product: prodIdStr,
+        status: "Pending"
+      }).catch(() => []);
+    }
 
     if (!pendingNotifications || pendingNotifications.length === 0) return;
 
@@ -112,7 +128,11 @@ export const createProduct = async (req, res, next) => {
 
     let sqlCatId = null;
     if (!isNaN(category)) {
-      sqlCatId = Number(category);
+      const catDoc = await CategoryMySQL.findByPk(Number(category)).catch(() => null);
+      if (catDoc) sqlCatId = catDoc.id;
+    } else if (typeof category === "string") {
+      const catDoc = await CategoryMySQL.findOne({ where: { name: category } }).catch(() => null);
+      if (catDoc) sqlCatId = catDoc.id;
     }
 
     let newProduct = null;
@@ -133,7 +153,7 @@ export const createProduct = async (req, res, next) => {
         shortDescription: shortDescription || "",
         ingredients: ingredients || [],
         benefits: benefits || [],
-        expiryDate: expiryDate || null,
+        expiryDate: sanitizeExpiryDate(expiryDate),
         brand: brand || "",
         gst: gst ? parseFloat(gst) : 0,
         hsnCode: hsnCode || "",
@@ -150,38 +170,44 @@ export const createProduct = async (req, res, next) => {
         bundleItems: req.body.bundleItems || []
       });
     } catch (mysqlErr) {
-      newProduct = await Product.create({
-        name,
-        sku,
-        description,
-        price,
-        compareAtPrice,
-        category,
-        stock,
-        status,
-        image: processedImage || "",
-        images: processedImages || [],
-        video,
-        weight,
-        shortDescription,
-        ingredients,
-        benefits,
-        expiryDate,
-        brand,
-        gst,
-        hsnCode,
-        eanCode,
-        size,
-        length,
-        width,
-        height,
-        cessRate,
-        facility,
-        badInventory,
-        shelfLife,
-        isBundle: Boolean(req.body.isBundle),
-        bundleItems: req.body.bundleItems || []
-      });
+      console.error("ProductMySQL.create error:", mysqlErr.message);
+      if (mongoose.connection.readyState === 1) {
+        newProduct = await Product.create({
+          name,
+          sku,
+          description,
+          price,
+          compareAtPrice,
+          category,
+          stock,
+          status,
+          image: processedImage || "",
+          images: processedImages || [],
+          video,
+          weight,
+          shortDescription,
+          ingredients,
+          benefits,
+          expiryDate,
+          brand,
+          gst,
+          hsnCode,
+          eanCode,
+          size,
+          length,
+          width,
+          height,
+          cessRate,
+          facility,
+          badInventory,
+          shelfLife,
+          isBundle: Boolean(req.body.isBundle),
+          bundleItems: req.body.bundleItems || []
+        }).catch(() => null);
+      }
+      if (!newProduct) {
+        return sendError(res, `Failed to create product: ${mysqlErr.message}`, 400);
+      }
     }
 
     return sendSuccess(res, "Product created successfully.", newProduct, 201);
@@ -221,6 +247,8 @@ export const editProduct = async (req, res, next) => {
               product[field] = req.body[field] ? parseFloat(req.body[field]) : null;
             } else if (field === "stock" || field === "badInventory") {
               product[field] = parseInt(req.body[field]) || 0;
+            } else if (field === "expiryDate") {
+              product[field] = sanitizeExpiryDate(req.body[field]);
             } else {
               product[field] = req.body[field];
             }
@@ -274,15 +302,23 @@ export const deleteProduct = async (req, res, next) => {
     const { id } = req.params;
 
     if (!isNaN(id)) {
-      const deletedCount = await ProductMySQL.destroy({ where: { id: Number(id) } });
-      if (deletedCount > 0) {
+      const prod = await ProductMySQL.findByPk(Number(id));
+      if (prod) {
+        if (prod.image) deleteLocalFile(prod.image);
+        if (Array.isArray(prod.images)) deleteLocalFiles(prod.images);
+
+        await prod.destroy();
         return sendSuccess(res, "Product deleted successfully.", { id });
       }
     }
 
     if (mongoose.Types.ObjectId.isValid(id)) {
-      const product = await Product.findByIdAndDelete(id);
+      const product = await Product.findById(id);
       if (product) {
+        if (product.image) deleteLocalFile(product.image);
+        if (Array.isArray(product.images)) deleteLocalFiles(product.images);
+
+        await Product.findByIdAndDelete(id);
         return sendSuccess(res, "Product deleted successfully.", { id });
       }
     }
@@ -327,14 +363,21 @@ export const getProducts = async (req, res, next) => {
       products = rows;
       total = count;
     } catch (mysqlErr) {
-      const query = {};
-      if (status) query.status = status;
-      const [mProds, mTotal] = await Promise.all([
-        Product.find(query).populate(CATEGORY_POPULATE).skip(offset).limit(limitNum),
-        Product.countDocuments(query)
-      ]);
-      products = mProds;
-      total = mTotal;
+      try {
+        const query = {};
+        if (status) query.status = status;
+        const mongoPromise = Promise.all([
+          Product.find(query).populate(CATEGORY_POPULATE).skip(offset).limit(limitNum),
+          Product.countDocuments(query)
+        ]);
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Mongo timeout")), 1500));
+        const [mProds, mTotal] = await Promise.race([mongoPromise, timeoutPromise]);
+        products = mProds || [];
+        total = mTotal || 0;
+      } catch (e) {
+        products = [];
+        total = 0;
+      }
     }
 
     const meta = getPaginationMeta(total, pageNum, limitNum);

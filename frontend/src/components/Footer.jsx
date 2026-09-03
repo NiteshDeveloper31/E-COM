@@ -160,20 +160,20 @@ export default function Footer() {
         </div>
 
         {/* Contact Info Column */}
-        <div className="space-y-6">
+        <div id="footer-contact" className="space-y-6 scroll-mt-24">
           <h4 className="serif-header text-xs font-bold text-brand-gold tracking-widest uppercase">CONTACT US</h4>
           <ul className="space-y-3 text-xs text-brand-cream/80 font-sans font-medium">
             <li className="flex items-center space-x-2">
               <Phone className="w-3.5 h-3.5 text-brand-gold shrink-0" />
-              <span>+91 91234 56789</span>
+              <span>{settings?.contactPhone || "+91 91234 56789"}</span>
             </li>
             <li className="flex items-center space-x-2">
               <Mail className="w-3.5 h-3.5 text-brand-gold shrink-0" />
-              <span>hello@reetsutra.com</span>
+              <span>{settings?.contactEmail || "hello@reetsutra.com"}</span>
             </li>
             <li className="flex items-start space-x-2">
               <MapPin className="w-3.5 h-3.5 text-brand-gold shrink-0 mt-0.5" />
-              <span>Patna, Bihar, India</span>
+              <span>{settings?.contactAddress || "Patna, Bihar, India"}</span>
             </li>
           </ul>
         </div>

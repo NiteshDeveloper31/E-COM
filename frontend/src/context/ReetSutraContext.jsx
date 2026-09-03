@@ -1,12 +1,14 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
-import { API_BASE_URL, BACKEND_URL } from '../config';
+import { API_BASE_URL, BACKEND_URL, getFrontendImageUrl } from '../config';
 
 const ReetSutraContext = createContext();
 
 export const useReetSutra = () => useContext(ReetSutraContext);
 
 export const ReetSutraProvider = ({ children }) => {
-  const [products, setProducts] = useState([]);
+  const [rawProducts, setRawProducts] = useState([]);
+  const [banners, setBanners] = useState([]);
+  const [categoriesList, setCategoriesList] = useState([]);
   const [lastAddedItem, setLastAddedItem] = useState(null);
   const [showCartPopup, setShowCartPopup] = useState(false);
   const [popupTimeoutId, setPopupTimeoutId] = useState(null);
@@ -50,33 +52,16 @@ export const ReetSutraProvider = ({ children }) => {
     setUser({ isLoggedIn: false });
   }, []);
 
-  // Helper to map backend order details to frontend expected structures
-  const mapOrderData = useCallback((order) => {
-    if (!order) return order;
-    return {
-      ...order,
-      id: order._id || order.id,
-      date: order.createdAt || order.date,
-      status: order.orderStatus || order.status,
-      items: (order.items || []).map(item => ({
-        ...item,
-        product: {
-          name: item.productName || item.product?.name || "Traditional Item",
-          price: item.price || item.product?.price || 0,
-          discount: item.discount || item.product?.discount || 0,
-          image: item.image || item.product?.image || "",
-          category: item.category || item.product?.category || "Traditional Food"
-        }
-      })),
-      trackingTimeline: (order.timeline || order.trackingTimeline || []).map(log => ({
-        status: log.status,
-        time: new Date(log.date || log.time).toLocaleString(),
-        completed: true
-      }))
-    };
-  }, []);
-
   // Fetch Products Catalog
+  const getProductImageUrl = (imgPath) => {
+    if (!imgPath) return '';
+    if (imgPath.startsWith('data:') || imgPath.startsWith('http://') || imgPath.startsWith('https://')) {
+      return imgPath;
+    }
+    const backendUrl = API_BASE_URL.replace(/\/api$/, '');
+    return `${backendUrl}${imgPath.startsWith('/') ? '' : '/'}${imgPath}`;
+  };
+
   const fetchProducts = useCallback(async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/products?limit=100`);
@@ -87,23 +72,107 @@ export const ReetSutraProvider = ({ children }) => {
           ...p,
           id: p._id || p.id,
           tagline: p.tagline || p.description?.slice(0, 60) || 'Delicious traditional snack item',
-          discount: p.compareAtPrice ? Math.round(((p.compareAtPrice - p.price) / p.compareAtPrice) * 100) : 0,
+          baseDiscount: p.compareAtPrice && p.compareAtPrice > p.price ? Math.round(((p.compareAtPrice - p.price) / p.compareAtPrice) * 100) : (p.discount || 0),
           rating: p.rating || 4.7,
           reviews: p.reviewsCount || 15,
           bestseller: p.rating >= 4.8,
-          category: p.category?.name || 'Uncategorized',
-          image: p.image,
+          category: typeof p.category === 'object' ? p.category?.name || 'Uncategorized' : (p.category || 'Uncategorized'),
+          image: getProductImageUrl(p.image),
+          images: Array.isArray(p.images) && p.images.length > 0
+            ? p.images.map(img => getProductImageUrl(img))
+            : [getProductImageUrl(p.image)],
           description: p.description,
           ingredients: p.ingredients || ['Natural ingredients', 'Prepared with love', 'Hygienically Packed'],
           benefits: p.benefits || ['High quality', 'Rich taste', 'No artificial colors'],
           weight: p.weight || '400g'
         }));
-        setProducts(mapped);
+        setRawProducts(mapped);
       }
     } catch (err) {
       console.error("Failed to fetch products from backend:", err);
     }
   }, []);
+
+  const fetchBanners = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/banners?status=Active`);
+      const resJson = await response.json();
+      if (response.ok && resJson.success && Array.isArray(resJson.data)) {
+        setBanners(resJson.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch banners in context:", err);
+    }
+  }, []);
+
+  const fetchCategories = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/categories?status=Active`);
+      const resJson = await response.json();
+      if (response.ok && resJson.success && Array.isArray(resJson.data)) {
+        setCategoriesList(resJson.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch categories in context:", err);
+    }
+  }, []);
+
+  // Compute products with active floating banner offers applied
+  const products = React.useMemo(() => {
+    const now = new Date();
+    
+    // Find active floating banners with valid date range and discount > 0
+    const activeFloatingOffers = banners.filter(b => {
+      if (b.status !== "Active") return false;
+      const isFloating = b.bannerType === "Floating" || b.placement?.includes("Floating");
+      if (!isFloating) return false;
+
+      if (b.startDate && new Date(b.startDate) > now) return false;
+      if (b.endDate && new Date(b.endDate) < now) return false;
+
+      return (b.discountPercentage && b.discountPercentage > 0);
+    });
+
+    return rawProducts.map(p => {
+      const rawBasePrice = p.price || 0;
+      const rawComparePrice = p.compareAtPrice && p.compareAtPrice > rawBasePrice ? p.compareAtPrice : null;
+
+      let baseDiscountPercentage = p.baseDiscount || (rawComparePrice ? Math.round(((rawComparePrice - rawBasePrice) / rawComparePrice) * 100) : 0);
+
+      // Find matching offer for this product's category or "All Categories"
+      const prodCat = (p.category || "").toLowerCase();
+      const matchingOffer = activeFloatingOffers.find(b => {
+        const targetCat = (b.targetCategory || "All Categories").toLowerCase();
+        return targetCat === "all categories" || targetCat === "all products" || targetCat === prodCat;
+      });
+
+      let floatingDiscount = matchingOffer ? (matchingOffer.discountPercentage || 0) : 0;
+      let effectiveDiscount = Math.max(baseDiscountPercentage, floatingDiscount);
+
+      let originalPrice = rawComparePrice || null;
+      let finalPrice = rawBasePrice;
+
+      if (floatingDiscount > 0 && floatingDiscount >= baseDiscountPercentage) {
+        // Floating offer applies
+        originalPrice = rawBasePrice;
+        finalPrice = Math.round(rawBasePrice * (1 - floatingDiscount / 100));
+      } else if (baseDiscountPercentage > 0 && rawComparePrice) {
+        originalPrice = rawComparePrice;
+        finalPrice = rawBasePrice;
+      }
+
+      return {
+        ...p,
+        price: finalPrice,
+        originalPrice: originalPrice && originalPrice > finalPrice ? originalPrice : null,
+        discount: effectiveDiscount,
+        hasFloatingOffer: floatingDiscount > 0,
+        floatingOfferPercentage: floatingDiscount,
+        floatingOfferCategory: matchingOffer?.targetCategory || "All Categories",
+        floatingOfferBannerTitle: matchingOffer?.title || ""
+      };
+    });
+  }, [rawProducts, banners]);
 
   const [settings, setSettings] = useState({
     contactEmail: "hello@reetsutra.com",
@@ -130,18 +199,77 @@ export const ReetSutraProvider = ({ children }) => {
     }
   }, []);
 
-  // Fetch initially and set up 1-minute polling for products catalog & settings
+  // Fetch initially, 15s polling, and instant tab-focus revalidation
   useEffect(() => {
     fetchProducts();
+    fetchBanners();
     fetchSettings();
+    fetchCategories();
 
     const interval = setInterval(() => {
+      if (document.hidden) return;
       fetchProducts();
+      fetchBanners();
       fetchSettings();
-    }, 60000);
+      fetchCategories();
+    }, 5000);
 
-    return () => clearInterval(interval);
-  }, [fetchProducts, fetchSettings]);
+    const handleTabFocus = () => {
+      if (!document.hidden) {
+        fetchProducts();
+        fetchBanners();
+        fetchSettings();
+        fetchCategories();
+      }
+    };
+
+    window.addEventListener("focus", handleTabFocus);
+    document.addEventListener("visibilitychange", handleTabFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", handleTabFocus);
+      document.removeEventListener("visibilitychange", handleTabFocus);
+    };
+  }, [fetchProducts, fetchBanners, fetchSettings, fetchCategories]);
+
+  // Helper to map backend order details to frontend expected structures
+  const mapOrderData = useCallback((order) => {
+    if (!order) return order;
+    return {
+      ...order,
+      id: order._id || order.id,
+      date: order.createdAt || order.date,
+      status: order.orderStatus || order.status,
+      items: (order.items || []).map(item => {
+        const nameStr = item.productName || item.product?.name || item.name || "Traditional Item";
+        const isFreeSample = item.isSample || item.price === 0 || nameStr.toLowerCase().includes("sample");
+        const defaultSampleImg = "https://images.unsplash.com/photo-1599940824399-b87987ceb72a?auto=format&fit=crop&w=400&q=80";
+        const rawImg = item.image || item.product?.image || (isFreeSample ? defaultSampleImg : "");
+        const formattedImg = getFrontendImageUrl(rawImg) || (isFreeSample ? defaultSampleImg : "");
+        return {
+          ...item,
+          name: nameStr,
+          price: item.price !== undefined ? item.price : (item.product?.price || 0),
+          originalPrice: item.originalPrice || 70,
+          image: formattedImg,
+          isSample: isFreeSample,
+          product: {
+            name: nameStr,
+            price: item.price || item.product?.price || 0,
+            discount: item.discount || item.product?.discount || 0,
+            image: formattedImg,
+            category: item.category || item.product?.category || "Traditional Food"
+          }
+        };
+      }),
+      trackingTimeline: (order.timeline || order.trackingTimeline || []).map(log => ({
+        status: log.status,
+        time: new Date(log.date || log.time).toLocaleString(),
+        completed: true
+      }))
+    };
+  }, []);
 
   // Fetch Customer Addresses
   const fetchAddresses = useCallback(async (activeToken) => {
@@ -203,9 +331,9 @@ export const ReetSutraProvider = ({ children }) => {
     fetchOrders(token);
     fetchAddresses(token);
 
-    // Setup 30s Polling for user orders (satisfying the frontend requirement)
+    // Setup 30s Smart Polling for user orders when active tab is visible
     const interval = setInterval(() => {
-      console.log("[POLLING FRONTEND] Syncing orders timeline logs...");
+      if (document.hidden) return;
       fetchOrders(token);
     }, 30000);
 
@@ -221,16 +349,20 @@ export const ReetSutraProvider = ({ children }) => {
     localStorage.setItem('reetsutra_wishlist', JSON.stringify(wishlist));
   }, [wishlist]);
 
+  // Helper to safely extract product identifier
+  const getProdKey = (p) => String(p?.id || p?._id || p?.sku || "");
+
   // Cart Functions
   const addToCart = (productId, quantity = 1) => {
-    const product = products.find(p => p.id === productId || p._id === productId);
+    const targetKey = String(productId);
+    const product = products.find(p => getProdKey(p) === targetKey || String(p.id) === targetKey || String(p._id) === targetKey);
     if (!product) return;
 
     setCart(prevCart => {
-      const existing = prevCart.find(item => item.product.id === productId || item.product._id === productId);
+      const existing = prevCart.find(item => getProdKey(item.product) === targetKey);
       if (existing) {
         return prevCart.map(item =>
-          (item.product.id === productId || item.product._id === productId)
+          getProdKey(item.product) === targetKey
             ? { ...item, quantity: item.quantity + quantity }
             : item
         );
@@ -250,7 +382,8 @@ export const ReetSutraProvider = ({ children }) => {
   };
 
   const removeFromCart = (productId) => {
-    setCart(prevCart => prevCart.filter(item => item.product.id !== productId && item.product._id !== productId));
+    const targetKey = String(productId);
+    setCart(prevCart => prevCart.filter(item => getProdKey(item.product) !== targetKey));
   };
 
   const updateCartQuantity = (productId, quantity) => {
@@ -258,9 +391,10 @@ export const ReetSutraProvider = ({ children }) => {
       removeFromCart(productId);
       return;
     }
+    const targetKey = String(productId);
     setCart(prevCart =>
       prevCart.map(item =>
-        (item.product.id === productId || item.product._id === productId) ? { ...item, quantity } : item
+        getProdKey(item.product) === targetKey ? { ...item, quantity } : item
       )
     );
   };
@@ -667,17 +801,40 @@ export const ReetSutraProvider = ({ children }) => {
 
     try {
       const isBuyNow = !!orderData.buyNowItem;
-      const orderItems = isBuyNow
-        ? [
-            {
-              productId: orderData.buyNowItem.product._id || orderData.buyNowItem.product.id,
-              quantity: orderData.buyNowItem.quantity
-            }
-          ]
-        : cart.map(item => ({
-            productId: item.product._id || item.product.id,
-            quantity: item.quantity
-          }));
+      const rawItemList = isBuyNow ? [orderData.buyNowItem] : (orderData.checkoutItems || cart);
+
+      const orderItems = rawItemList.map(item => {
+        const prod = item.product || item;
+        const sellingPrice = prod.price || 0;
+        const origPrice = prod.originalPrice || sellingPrice;
+        return {
+          productId: prod._id || prod.id,
+          quantity: item.quantity,
+          price: sellingPrice,
+          originalPrice: origPrice,
+          hasFloatingOffer: Boolean(prod.hasFloatingOffer || origPrice > sellingPrice),
+          floatingOfferDiscount: (origPrice - sellingPrice) * item.quantity
+        };
+      });
+
+      // APPEND FREE SAMPLE PRODUCT IF SELECTED BY USER
+      if (orderData.selectedSample) {
+        const sampleProd = orderData.selectedSample;
+        orderItems.push({
+          productId: sampleProd.id || sampleProd._id,
+          quantity: 1,
+          price: 0,
+          originalPrice: sampleProd.mrp || 70,
+          isSample: true,
+          hasFloatingOffer: false,
+          floatingOfferDiscount: 0
+        });
+      }
+
+      const nonSampleItems = orderItems.filter(it => !it.isSample && it.price > 0);
+      const computedOriginalSubtotal = nonSampleItems.reduce((acc, it) => acc + (it.originalPrice * it.quantity), 0);
+      const computedSubtotal = nonSampleItems.reduce((acc, it) => acc + (it.price * it.quantity), 0);
+      const floatingDiscountTotal = Math.max(0, computedOriginalSubtotal - computedSubtotal);
 
       const payload = {
         items: orderItems,
@@ -691,7 +848,9 @@ export const ReetSutraProvider = ({ children }) => {
         },
         billingAddress: orderData.billingAddress || null,
         paymentMethod: orderData.paymentMethod || "COD",
-        subtotal: orderData.subtotal,
+        subtotal: orderData.subtotal !== undefined ? orderData.subtotal : computedSubtotal,
+        originalSubtotal: computedOriginalSubtotal,
+        floatingDiscountTotal: floatingDiscountTotal,
         shipping: orderData.deliveryCharge !== undefined ? orderData.deliveryCharge : orderData.shipping,
         deliveryCharge: orderData.deliveryCharge,
         discount: orderData.discount || 0,
@@ -726,7 +885,18 @@ export const ReetSutraProvider = ({ children }) => {
       setOrders(prev => [createdOrder, ...prev]);
 
       if (!isBuyNow) {
-        clearCart();
+        const checkoutList = orderData.checkoutItems || [];
+        if (checkoutList.length > 0) {
+          checkoutList.forEach(item => {
+            const pId = item.product?._id || item.product?.id || item._id || item.id;
+            if (pId) removeFromCart(pId);
+          });
+        } else {
+          clearCart();
+        }
+      } else if (orderData.buyNowItem) {
+        const boughtProdId = orderData.buyNowItem.product._id || orderData.buyNowItem.product.id;
+        removeFromCart(boughtProdId);
       }
 
       showToast("Order placed successfully!", "success");
@@ -757,6 +927,14 @@ export const ReetSutraProvider = ({ children }) => {
             productId: item.product._id || item.product.id,
             quantity: item.quantity
           }));
+
+      if (orderData.selectedSample) {
+        orderItems.push({
+          productId: orderData.selectedSample.id || orderData.selectedSample._id,
+          quantity: 1,
+          price: 0
+        });
+      }
 
       const payload = {
         items: orderItems,
@@ -830,7 +1008,18 @@ export const ReetSutraProvider = ({ children }) => {
 
       const isBuyNow = !!verificationData.buyNowItem;
       if (!isBuyNow) {
-        clearCart();
+        const checkoutList = verificationData.checkoutItems || [];
+        if (checkoutList.length > 0) {
+          checkoutList.forEach(item => {
+            const pId = item.product?._id || item.product?.id || item._id || item.id;
+            if (pId) removeFromCart(pId);
+          });
+        } else {
+          clearCart();
+        }
+      } else if (verificationData.buyNowItem) {
+        const boughtProdId = verificationData.buyNowItem.product._id || verificationData.buyNowItem.product.id;
+        removeFromCart(boughtProdId);
       }
 
       showToast("Payment verified and order placed successfully!", "success");
@@ -878,6 +1067,7 @@ export const ReetSutraProvider = ({ children }) => {
   return (
     <ReetSutraContext.Provider value={{
       products,
+      banners,
       fetchProducts,
       settings,
       cart,
@@ -912,7 +1102,8 @@ export const ReetSutraProvider = ({ children }) => {
       verifyRazorpayPayment,
       subscribeStockNotification,
       showToast,
-      toast
+      toast,
+      categoriesList
     }}>
       {children}
       {toast && (

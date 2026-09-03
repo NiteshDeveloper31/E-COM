@@ -58,32 +58,33 @@ export const register = async (req, res, next) => {
     // Optional delivery address at signup
     let createdAddress = null;
     if (address && typeof address === "object") {
-      const addrRequired = ["name", "phone", "city", "state", "zip"];
+      const recipientName = (address.name && String(address.name).trim().length > 1) ? String(address.name).trim() : name;
+      const recipientPhone = (address.phone && String(address.phone).trim().length >= 10) ? String(address.phone).trim() : (phone || "");
       const addrLine = address.line || address.street;
-      const missingAddr = checkRequiredFields(address, addrRequired);
-      if (!missingAddr && addrLine) {
+      
+      if (addrLine) {
         if (!isNaN(userId)) {
           createdAddress = await AddressMySQL.create({
             userId: Number(userId),
             tag: address.tag || address.type || "Home",
-            name: address.name,
-            phone: address.phone,
+            name: recipientName,
+            phone: recipientPhone,
             line: addrLine,
-            city: address.city,
-            state: address.state,
-            zip: address.zip,
+            city: address.city || "Patna",
+            state: address.state || "Bihar",
+            zip: address.zip || "800001",
             isDefault: true
           }).catch(() => null);
         }
         await Address.create({
           userId: userId,
           tag: address.tag || address.type || "Home",
-          name: address.name,
-          phone: address.phone,
+          name: recipientName,
+          phone: recipientPhone,
           line: addrLine,
-          city: address.city,
-          state: address.state,
-          zip: address.zip,
+          city: address.city || "Patna",
+          state: address.state || "Bihar",
+          zip: address.zip || "800001",
           isDefault: true
         }).catch(() => null);
       }
@@ -117,15 +118,16 @@ export const login = async (req, res, next) => {
       return sendError(res, `Required field missing: ${missing}`, 400);
     }
 
-    const { email, password } = req.body;
+    const emailClean = String(req.body.email || "").trim().toLowerCase();
+    const passwordClean = String(req.body.password || "").trim();
 
-    const user = await findUserByEmail(email);
+    const user = await findUserByEmail(emailClean);
     if (!user) {
       return sendError(res, "Invalid email or password credentials.", 401);
     }
 
     // Compare passwords inside controller
-    const isMatch = await comparePassword(password, user.password);
+    const isMatch = await comparePassword(passwordClean, user.password);
     if (!isMatch) {
       return sendError(res, "Invalid email or password credentials.", 401);
     }
@@ -165,7 +167,10 @@ export const forgotPassword = async (req, res, next) => {
       return sendError(res, "Please provide a valid registered email.", 400);
     }
 
-    const user = await User.findOne({ email });
+    let user = await UserMySQL.findOne({ where: { email } }).catch(() => null);
+    if (!user) {
+      user = await User.findOne({ email }).catch(() => null);
+    }
     if (!user) {
       return sendError(res, "Email not found in our records.", 404);
     }
@@ -195,7 +200,10 @@ export const resetPassword = async (req, res, next) => {
 
     const { email, newPassword } = req.body;
 
-    const user = await User.findOne({ email });
+    let user = await UserMySQL.findOne({ where: { email } }).catch(() => null);
+    if (!user) {
+      user = await User.findOne({ email }).catch(() => null);
+    }
     if (!user) {
       return sendError(res, "User not found.", 404);
     }
@@ -239,7 +247,15 @@ export const getProfile = async (req, res) => {
 export const updateProfile = async (req, res, next) => {
   try {
     const { name, email, avatar, phone } = req.body;
-    const user = await User.findById(req.user._id);
+    const userId = req.user.id || req.user._id;
+
+    let user = null;
+    if (!isNaN(userId)) {
+      user = await UserMySQL.findByPk(Number(userId));
+    }
+    if (!user) {
+      user = await User.findById(userId).catch(() => null);
+    }
 
     if (!user) {
       return sendError(res, "User profile not found.", 404);
@@ -253,8 +269,11 @@ export const updateProfile = async (req, res, next) => {
       if (!isValidEmail(email)) {
         return sendError(res, "Invalid email address format.", 400);
       }
-      const existing = await User.findOne({ email });
-      if (existing) {
+      let existing = await UserMySQL.findOne({ where: { email } }).catch(() => null);
+      if (!existing) {
+        existing = await User.findOne({ email }).catch(() => null);
+      }
+      if (existing && String(existing.id || existing._id) !== String(userId)) {
         return sendError(res, "Email address already registered by another account.", 400);
       }
       user.email = email;
@@ -263,7 +282,7 @@ export const updateProfile = async (req, res, next) => {
     await user.save();
 
     const updatedProfile = {
-      id: user._id,
+      id: user.id || user._id,
       name: user.name,
       email: user.email,
       role: user.role,
@@ -283,6 +302,8 @@ export const updateProfile = async (req, res, next) => {
 export const changePhoneWithOTP = async (req, res, next) => {
   try {
     const { newPhone, otp } = req.body;
+    const userId = req.user.id || req.user._id;
+
     if (!newPhone || String(newPhone).trim().length < 10 || !otp) {
       return sendError(res, "Valid 10-digit new phone number and OTP are required.", 400);
     }
@@ -292,16 +313,26 @@ export const changePhoneWithOTP = async (req, res, next) => {
     }
 
     const cleanPhone = String(newPhone).trim();
-    const existingUser = await User.findOne({
-      _id: { $ne: req.user._id },
-      $or: [{ phone: cleanPhone }, { phone: `+91${cleanPhone}` }, { phone: cleanPhone.replace("+91", "") }]
-    });
+    let existingUser = await UserMySQL.findOne({ where: { phone: cleanPhone } }).catch(() => null);
+    if (!existingUser) {
+      existingUser = await User.findOne({
+        _id: { $ne: userId },
+        $or: [{ phone: cleanPhone }, { phone: `+91${cleanPhone}` }, { phone: cleanPhone.replace("+91", "") }]
+      }).catch(() => null);
+    }
 
-    if (existingUser) {
+    if (existingUser && String(existingUser.id || existingUser._id) !== String(userId)) {
       return sendError(res, "This mobile number is already linked to another account.", 400);
     }
 
-    const user = await User.findById(req.user._id);
+    let user = null;
+    if (!isNaN(userId)) {
+      user = await UserMySQL.findByPk(Number(userId));
+    }
+    if (!user) {
+      user = await User.findById(userId).catch(() => null);
+    }
+
     if (!user) {
       return sendError(res, "User profile not found.", 404);
     }
@@ -310,7 +341,7 @@ export const changePhoneWithOTP = async (req, res, next) => {
     await user.save();
 
     const updatedProfile = {
-      id: user._id,
+      id: user.id || user._id,
       name: user.name,
       email: user.email,
       role: user.role,
@@ -330,6 +361,8 @@ export const changePhoneWithOTP = async (req, res, next) => {
 export const changeEmailWithOTP = async (req, res, next) => {
   try {
     const { newEmail, otp } = req.body;
+    const userId = req.user.id || req.user._id;
+
     if (!newEmail || !otp || !isValidEmail(newEmail)) {
       return sendError(res, "Valid new email address and OTP are required.", 400);
     }
@@ -339,16 +372,26 @@ export const changeEmailWithOTP = async (req, res, next) => {
     }
 
     const cleanEmail = String(newEmail).trim().toLowerCase();
-    const existingUser = await User.findOne({
-      _id: { $ne: req.user._id },
-      email: cleanEmail
-    });
+    let existingUser = await UserMySQL.findOne({ where: { email: cleanEmail } }).catch(() => null);
+    if (!existingUser) {
+      existingUser = await User.findOne({
+        _id: { $ne: userId },
+        email: cleanEmail
+      }).catch(() => null);
+    }
 
-    if (existingUser) {
+    if (existingUser && String(existingUser.id || existingUser._id) !== String(userId)) {
       return sendError(res, "This email address is already registered by another account.", 400);
     }
 
-    const user = await User.findById(req.user._id);
+    let user = null;
+    if (!isNaN(userId)) {
+      user = await UserMySQL.findByPk(Number(userId));
+    }
+    if (!user) {
+      user = await User.findById(userId).catch(() => null);
+    }
+
     if (!user) {
       return sendError(res, "User profile not found.", 404);
     }
@@ -357,7 +400,7 @@ export const changeEmailWithOTP = async (req, res, next) => {
     await user.save();
 
     const updatedProfile = {
-      id: user._id,
+      id: user.id || user._id,
       name: user.name,
       email: user.email,
       role: user.role,
@@ -381,28 +424,47 @@ export const createSubAdmin = async (req, res, next) => {
       return sendError(res, "Name, email, and password are required.", 400);
     }
 
-    const existing = await User.findOne({ email });
+    const cleanEmail = String(email).trim().toLowerCase();
+
+    let existing = await UserMySQL.findOne({ where: { email: cleanEmail } }).catch(() => null);
+    if (!existing) {
+      existing = await User.findOne({ email: cleanEmail }).catch(() => null);
+    }
+
     if (existing) {
       return sendError(res, "An account with this email already exists.", 400);
     }
 
     const encryptedPassword = await hashPassword(password);
-    const newAdmin = await User.create({
-      name,
-      email,
-      phone: phone || "",
-      password: encryptedPassword,
-      role: "admin",
-      permissions: permissions && Array.isArray(permissions) ? permissions : ["dashboard", "products", "orders"]
-    });
+    let newAdmin = null;
+    try {
+      newAdmin = await UserMySQL.create({
+        name: name.trim(),
+        email: cleanEmail,
+        phone: phone || "",
+        password: encryptedPassword,
+        role: "admin",
+        status: "Active",
+        permissions: permissions && Array.isArray(permissions) ? permissions : ["dashboard", "products", "orders"]
+      });
+    } catch (mysqlErr) {
+      newAdmin = await User.create({
+        name: name.trim(),
+        email: cleanEmail,
+        phone: phone || "",
+        password: encryptedPassword,
+        role: "admin",
+        permissions: permissions && Array.isArray(permissions) ? permissions : ["dashboard", "products", "orders"]
+      });
+    }
 
     return sendSuccess(res, "Admin account created successfully.", {
-      id: newAdmin._id,
+      id: newAdmin.id || newAdmin._id,
       name: newAdmin.name,
       email: newAdmin.email,
       phone: newAdmin.phone,
       role: newAdmin.role,
-      permissions: newAdmin.permissions
+      permissions: permissions && Array.isArray(permissions) ? permissions : ["dashboard", "products", "orders"]
     }, 201);
   } catch (error) {
     next(error);
@@ -414,7 +476,17 @@ export const createSubAdmin = async (req, res, next) => {
  */
 export const getSubAdmins = async (req, res, next) => {
   try {
-    const admins = await User.find({ role: { $in: ["admin", "superadmin"] } }).select("-password").sort({ createdAt: -1 });
+    let admins = [];
+    try {
+      const { Op } = await import("sequelize");
+      admins = await UserMySQL.findAll({
+        where: { role: { [Op.in]: ["admin", "superadmin"] } },
+        attributes: { exclude: ["password"] },
+        order: [["id", "DESC"]]
+      });
+    } catch (sqlErr) {
+      admins = await User.find({ role: { $in: ["admin", "superadmin"] } }).select("-password").sort({ createdAt: -1 }).catch(() => []);
+    }
     return sendSuccess(res, "Sub-admins fetched successfully.", admins);
   } catch (error) {
     next(error);
@@ -429,7 +501,14 @@ export const updateSubAdmin = async (req, res, next) => {
     const { id } = req.params;
     const { name, phone, password, permissions } = req.body;
 
-    const user = await User.findById(id);
+    let user = null;
+    if (!isNaN(id)) {
+      user = await UserMySQL.findByPk(Number(id));
+    }
+    if (!user) {
+      user = await User.findById(id).catch(() => null);
+    }
+
     if (!user) {
       return sendError(res, "Admin account not found.", 404);
     }
@@ -444,7 +523,7 @@ export const updateSubAdmin = async (req, res, next) => {
     await user.save();
 
     return sendSuccess(res, "Admin permissions updated successfully.", {
-      id: user._id,
+      id: user.id || user._id,
       name: user.name,
       email: user.email,
       phone: user.phone,
@@ -463,7 +542,14 @@ export const deleteSubAdmin = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const targetUser = await User.findById(id);
+    let targetUser = null;
+    if (!isNaN(id)) {
+      targetUser = await UserMySQL.findByPk(Number(id));
+    }
+    if (!targetUser) {
+      targetUser = await User.findById(id).catch(() => null);
+    }
+
     if (!targetUser) {
       return sendError(res, "Admin account not found.", 404);
     }
@@ -472,7 +558,10 @@ export const deleteSubAdmin = async (req, res, next) => {
       return sendError(res, "Super Admin account cannot be deleted.", 400);
     }
 
-    await User.findByIdAndDelete(id);
+    if (!isNaN(id)) {
+      await UserMySQL.destroy({ where: { id: Number(id) } });
+    }
+    await User.findByIdAndDelete(id).catch(() => {});
 
     return sendSuccess(res, "Admin account deleted successfully.");
   } catch (error) {

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { X, Star, ShoppingBag, ArrowRight } from 'lucide-react';
 import { useReetSutra } from '../context/ReetSutraContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import { handleFrontendImageError } from '../config';
 
 export default function QuickViewModal({ product, onClose }) {
   const navigate = useNavigate();
@@ -74,6 +75,7 @@ export default function QuickViewModal({ product, onClose }) {
                 <img
                   src={selectedImage || product.image}
                   alt={product.name}
+                  onError={handleFrontendImageError}
                   className="w-full h-full object-cover"
                 />
                 {product.bestseller && (
@@ -94,7 +96,7 @@ export default function QuickViewModal({ product, onClose }) {
                           : 'border-brand-gold/20 hover:border-brand-gold/60 opacity-80'
                       }`}
                     >
-                      <img src={img} alt={`${product.name} ${idx + 1}`} className="w-full h-full object-cover" />
+                      <img src={img} alt={`${product.name} ${idx + 1}`} onError={handleFrontendImageError} className="w-full h-full object-cover" />
                     </button>
                   ))}
                 </div>
@@ -135,14 +137,14 @@ export default function QuickViewModal({ product, onClose }) {
                 {/* Price */}
                 <div className="flex items-baseline space-x-3 mt-3">
                   <span className="text-xl md:text-2xl font-black text-brand-green">
-                    ₹{discountedPrice}
+                    ₹{product.price}
                   </span>
-                  {product.discount > 0 && (
+                  {product.originalPrice && (
                     <>
                       <span className="text-sm text-brand-charcoalLight line-through">
-                        ₹{product.price}
+                        ₹{product.originalPrice}
                       </span>
-                      <span className="text-xs text-brand-gold font-bold">
+                      <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${product.hasFloatingOffer ? 'bg-amber-100 text-amber-900' : 'text-brand-gold'}`}>
                         ({product.discount}% OFF)
                       </span>
                     </>

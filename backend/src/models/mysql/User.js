@@ -35,6 +35,11 @@ export const User = sequelize.define("User", {
   status: {
     type: DataTypes.STRING,
     defaultValue: "Active"
+  },
+  permissions: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: ["dashboard", "products", "orders"]
   }
 }, {
   tableName: "users",

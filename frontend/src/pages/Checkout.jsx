@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { useReetSutra } from '../context/ReetSutraContext';
-import { Plus, Check, ShieldCheck, MapPin } from 'lucide-react';
+import { Plus, Check, ShieldCheck, MapPin, Gift, Trash2 } from 'lucide-react';
 
 export default function Checkout() {
-  const { cart, addresses, token, user, addAddress, showToast, placeOrder, initializeRazorpayOrder, verifyRazorpayPayment } = useReetSutra();
+  const { cart, addresses, token, user, products, settings, addAddress, showToast, placeOrder, initializeRazorpayOrder, verifyRazorpayPayment, handleFrontendImageError } = useReetSutra();
   const location = useLocation();
   const navigate = useNavigate();
   const hasRedirectedRef = useRef(false);
@@ -12,6 +12,42 @@ export default function Checkout() {
   // Get total parameters from Cart navigation state, or compute if refreshed
   const state = location.state || {};
   const buyNowItem = state.buyNowItem || null;
+  const [selectedSample, setSelectedSample] = useState(state.selectedSample || null);
+
+  const sampleProductsList = React.useMemo(() => {
+    if (!products || !Array.isArray(products)) return [];
+    return products.filter(p => {
+      const catName = p.categoryName || (typeof p.category === 'string' ? p.category : p.category?.name) || '';
+      const norm = catName.toLowerCase().trim();
+      return norm === 'sample' || norm === 'sample products' || norm === 'samples' || norm.includes('sample');
+    });
+  }, [products]);
+
+  const isSampleOfferDisabled = settings?.freeSampleOffer === false || settings?.freeSampleOffer === 'false' || settings?.freeSampleOffer === 0 || settings?.freeSampleOffer === 'disabled';
+
+  const hasMainProductInCheckout = buyNowItem
+    ? (() => {
+        const p = buyNowItem.product || {};
+        const catName = p.categoryName || (typeof p.category === 'string' ? p.category : p.category?.name) || '';
+        const norm = catName.toLowerCase().trim();
+        const isSample = norm === 'sample' || norm === 'sample products' || norm === 'samples' || norm.includes('sample') || p.isSample;
+        return !isSample;
+      })()
+    : (cart || []).some(item => {
+        const p = item.product || {};
+        const catName = p.categoryName || (typeof p.category === 'string' ? p.category : p.category?.name) || '';
+        const norm = catName.toLowerCase().trim();
+        const isSample = norm === 'sample' || norm === 'sample products' || norm === 'samples' || norm.includes('sample') || p.isSample;
+        return !isSample;
+      });
+
+  const isSampleOfferEligible = !isSampleOfferDisabled && hasMainProductInCheckout;
+
+  useEffect(() => {
+    if (!isSampleOfferEligible) {
+      setSelectedSample(null);
+    }
+  }, [isSampleOfferEligible]);
   const [selectedAddressId, setSelectedAddressId] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Razorpay');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -40,7 +76,7 @@ export default function Checkout() {
     });
   };
 
-  const checkoutItems = buyNowItem ? [buyNowItem] : (cart || []);
+  const checkoutItems = buyNowItem ? [buyNowItem] : (state.checkoutItems || cart || []);
   const checkoutCount = buyNowItem ? buyNowItem.quantity : checkoutItems.reduce((acc, item) => acc + item.quantity, 0);
 
   // Authentication Guard: Redirect logged-out users once to /login form
@@ -99,13 +135,18 @@ export default function Checkout() {
   };
 
   const handleProceedToPayment = async () => {
+    if (isProcessing) return;
+    setIsProcessing(true);
+
     const selectedAddress = addresses.find(a => a.id === selectedAddressId);
     if (!selectedAddress) {
-      showToast('Please select or add a delivery address.');
+      showToast('Please select or add a delivery address.', 'error');
+      setIsProcessing(false);
       return;
     }
 
     const couponCode = state.couponCode || "";
+    showToast('Placing your order... Please wait.', 'info');
 
     if (paymentMethod === 'COD') {
       try {
@@ -118,14 +159,18 @@ export default function Checkout() {
           address: selectedAddress,
           billingAddress: billingSameAsShipping ? null : billingAddr,
           paymentMethod: 'COD',
-          buyNowItem
+          buyNowItem,
+          checkoutItems,
+          selectedSample
         });
 
         if (orderId) {
+          showToast('Order placed successfully!', 'success');
           navigate('/order-success', { state: { orderId } });
         }
       } catch (err) {
         console.error("COD order failed:", err);
+        showToast('Failed to place order. Please try again.', 'error');
       } finally {
         setIsProcessing(false);
       }
@@ -140,9 +185,17 @@ export default function Checkout() {
         }
 
         const razorpayOrderData = await initializeRazorpayOrder({
+          subtotal,
+          discount,
+          couponCode,
+          deliveryCharge,
+          total,
           address: selectedAddress,
           billingAddress: billingSameAsShipping ? null : billingAddr,
-          buyNowItem
+          paymentMethod: 'Razorpay',
+          buyNowItem,
+          checkoutItems,
+          selectedSample
         });
 
         if (!razorpayOrderData) {
@@ -221,6 +274,106 @@ export default function Checkout() {
           Step 1 of 2: Shipping & Payment Preferences
         </p>
       </div>
+
+      {/* Free Sample Product Selection Widget (Positioned right below Secure Checkout Header) */}
+      {isSampleOfferEligible && sampleProductsList.length > 0 && (
+        <div className="bg-brand-green text-brand-cream p-5 sm:p-6 rounded-lg space-y-4 border border-brand-gold/30 shadow-premium">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-brand-cream/15 pb-3 gap-2">
+            <div className="flex items-center space-x-2">
+              <Gift className="w-5 h-5 text-brand-gold" />
+              <h3 className="font-serif text-base md:text-lg font-bold text-brand-cream">
+                Choose 1 Free Sample Product (₹0)
+              </h3>
+            </div>
+            <div className="flex items-center gap-3">
+              {selectedSample && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedSample(null)}
+                  className="px-3 py-1 bg-red-800/80 hover:bg-red-700 text-white rounded text-[10px] font-bold uppercase font-sans flex items-center gap-1 cursor-pointer transition-colors shadow-xs"
+                >
+                  <Trash2 size={12} /> Remove Sample
+                </button>
+              )}
+              <span className="bg-brand-gold text-brand-green text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded">
+                Free Add-on
+              </span>
+            </div>
+          </div>
+
+          <p className="text-xs text-brand-cream/80 font-sans">
+            Select 1 free sample product to be added to your order for <strong className="text-brand-gold">FREE (₹0)</strong>:
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+            {sampleProductsList.map((sample) => {
+              const isSelected = selectedSample?.id === sample.id || selectedSample?.sku === sample.sku;
+              return (
+                <div
+                  key={sample.id || sample.sku}
+                  onClick={() => {
+                    if (isSelected) {
+                      setSelectedSample(null);
+                    } else {
+                      setSelectedSample(sample);
+                    }
+                  }}
+                  className={`p-3 rounded-lg border transition-all cursor-pointer flex flex-col justify-between ${
+                    isSelected
+                      ? 'bg-white/20 border-brand-gold ring-2 ring-brand-gold shadow-md'
+                      : 'bg-white/5 border-white/10 hover:border-white/25'
+                  }`}
+                >
+                  <div className="flex items-center space-x-2.5">
+                    <img
+                      src={handleFrontendImageError ? sample.image : sample.image}
+                      alt={sample.name}
+                      onError={handleFrontendImageError}
+                      className="w-11 h-11 object-cover rounded border border-white/20 shrink-0 bg-white/10"
+                    />
+                    <div className="space-y-0.5 overflow-hidden">
+                      <div className="font-serif text-xs font-bold text-brand-cream truncate" title={sample.name}>
+                        {sample.name}
+                      </div>
+                      <div className="text-[10px] text-brand-gold font-mono">SKU: {sample.sku}</div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 mt-2 border-t border-white/10 text-xs">
+                    <span className="text-brand-cream/50 line-through font-mono text-[10px]">₹{sample.mrp}</span>
+                    <div>
+                      {isSelected ? (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedSample(null);
+                          }}
+                          className="text-amber-300 hover:text-red-200 font-bold text-[9px] uppercase font-mono flex items-center gap-1 bg-red-900/70 hover:bg-red-800 px-2 py-1 rounded border border-amber-300/60 hover:border-red-400 transition-colors cursor-pointer"
+                          title="Click to unselect this free sample"
+                        >
+                          <Check className="w-3 h-3 text-amber-300" /> SELECTED (REMOVE ✖)
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedSample(sample);
+                          }}
+                          className="text-brand-gold hover:text-brand-green font-bold text-[10px] uppercase font-sans tracking-wider bg-white/10 hover:bg-brand-gold px-2.5 py-1 rounded transition-colors cursor-pointer"
+                        >
+                          + SELECT FREE
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         
@@ -557,6 +710,19 @@ export default function Checkout() {
                 </div>
               );
             })}
+            {selectedSample && (
+              <div className="p-2 bg-brand-green/5 border border-brand-gold/30 rounded flex justify-between items-center text-xs">
+                <div>
+                  <span className="text-[9px] font-bold text-brand-gold uppercase tracking-wider block">Free Sample Add-on</span>
+                  <span className="font-bold text-brand-green font-serif">{selectedSample.name}</span>
+                  <span className="text-[10px] text-brand-charcoalLight/70 font-mono block">SKU: {selectedSample.sku}</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-brand-charcoalLight/50 line-through text-[10px] block">₹{selectedSample.mrp}</span>
+                  <span className="font-bold text-brand-gold text-xs font-serif">FREE</span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Pricing calculations */}
@@ -592,7 +758,7 @@ export default function Checkout() {
                 : 'bg-brand-green hover:bg-brand-greenDark text-brand-cream cursor-pointer'
             }`}
           >
-            <span>{isProcessing ? 'Processing Order...' : 'Proceed to Payment'}</span>
+            <span>{isProcessing ? 'Placing Order... Please Wait' : 'Proceed to Payment'}</span>
           </button>
 
           <div className="text-center">

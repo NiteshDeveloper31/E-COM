@@ -3,11 +3,13 @@ import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, Search, Bell, ChevronDown, User, Settings, LogOut, CheckCircle2 } from "lucide-react";
 import { useData } from "../context/DataContext";
+import { getAdminImageUrl } from "../config";
 
 export const Navbar = ({ onMenuClick }) => {
   const { adminProfile, notifications, markAllNotificationsRead, logoutAdmin, showToast } = useData();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const [navImgError, setNavImgError] = useState(false);
   
   const notifRef = useRef(null);
   const profileRef = useRef(null);
@@ -119,11 +121,18 @@ export const Navbar = ({ onMenuClick }) => {
             onClick={() => setShowProfileDropdown(!showProfileDropdown)}
             className="flex items-center gap-2.5 p-1 rounded-lg hover:bg-background transition-colors focus:outline-none cursor-pointer"
           >
-            <img
-              src={adminProfile.avatar}
-              alt={adminProfile.name}
-              className="w-8 h-8 rounded-full border border-secondary shadow-xs object-cover"
-            />
+            {adminProfile.avatar && !navImgError ? (
+              <img
+                src={getAdminImageUrl(adminProfile.avatar)}
+                alt={adminProfile.name}
+                onError={() => setNavImgError(true)}
+                className="w-8 h-8 rounded-full border border-secondary shadow-xs object-cover"
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-primary text-secondary font-bold text-xs flex items-center justify-center border border-secondary shadow-xs">
+                {(adminProfile.name || "A").slice(0, 1).toUpperCase()}
+              </div>
+            )}
             <div className="text-left hidden sm:block">
               <p className="text-xs font-bold text-primary">{adminProfile.name}</p>
               <p className="text-[10px] font-bold text-emerald-700 -mt-0.5">

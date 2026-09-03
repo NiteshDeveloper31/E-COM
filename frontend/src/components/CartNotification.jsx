@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useReetSutra } from '../context/ReetSutraContext';
 import { X, CheckCircle, ShoppingBag, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { handleFrontendImageError } from '../config';
 
 export default function CartNotification() {
   const { showCartPopup, setShowCartPopup, lastAddedItem } = useReetSutra();
@@ -43,6 +44,7 @@ export default function CartNotification() {
               <img 
                 src={product.image} 
                 alt={product.name} 
+                onError={handleFrontendImageError}
                 className="w-full h-full object-cover"
               />
             </div>

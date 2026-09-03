@@ -14,7 +14,7 @@ const recipeSchema = new mongoose.Schema(
     },
     image: {
       type: String,
-      required: true
+      default: ""
     },
     prepTime: {
       type: String,
@@ -30,7 +30,12 @@ const recipeSchema = new mongoose.Schema(
     },
     shortDescription: {
       type: String,
-      required: true,
+      default: "",
+      trim: true
+    },
+    description: {
+      type: String,
+      default: "",
       trim: true
     },
     ingredients: {
@@ -38,8 +43,8 @@ const recipeSchema = new mongoose.Schema(
       default: []
     },
     instructions: {
-      type: String,
-      required: true
+      type: mongoose.Schema.Types.Mixed,
+      default: ""
     },
     tag: {
       type: String,

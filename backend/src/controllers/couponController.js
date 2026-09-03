@@ -1,4 +1,6 @@
+import mongoose from "mongoose";
 import Coupon from "../models/Coupon.js";
+import CouponMySQL from "../models/mysql/Coupon.js";
 import Product from "../models/Product.js";
 import Category from "../models/Category.js";
 import CategoryMySQL from "../models/mysql/Category.js";
@@ -35,27 +37,49 @@ export const createCoupon = async (req, res) => {
     }
 
     const cleanCode = code.trim().toUpperCase();
-    const existing = await Coupon.findOne({ code: cleanCode });
+
+    let existing = await CouponMySQL.findOne({ where: { code: cleanCode } }).catch(() => null);
+    if (!existing) {
+      existing = await Coupon.findOne({ code: cleanCode }).catch(() => null);
+    }
+
     if (existing) {
       return sendError(res, `Coupon code '${cleanCode}' already exists.`, 400);
     }
 
-    const coupon = await Coupon.create({
-      code: cleanCode,
-      description: description || "",
-      discountType: discountType || "percentage",
-      discountValue: Number(discountValue),
-      maxDiscount: maxDiscount ? Number(maxDiscount) : null,
-      applicableScope: applicableScope || "ALL",
-      applicableCategories: Array.isArray(applicableCategories) ? applicableCategories : [],
-      applicableProducts: Array.isArray(applicableProducts) ? applicableProducts : [],
-      minOrderAmount: minOrderAmount ? Number(minOrderAmount) : 0,
-      validFrom: validFrom ? new Date(validFrom) : new Date(),
-      validUntil: validUntil ? new Date(validUntil) : null,
-      usageLimit: usageLimit ? Number(usageLimit) : null,
-      perUserLimit: perUserLimit ? Number(perUserLimit) : 1,
-      isActive: isActive !== undefined ? Boolean(isActive) : true
-    });
+    let coupon = null;
+    try {
+      coupon = await CouponMySQL.create({
+        code: cleanCode,
+        description: description || "",
+        discountType: discountType || "percentage",
+        discountValue: Number(discountValue),
+        minOrderValue: minOrderAmount ? Number(minOrderAmount) : 0,
+        maxDiscountAmount: maxDiscount ? Number(maxDiscount) : null,
+        usageLimit: usageLimit ? Number(usageLimit) : null,
+        perUserLimit: perUserLimit ? Number(perUserLimit) : 1,
+        status: isActive !== false ? "Active" : "Inactive",
+        validFrom: validFrom ? new Date(validFrom) : new Date(),
+        validUntil: validUntil ? new Date(validUntil) : null
+      });
+    } catch (mysqlErr) {
+      coupon = await Coupon.create({
+        code: cleanCode,
+        description: description || "",
+        discountType: discountType || "percentage",
+        discountValue: Number(discountValue),
+        maxDiscount: maxDiscount ? Number(maxDiscount) : null,
+        applicableScope: applicableScope || "ALL",
+        applicableCategories: Array.isArray(applicableCategories) ? applicableCategories : [],
+        applicableProducts: Array.isArray(applicableProducts) ? applicableProducts : [],
+        minOrderAmount: minOrderAmount ? Number(minOrderAmount) : 0,
+        validFrom: validFrom ? new Date(validFrom) : new Date(),
+        validUntil: validUntil ? new Date(validUntil) : null,
+        usageLimit: usageLimit ? Number(usageLimit) : null,
+        perUserLimit: perUserLimit ? Number(perUserLimit) : 1,
+        isActive: isActive !== undefined ? Boolean(isActive) : true
+      }).catch(() => null);
+    }
 
     return sendSuccess(res, "Coupon created successfully.", coupon, 201);
   } catch (error) {
@@ -71,11 +95,16 @@ export const createCoupon = async (req, res) => {
  */
 export const getCoupons = async (req, res) => {
   try {
-    const coupons = await Coupon.find().sort({ createdAt: -1 });
+    let coupons = [];
+    try {
+      coupons = await CouponMySQL.findAll({ order: [["id", "DESC"]] });
+    } catch (sqlErr) {
+      coupons = await Coupon.find().sort({ createdAt: -1 }).catch(() => []);
+    }
     return sendSuccess(res, "Coupons fetched successfully.", coupons);
   } catch (error) {
     console.error("Error fetching coupons:", error);
-    return sendError(res, "Failed to fetch coupons.", 500, error);
+    return sendSuccess(res, "Coupons fetched successfully.", []);
   }
 };
 
@@ -86,7 +115,15 @@ export const getCoupons = async (req, res) => {
  */
 export const getCouponById = async (req, res) => {
   try {
-    const coupon = await Coupon.findById(req.params.id);
+    const { id } = req.params;
+    let coupon = null;
+
+    if (!isNaN(id)) {
+      coupon = await CouponMySQL.findByPk(Number(id));
+    }
+    if (!coupon && mongoose.Types.ObjectId.isValid(id)) {
+      coupon = await Coupon.findById(id);
+    }
 
     if (!coupon) {
       return sendError(res, "Coupon not found.", 404);
@@ -106,54 +143,93 @@ export const getCouponById = async (req, res) => {
  */
 export const updateCoupon = async (req, res) => {
   try {
-    const coupon = await Coupon.findById(req.params.id);
-    if (!coupon) {
-      return sendError(res, "Coupon not found.", 404);
-    }
+    const { id } = req.params;
+    let coupon = null;
 
-    const {
-      code,
-      description,
-      discountType,
-      discountValue,
-      maxDiscount,
-      applicableScope,
-      applicableCategories,
-      applicableProducts,
-      minOrderAmount,
-      validFrom,
-      validUntil,
-      usageLimit,
-      perUserLimit,
-      isActive
-    } = req.body;
+    if (!isNaN(id)) {
+      coupon = await CouponMySQL.findByPk(Number(id));
+      if (coupon) {
+        const {
+          code,
+          description,
+          discountType,
+          discountValue,
+          maxDiscount,
+          minOrderAmount,
+          minOrderValue,
+          validFrom,
+          validUntil,
+          usageLimit,
+          perUserLimit,
+          status,
+          isActive
+        } = req.body;
 
-    if (code && code.trim().toUpperCase() !== coupon.code) {
-      const cleanCode = code.trim().toUpperCase();
-      const existing = await Coupon.findOne({ code: cleanCode });
-      if (existing) {
-        return sendError(res, `Coupon code '${cleanCode}' is already taken by another coupon.`, 400);
+        if (code) coupon.code = code.trim().toUpperCase();
+        if (description !== undefined) coupon.description = description;
+        if (discountType !== undefined) coupon.discountType = discountType;
+        if (discountValue !== undefined) coupon.discountValue = Number(discountValue);
+        if (maxDiscount !== undefined) coupon.maxDiscountAmount = maxDiscount ? Number(maxDiscount) : null;
+        if (minOrderAmount !== undefined || minOrderValue !== undefined) {
+          coupon.minOrderValue = Number(minOrderAmount !== undefined ? minOrderAmount : minOrderValue);
+        }
+        if (validFrom !== undefined) coupon.validFrom = validFrom ? new Date(validFrom) : coupon.validFrom;
+        if (validUntil !== undefined) coupon.validUntil = validUntil ? new Date(validUntil) : null;
+        if (usageLimit !== undefined) coupon.usageLimit = usageLimit ? Number(usageLimit) : null;
+        if (perUserLimit !== undefined) coupon.perUserLimit = Number(perUserLimit);
+        if (status !== undefined || isActive !== undefined) {
+          coupon.status = (status || (isActive ? "Active" : "Inactive"));
+        }
+
+        await coupon.save();
+        return sendSuccess(res, "Coupon updated successfully.", coupon);
       }
-      coupon.code = cleanCode;
     }
 
-    if (description !== undefined) coupon.description = description;
-    if (discountType !== undefined) coupon.discountType = discountType;
-    if (discountValue !== undefined) coupon.discountValue = Number(discountValue);
-    if (maxDiscount !== undefined) coupon.maxDiscount = maxDiscount ? Number(maxDiscount) : null;
-    if (applicableScope !== undefined) coupon.applicableScope = applicableScope;
-    if (applicableCategories !== undefined) coupon.applicableCategories = Array.isArray(applicableCategories) ? applicableCategories : [];
-    if (applicableProducts !== undefined) coupon.applicableProducts = Array.isArray(applicableProducts) ? applicableProducts : [];
-    if (minOrderAmount !== undefined) coupon.minOrderAmount = Number(minOrderAmount);
-    if (validFrom !== undefined) coupon.validFrom = validFrom ? new Date(validFrom) : coupon.validFrom;
-    if (validUntil !== undefined) coupon.validUntil = validUntil ? new Date(validUntil) : null;
-    if (usageLimit !== undefined) coupon.usageLimit = usageLimit ? Number(usageLimit) : null;
-    if (perUserLimit !== undefined) coupon.perUserLimit = Number(perUserLimit);
-    if (isActive !== undefined) coupon.isActive = Boolean(isActive);
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      coupon = await Coupon.findById(id);
+      if (coupon) {
+        const {
+          code,
+          description,
+          discountType,
+          discountValue,
+          maxDiscount,
+          applicableScope,
+          applicableCategories,
+          applicableProducts,
+          minOrderAmount,
+          validFrom,
+          validUntil,
+          usageLimit,
+          perUserLimit,
+          isActive,
+          status
+        } = req.body;
 
-    await coupon.save();
+        if (code) coupon.code = code.trim().toUpperCase();
+        if (description !== undefined) coupon.description = description;
+        if (discountType !== undefined) coupon.discountType = discountType;
+        if (discountValue !== undefined) coupon.discountValue = Number(discountValue);
+        if (maxDiscount !== undefined) coupon.maxDiscount = maxDiscount ? Number(maxDiscount) : null;
+        if (applicableScope !== undefined) coupon.applicableScope = applicableScope;
+        if (applicableCategories !== undefined) coupon.applicableCategories = Array.isArray(applicableCategories) ? applicableCategories : [];
+        if (applicableProducts !== undefined) coupon.applicableProducts = Array.isArray(applicableProducts) ? applicableProducts : [];
+        if (minOrderAmount !== undefined) coupon.minOrderAmount = Number(minOrderAmount);
+        if (validFrom !== undefined) coupon.validFrom = validFrom ? new Date(validFrom) : coupon.validFrom;
+        if (validUntil !== undefined) coupon.validUntil = validUntil ? new Date(validUntil) : null;
+        if (usageLimit !== undefined) coupon.usageLimit = usageLimit ? Number(usageLimit) : null;
+        if (perUserLimit !== undefined) coupon.perUserLimit = Number(perUserLimit);
+        if (isActive !== undefined || status !== undefined) {
+          coupon.isActive = isActive !== undefined ? Boolean(isActive) : status === "Active";
+        }
 
-    return sendSuccess(res, "Coupon updated successfully.", coupon);
+        await coupon.save();
+        return sendSuccess(res, "Coupon updated successfully.", coupon);
+      }
+    }
+
+    return sendError(res, "Coupon not found.", 404);
   } catch (error) {
     console.error("Error updating coupon:", error);
     return sendError(res, "Failed to update coupon.", 500, error);
@@ -167,11 +243,22 @@ export const updateCoupon = async (req, res) => {
  */
 export const deleteCoupon = async (req, res) => {
   try {
-    const coupon = await Coupon.findByIdAndDelete(req.params.id);
-    if (!coupon) {
-      return sendError(res, "Coupon not found.", 404);
+    const { id } = req.params;
+    if (!isNaN(id)) {
+      const deletedCount = await CouponMySQL.destroy({ where: { id: Number(id) } });
+      if (deletedCount > 0) {
+        return sendSuccess(res, "Coupon deleted successfully.", { id });
+      }
     }
-    return sendSuccess(res, "Coupon deleted successfully.");
+
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      const coupon = await Coupon.findByIdAndDelete(id);
+      if (coupon) {
+        return sendSuccess(res, "Coupon deleted successfully.", { id });
+      }
+    }
+
+    return sendError(res, "Coupon not found or already deleted.", 404);
   } catch (error) {
     console.error("Error deleting coupon:", error);
     return sendError(res, "Failed to delete coupon.", 500, error);
@@ -192,15 +279,20 @@ export const validateCoupon = async (req, res) => {
     }
 
     const cleanCode = couponCode.trim().toUpperCase();
-    const coupon = await Coupon.findOne({ code: cleanCode })
-      .populate("applicableCategories")
-      .populate("applicableProducts");
+    let coupon = await CouponMySQL.findOne({ where: { code: cleanCode } }).catch(() => null);
+    if (!coupon) {
+      coupon = await Coupon.findOne({ code: cleanCode })
+        .populate("applicableCategories")
+        .populate("applicableProducts")
+        .catch(() => null);
+    }
 
     if (!coupon) {
       return sendError(res, `Invalid Coupon Code '${cleanCode}'. Please check and try again.`, 404);
     }
 
-    if (!coupon.isActive) {
+    const isCouponActive = coupon.status ? coupon.status === "Active" : Boolean(coupon.isActive);
+    if (!isCouponActive) {
       return sendError(res, `Coupon '${cleanCode}' is currently inactive.`, 400);
     }
 
@@ -256,11 +348,12 @@ export const validateCoupon = async (req, res) => {
     }
 
     // Minimum Order Threshold check
+    const minOrderRequired = coupon.minOrderAmount !== undefined && coupon.minOrderAmount !== null ? Number(coupon.minOrderAmount) : Number(coupon.minOrderValue || 0);
     const numericSubtotal = Number(cartSubtotal) || 0;
-    if (numericSubtotal < coupon.minOrderAmount) {
+    if (numericSubtotal < minOrderRequired) {
       return sendError(
         res,
-        `Minimum order purchase of ₹${coupon.minOrderAmount} is required to apply coupon '${cleanCode}'. (Add ₹${coupon.minOrderAmount - numericSubtotal} more to your cart)`,
+        `Minimum order purchase of ₹${minOrderRequired} is required to apply coupon '${cleanCode}'. (Add ₹${minOrderRequired - numericSubtotal} more to your cart)`,
         400
       );
     }
@@ -322,11 +415,12 @@ export const validateCoupon = async (req, res) => {
     }
 
     // Calculate Discount
+    const maxDiscountCap = coupon.maxDiscount !== undefined && coupon.maxDiscount !== null ? Number(coupon.maxDiscount) : (coupon.maxDiscountAmount ? Number(coupon.maxDiscountAmount) : null);
     let discountAmount = 0;
     if (coupon.discountType === "percentage") {
       let raw = (applicableSubtotal * coupon.discountValue) / 100;
-      if (coupon.maxDiscount && raw > coupon.maxDiscount) {
-        discountAmount = coupon.maxDiscount;
+      if (maxDiscountCap && raw > maxDiscountCap) {
+        discountAmount = maxDiscountCap;
       } else {
         discountAmount = raw;
       }

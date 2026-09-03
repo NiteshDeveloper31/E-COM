@@ -57,13 +57,14 @@ export const getAllRecipes = async (req, res, next) => {
 
 export const createRecipe = async (req, res, next) => {
   try {
-    const { title, image, prepTime, cookTime, servings, shortDescription, ingredients, instructions, category, author, badge, status } = req.body;
+    const { title, image, prepTime, cookTime, servings, shortDescription, description, ingredients, instructions, category, author, badge, tag, status } = req.body;
 
     if (!title) {
       return sendError(res, "Title is required.", 400);
     }
     const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-");
     const savedImage = saveBase64Image(image, 'recipes');
+    const descText = shortDescription || description || "";
 
     let newRecipe = null;
     try {
@@ -71,31 +72,33 @@ export const createRecipe = async (req, res, next) => {
         title,
         slug,
         image: savedImage || "",
-        description: shortDescription || "",
+        description: descText,
         prepTime: prepTime || "",
         cookTime: cookTime || "",
         servings: servings || "",
         ingredients: ingredients || [],
-        instructions: instructions || [],
+        instructions: instructions || "",
         category: category || "Recipe",
         author: author || "ReetSutra Kitchen",
-        badge: badge || "",
+        badge: badge || tag || "",
         status: status || "Active"
       });
     } catch (mysqlErr) {
       newRecipe = await Recipe.create({
         title,
         slug,
-        image,
-        description: shortDescription,
-        prepTime,
-        cookTime,
-        servings,
-        ingredients,
-        instructions,
+        image: savedImage || image || "",
+        shortDescription: descText,
+        description: descText,
+        prepTime: prepTime || "",
+        cookTime: cookTime || "",
+        servings: servings || "",
+        ingredients: ingredients || [],
+        instructions: instructions || "",
         category: category || "Recipe",
         author: author || "ReetSutra Kitchen",
-        badge: badge || "",
+        badge: badge || tag || "",
+        tag: tag || badge || "",
         status: status || "Active"
       });
     }

@@ -1,7 +1,6 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import connectDB from "./config/db.js";
 import errorMiddleware from "./middleware/errorMiddleware.js";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -21,12 +20,6 @@ import settingsRoutes from "./routes/settingsRoutes.js";
 import grnRoutes from "./routes/grnRoutes.js";
 import couponRoutes from "./routes/couponRoutes.js";
 import recipeRoutes from "./routes/recipeRoutes.js";
-import { seedDefaultRecipes } from "./controllers/recipeController.js";
-
-import User from "./models/User.js";
-import Category from "./models/Category.js";
-import Banner from "./models/Banner.js";
-import { hashPassword } from "./utils/password.js";
 
 import { seedMySQLData } from "./seedMySQL.js";
 
@@ -35,61 +28,6 @@ dotenv.config();
 
 // Initialize MySQL Database connection
 seedMySQLData();
-
-// Connect to MongoDB & auto-seed admin & categories
-connectDB().then(async () => {
-  try {
-    // Drop legacy unique index on username if present in database
-    await User.collection.dropIndex("username_1").catch(() => {});
-
-    // Auto-update legacy .jpg category image paths in database
-    await Category.updateMany({ image: '/images/thekua.jpg' }, { image: '/images/thekua.jpeg' }).catch(() => {});
-    await Category.updateMany({ image: '/images/desi_cow_ghee.jpg' }, { image: '/images/desi_cow_ghee.jpeg' }).catch(() => {});
-
-    const adminExists = await User.findOne({ email: "admin@reetsutra.com" });
-    if (!adminExists) {
-      const hashedPassword = await hashPassword("admin123");
-      await User.create({
-        name: "Super Admin",
-        email: "admin@reetsutra.com",
-        password: hashedPassword,
-        role: "superadmin",
-        permissions: ["dashboard", "products", "inventory", "categories", "orders", "customers", "banners", "coupons", "analytics", "settings", "profile"]
-      });
-      console.log("✅ Default superadmin seeded (admin@reetsutra.com / admin123)");
-    } else if (adminExists.role !== "superadmin") {
-      adminExists.role = "superadmin";
-      adminExists.permissions = ["dashboard", "products", "inventory", "categories", "orders", "customers", "banners", "coupons", "analytics", "settings", "profile"];
-      await adminExists.save();
-      console.log("✅ Updated admin@reetsutra.com role to superadmin");
-    }
-
-
-
-    // Seed default permanent hero banner if empty
-    const bannerCount = await Banner.countDocuments();
-    if (bannerCount === 0) {
-      await Banner.create({
-        title: "The Taste of Bihar, Crafted with Tradition",
-        subtitle: "Every Bite, A Story of Bihar, Shared With Loved Ones.",
-        bannerType: "Permanent",
-        targetDevice: "Both",
-        desktopImage: "/assets/Final_Banner_Img_web.png",
-        mobileImage: "/assets/Mobile_view_Banner_image.jpg",
-        image: "/assets/Final_Banner_Img_web.png",
-        buttonText: "SHOP NOW",
-        buttonLink: "/shop",
-        status: "Active",
-        placement: "Main Hero Permanent"
-      });
-      console.log("✅ Default Permanent Banner seeded successfully");
-    }
-
-    await seedDefaultRecipes();
-  } catch (err) {
-    console.error("Seed check failed:", err.message);
-  }
-});
 
 const app = express();
 

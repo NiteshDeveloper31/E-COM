@@ -15,9 +15,12 @@ import MongoRecipe from "../Recipe.js";
 
 export const findUserByEmail = async (email) => {
   try {
-    return await UserMySQL.findOne({ where: { email } });
+    const clean = String(email || "").trim().toLowerCase();
+    const sqlUser = await UserMySQL.findOne({ where: { email: clean } });
+    if (sqlUser) return sqlUser;
+    return await MongoUser.findOne({ email: clean }).catch(() => null);
   } catch (err) {
-    return await MongoUser.findOne({ email });
+    return await MongoUser.findOne({ email: String(email || "").trim().toLowerCase() }).catch(() => null);
   }
 };
 
@@ -29,7 +32,7 @@ export const findUserById = async (id) => {
       user = await UserMySQL.findByPk(numId);
     }
     if (!user && typeof id === "string" && id.length === 24) {
-      user = await MongoUser.findById(id);
+      user = await MongoUser.findById(id).catch(() => null);
     }
     return user;
   } catch (err) {

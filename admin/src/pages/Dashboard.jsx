@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useData } from "../context/DataContext";
 import { StatCard } from "../components/StatCard";
+import { getAdminImageUrl, handleAdminImageError } from "../config";
 import { SalesAreaChart } from "../components/ChartComponents";
 import { Drawer } from "../components/Drawer";
 
@@ -314,8 +315,9 @@ export const Dashboard = () => {
                 <div key={prod.id} className="flex items-center justify-between gap-3 p-2 rounded-lg hover:bg-background/30 transition-all">
                   <div className="flex items-center gap-3">
                     <img
-                      src={prod.image}
+                      src={getAdminImageUrl(prod.image)}
                       alt={prod.name}
+                      onError={(e) => handleAdminImageError(e, "/images/placeholder.jpg")}
                       className="w-10 h-10 rounded-md border border-primary/5 object-cover"
                     />
                     <div>
@@ -394,8 +396,9 @@ export const Dashboard = () => {
                     <div key={item.productId} className="p-3 flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <img
-                          src={item.image}
+                          src={getAdminImageUrl(item.image)}
                           alt={item.productName}
+                          onError={(e) => handleAdminImageError(e, "/images/placeholder.jpg")}
                           className="w-10 h-10 rounded-md border border-primary/5 object-cover"
                         />
                         <div>

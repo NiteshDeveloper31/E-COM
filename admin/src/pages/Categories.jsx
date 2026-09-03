@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Plus, Edit2, Trash2, FolderTree, AlertTriangle, Layers, Upload, Image as ImageIcon, CheckCircle, Eye } from "lucide-react";
 import { useData } from "../context/DataContext";
 import { Modal } from "../components/Modal";
+import { BACKEND_URL, getAdminImageUrl, handleAdminImageError } from "../config";
 
 export const Categories = () => {
   const { categories, addCategory, updateCategory, deleteCategory } = useData();
@@ -19,6 +20,7 @@ export const Categories = () => {
   const [formDescription, setFormDescription] = useState("");
   const [formStatus, setFormStatus] = useState("Active");
   const [formError, setFormError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleOpenAdd = () => {
     setCurrentCategory(null);
@@ -28,6 +30,7 @@ export const Categories = () => {
     setFormDescription("");
     setFormStatus("Active");
     setFormError("");
+    setIsSubmitting(false);
     setIsAddEditOpen(true);
   };
 
@@ -39,6 +42,7 @@ export const Categories = () => {
     setFormDescription(cat.description || "");
     setFormStatus(cat.status || "Active");
     setFormError("");
+    setIsSubmitting(false);
     setIsAddEditOpen(true);
   };
 
@@ -64,7 +68,7 @@ export const Categories = () => {
     }
   };
 
-  const handleSubmitCategory = (e) => {
+  const handleSubmitCategory = async (e) => {
     e.preventDefault();
     if (!formName.trim()) {
       setFormError("Category Name is required.");
@@ -85,13 +89,22 @@ export const Categories = () => {
       status: formStatus
     };
 
-    if (currentCategory) {
-      updateCategory(currentCategory.id || currentCategory._id, payload);
-    } else {
-      addCategory(payload);
-    }
+    setIsSubmitting(true);
+    setFormError("");
 
-    setIsAddEditOpen(false);
+    try {
+      if (currentCategory) {
+        await updateCategory(currentCategory.id || currentCategory._id, payload);
+      } else {
+        await addCategory(payload);
+      }
+      setIsAddEditOpen(false);
+    } catch (err) {
+      console.error("Failed to save category:", err);
+      setFormError(err.message || "Failed to save category. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleDeleteConfirm = () => {
@@ -137,8 +150,9 @@ export const Categories = () => {
               <div className="relative aspect-video w-full bg-slate-100 overflow-hidden border-b border-primary/10 group">
                 {cat.image ? (
                   <img
-                    src={cat.image}
+                    src={getAdminImageUrl(cat.image)}
                     alt={cat.name}
+                    onError={(e) => handleAdminImageError(e, "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=400&q=80")}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                 ) : (
@@ -262,7 +276,7 @@ export const Categories = () => {
               {/* Image Preview Box */}
               {formImage ? (
                 <div className="relative aspect-video w-full rounded-xl overflow-hidden border border-secondary/40 bg-slate-50 group">
-                  <img src={formImage} alt="Category Preview" className="w-full h-full object-cover" />
+                  <img src={getAdminImageUrl(formImage)} alt="Category Preview" className="w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                     <button
                       type="button"
@@ -339,16 +353,29 @@ export const Categories = () => {
           <div className="border-t border-primary/5 pt-4 flex items-center justify-end gap-3">
             <button
               type="button"
+              disabled={isSubmitting}
               onClick={() => setIsAddEditOpen(false)}
-              className="px-4 py-2 text-xs font-bold text-charcoal-light hover:bg-primary/5 hover:text-primary rounded-lg transition-colors cursor-pointer"
+              className="px-4 py-2 text-xs font-bold text-charcoal-light hover:bg-primary/5 hover:text-primary rounded-lg transition-colors cursor-pointer disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 text-xs font-display font-bold text-secondary bg-primary hover:bg-primary-light rounded-lg shadow-sm transition-colors cursor-pointer"
+              disabled={isSubmitting}
+              className={`px-4 py-2 text-xs font-display font-bold rounded-lg shadow-sm transition-all flex items-center justify-center gap-2 ${
+                isSubmitting
+                  ? "bg-slate-400 text-white cursor-not-allowed"
+                  : "text-secondary bg-primary hover:bg-primary-light cursor-pointer"
+              }`}
             >
-              {currentCategory ? "Save Changes" : "Create Category"}
+              {isSubmitting ? (
+                <>
+                  <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>{currentCategory ? "Saving Changes..." : "Creating Category..."}</span>
+                </>
+              ) : (
+                currentCategory ? "Save Changes" : "Create Category"
+              )}
             </button>
           </div>
         </form>

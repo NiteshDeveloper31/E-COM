@@ -7,7 +7,7 @@ import { SlidersHorizontal, ArrowUpDown, X, Star, ChevronDown, Check } from 'luc
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Shop() {
-  const { products } = useReetSutra();
+  const { products, categoriesList } = useReetSutra();
   const [searchParams, setSearchParams] = useSearchParams();
   const [quickViewProduct, setQuickViewProduct] = useState(null);
 
@@ -83,6 +83,12 @@ export default function Shop() {
     setSearchParams({});
   };
 
+  // Find category description from Admin categoriesList
+  const activeCategoryObj = categoriesList?.find(
+    c => c.name?.toLowerCase() === selectedCategory.toLowerCase() || c.displayName?.toLowerCase() === selectedCategory.toLowerCase()
+  );
+  const activeCategoryDesc = activeCategoryObj?.description?.trim() || "";
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8 min-h-screen">
       
@@ -91,12 +97,19 @@ export default function Shop() {
         <h1 className="text-3xl md:text-5xl font-black serif-header tracking-wider">
           {selectedCategory === 'All' ? 'Our Heritage Delicacies' : selectedCategory}
         </h1>
-        <p className="text-xs md:text-sm text-brand-cream/80 max-w-xl mx-auto mt-2 font-sans">
-          {searchParam 
-            ? `Search results for "${searchParam}"`
-            : 'Explore traditional sand-roasted makhanas, hand-pounded winter sweets, and authentic wood-pressed festival cookies.'
-          }
-        </p>
+        {searchParam ? (
+          <p className="text-xs md:text-sm text-brand-cream/80 max-w-xl mx-auto mt-2 font-sans">
+            Search results for "{searchParam}"
+          </p>
+        ) : selectedCategory === 'All' ? (
+          <p className="text-xs md:text-sm text-brand-cream/80 max-w-xl mx-auto mt-2 font-sans">
+            Explore traditional sand-roasted makhanas, hand-pounded winter sweets, and authentic wood-pressed festival cookies.
+          </p>
+        ) : activeCategoryDesc ? (
+          <p className="text-xs md:text-sm text-brand-cream/80 max-w-xl mx-auto mt-2 font-sans">
+            {activeCategoryDesc}
+          </p>
+        ) : null}
       </div>
 
       {/* Control Bar (Count, Mobile Filter Toggle, Sort) */}

@@ -29,6 +29,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { handleFrontendImageError, getFrontendImageUrl } from '../config';
 
 export default function Profile() {
   const { user, addresses, orders, updateProfile, deleteAddress, addAddress, updateAddress, setDefaultAddress, updateOrderStatus, sendOTP, changePhoneWithOTP, changeEmailWithOTP, showToast } = useReetSutra();
@@ -489,10 +490,14 @@ export default function Profile() {
                             </span>
                           )}
                         </div>
-                        <p className="font-bold text-xs text-[#1E3926] font-serif">{defaultAddress.name}</p>
+                        <p className="font-bold text-xs text-[#1E3926] font-serif">
+                          {(defaultAddress.name && defaultAddress.name.length > 1) ? defaultAddress.name : (user?.name || '')}
+                        </p>
                         <p className="text-xs text-[#1E3926]/80 font-sans leading-relaxed">{defaultAddress.street}</p>
                         <p className="text-xs text-[#1E3926]/80 font-sans">{defaultAddress.city}, {defaultAddress.state} - <span className="font-bold">{defaultAddress.zip}</span></p>
-                        <p className="text-[11px] text-[#8C6D34] font-semibold pt-1">📞 {formatPhone(defaultAddress.phone)}</p>
+                        <p className="text-[11px] text-[#8C6D34] font-semibold pt-1">
+                          📞 {formatPhone((defaultAddress.phone && defaultAddress.phone.length >= 10) ? defaultAddress.phone : (user?.phone || ''))}
+                        </p>
                       </div>
                     ) : (
                       <div className="p-6 border border-dashed border-[#B8934E]/30 rounded-xl text-center space-y-2 bg-[#FAF7F2]/40 mt-4">
@@ -542,45 +547,128 @@ export default function Profile() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {orders.map((ord) => (
-                    <div key={ord.id} className="border border-[#B8934E]/20 bg-[#FAF7F2]/40 rounded-xl p-4 sm:p-5 space-y-3 hover:border-[#C8A25D] transition-all">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#B8934E]/15 pb-3">
-                        <div>
-                          <span className="text-[10px] font-bold text-[#8C6D34] uppercase block">Order ID</span>
-                          <span className="font-bold text-xs text-[#1E3926] font-mono">#{ord.id}</span>
+                  {orders.map((ord) => {
+                    const shippingCity = ord.shippingAddress?.city || ord.shippingAddress?.state || '';
+                    const recipientName = ord.shippingAddress?.name || ord.customerName || '';
+                    
+                    return (
+                      <div key={ord.id} className="border border-[#B8934E]/25 bg-white rounded-xl overflow-hidden shadow-xs hover:shadow-md transition-all">
+                        {/* Header Bar */}
+                        <div className="bg-[#FAF7F2] p-4 border-b border-[#B8934E]/15 flex flex-wrap items-center justify-between gap-3 text-xs">
+                          <div className="flex items-center space-x-4">
+                            <div>
+                              <span className="text-[10px] font-bold text-[#8C6D34] uppercase block">Order ID</span>
+                              <span className="font-bold text-sm text-[#1E3926] font-mono">#{ord.id}</span>
+                            </div>
+                            <div className="hidden sm:block border-l border-[#B8934E]/20 h-6" />
+                            <div>
+                              <span className="text-[10px] font-bold text-[#8C6D34] uppercase block">Order Date</span>
+                              <span className="text-xs text-[#1E3926] font-medium">
+                                {ord.date ? new Date(ord.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center space-x-4">
+                            <div>
+                              <span className="text-[10px] font-bold text-[#8C6D34] uppercase block">Total Amount</span>
+                              <span className="text-sm font-bold text-[#1E3926]">₹{ord.total}</span>
+                            </div>
+                            <span className={`text-[10px] font-extrabold uppercase px-3 py-1 rounded-full border shadow-2xs ${
+                              ord.status === 'Delivered'
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                : ord.status === 'Cancelled'
+                                ? 'bg-rose-50 text-rose-700 border-rose-300'
+                                : 'bg-amber-50 text-amber-800 border-amber-300'
+                            }`}>
+                              {ord.status || 'PENDING'}
+                            </span>
+                          </div>
                         </div>
-                        <div>
-                          <span className="text-[10px] font-bold text-[#8C6D34] uppercase block">Order Date</span>
-                          <span className="text-xs text-[#1E3926] font-medium">{new Date(ord.date).toLocaleDateString('en-IN')}</span>
+
+                        {/* Rich Flipkart-Style Line Items List */}
+                        <div className="p-4 space-y-3">
+                          {(ord.items || []).map((it, idx) => {
+                            const itemName = it.name || it.productName || it.product?.name || "Traditional Heritage Item";
+                            const isFreeSample = it.isSample || it.price === 0 || itemName.toLowerCase().includes("sample") || itemName.toLowerCase().includes("picke") || itemName.toLowerCase().includes("pickle");
+                            const defaultSampleImg = "https://images.unsplash.com/photo-1599940824399-b87987ceb72a?auto=format&fit=crop&w=400&q=80";
+                            const defaultRegularImg = "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?auto=format&fit=crop&w=400&q=80";
+                            const rawItemImg = it.image || it.product?.image || (isFreeSample ? defaultSampleImg : defaultRegularImg);
+                            const itemImage = getFrontendImageUrl(rawItemImg) || (isFreeSample ? defaultSampleImg : defaultRegularImg);
+                            const itemPrice = it.price || 0;
+                            const itemQty = it.quantity || 1;
+
+                            return (
+                              <div key={idx} className="flex items-center justify-between gap-4 p-3 bg-[#FAF7F2]/50 border border-[#B8934E]/15 rounded-xl">
+                                <div className="flex items-center space-x-3.5 overflow-hidden">
+                                  {/* Item Image */}
+                                  <div className="w-14 h-14 rounded-lg overflow-hidden border border-[#B8934E]/25 shrink-0 bg-white">
+                                    <img
+                                      src={itemImage}
+                                      alt={itemName}
+                                      onError={(e) => handleFrontendImageError(e, isFreeSample ? defaultSampleImg : defaultRegularImg)}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  </div>
+
+                                  {/* Item Details */}
+                                  <div className="space-y-1 overflow-hidden">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <h4 className="font-serif font-bold text-sm text-[#1E3926] truncate">
+                                        {itemName}
+                                      </h4>
+                                      {isFreeSample && (
+                                        <span className="bg-[#C8A25D] text-[#1E3926] text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md shadow-2xs shrink-0">
+                                          🎁 FREE SAMPLE ADD-ON
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    <div className="text-xs text-[#8C6D34] font-sans flex items-center space-x-2">
+                                      <span>Qty: <strong className="text-[#1E3926]">{itemQty}</strong></span>
+                                      <span>•</span>
+                                      <span>
+                                        {isFreeSample ? (
+                                          <span className="text-emerald-700 font-bold font-serif">FREE (₹0)</span>
+                                        ) : (
+                                          <span>₹{itemPrice} per unit</span>
+                                        )}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Price Column */}
+                                <div className="text-right shrink-0 font-sans">
+                                  {isFreeSample ? (
+                                    <div>
+                                      <span className="text-[10px] text-[#8C6D34]/60 line-through block font-mono">₹{it.originalPrice || 70}</span>
+                                      <span className="font-bold text-[#C8A25D] text-xs font-serif uppercase">FREE</span>
+                                    </div>
+                                  ) : (
+                                    <span className="font-bold text-[#1E3926] text-sm font-sans">₹{itemPrice * itemQty}</span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                        <div>
-                          <span className="text-[10px] font-bold text-[#8C6D34] uppercase block">Total Amount</span>
-                          <span className="text-xs font-bold text-[#1E3926]">₹{ord.total}</span>
-                        </div>
-                        <div>
-                          <span className={`text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full border ${
-                            ord.status === 'Delivered'
-                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                              : ord.status === 'Cancelled'
-                              ? 'bg-rose-50 text-rose-700 border-rose-200'
-                              : 'bg-amber-50 text-amber-800 border-amber-200'
-                          }`}>
-                            {ord.status}
+
+                        {/* Order Footer Bar: Shipping & Tracking */}
+                        <div className="bg-[#FAF7F2]/80 px-4 py-2.5 border-t border-[#B8934E]/15 flex items-center justify-between text-[11px] text-[#8C6D34] font-sans">
+                          <div className="flex items-center space-x-1.5 truncate">
+                            <MapPin className="w-3.5 h-3.5 text-[#C8A25D] shrink-0" />
+                            <span className="truncate">
+                              {recipientName ? `Delivering to ${recipientName}` : 'Shipping Address Saved'} {shippingCity ? `(${shippingCity})` : ''}
+                            </span>
+                          </div>
+                          <span className="font-bold text-[#1E3926] uppercase text-[10px] tracking-wider shrink-0">
+                            Payment: {ord.paymentMethod || 'COD'}
                           </span>
                         </div>
                       </div>
-
-                      {/* Items list */}
-                      <div className="space-y-2 pt-1">
-                        {(ord.items || []).map((it, idx) => (
-                          <div key={idx} className="flex items-center justify-between text-xs">
-                            <span className="font-semibold text-[#1E3926]">{it.name} x {it.quantity}</span>
-                            <span className="font-bold text-[#8C6D34]">₹{it.price * it.quantity}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -789,13 +877,17 @@ export default function Profile() {
                             </button>
                           </div>
                         </div>
-                        <p className="font-bold text-sm text-[#1E3926] font-serif mt-2">{addr.name}</p>
+                        <p className="font-bold text-sm text-[#1E3926] font-serif mt-2">
+                          {(addr.name && addr.name.length > 1) ? addr.name : (user?.name || '')}
+                        </p>
                         <p className="text-xs text-[#1E3926]/80 mt-1 leading-relaxed">{addr.street}</p>
                         <p className="text-xs text-[#1E3926]/80">{addr.city}, {addr.state} - <span className="font-bold">{addr.zip}</span></p>
                       </div>
 
                       <div className="flex items-center justify-between pt-2 border-t border-[#B8934E]/15">
-                        <p className="text-xs text-[#8C6D34] font-semibold">📞 {formatPhone(addr.phone)}</p>
+                        <p className="text-xs text-[#8C6D34] font-semibold">
+                          📞 {formatPhone((addr.phone && addr.phone.length >= 10) ? addr.phone : (user?.phone || ''))}
+                        </p>
                         {!addr.isDefault && (
                           <button
                             onClick={() => setDefaultAddress(addr.id)}

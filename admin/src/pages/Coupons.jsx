@@ -95,7 +95,8 @@ export const Coupons = () => {
     setValidUntil(coupon.validUntil ? new Date(coupon.validUntil).toISOString().split("T")[0] : "");
     setUsageLimit(coupon.usageLimit ? String(coupon.usageLimit) : "");
     setPerUserLimit(String(coupon.perUserLimit || 1));
-    setIsActive(coupon.isActive !== undefined ? coupon.isActive : true);
+    const isCurrentlyActive = coupon.status ? coupon.status === "Active" : Boolean(coupon.isActive);
+    setIsActive(isCurrentlyActive);
     setFormError("");
     setIsAddEditOpen(true);
   };
@@ -156,7 +157,8 @@ export const Coupons = () => {
         validUntil: validUntil ? new Date(validUntil) : null,
         usageLimit: usageLimit ? Number(usageLimit) : null,
         perUserLimit: Number(perUserLimit || 1),
-        isActive
+        isActive,
+        status: isActive ? "Active" : "Inactive"
       };
 
       const url = editingCoupon
@@ -213,6 +215,8 @@ export const Coupons = () => {
   };
 
   const handleToggleStatus = async (coupon) => {
+    const isCurrentlyActive = coupon.status ? coupon.status === "Active" : Boolean(coupon.isActive);
+    const nextActive = !isCurrentlyActive;
     try {
       const activeToken = token || localStorage.getItem("rs_token");
       const res = await fetch(`${API_BASE_URL}/coupons/${coupon._id || coupon.id}`, {
@@ -221,11 +225,14 @@ export const Coupons = () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${activeToken}`
         },
-        body: JSON.stringify({ isActive: !coupon.isActive })
+        body: JSON.stringify({
+          isActive: nextActive,
+          status: nextActive ? "Active" : "Inactive"
+        })
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        showToast(`Coupon status changed to ${!coupon.isActive ? "Active" : "Inactive"}.`, "success");
+        showToast(`Coupon status changed to ${nextActive ? "Active" : "Inactive"}.`, "success");
         fetchCoupons();
       }
     } catch (err) {
@@ -374,17 +381,22 @@ export const Coupons = () => {
 
                     {/* Status */}
                     <td className="px-5 py-4">
-                      <button
-                        onClick={() => handleToggleStatus(coupon)}
-                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold cursor-pointer transition-all ${
-                          coupon.isActive
-                            ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
-                            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                        }`}
-                      >
-                        {coupon.isActive ? <Check size={12} /> : <X size={12} />}
-                        {coupon.isActive ? "Active" : "Inactive"}
-                      </button>
+                      {(() => {
+                        const isCurrentlyActive = coupon.status ? coupon.status === "Active" : Boolean(coupon.isActive);
+                        return (
+                          <button
+                            onClick={() => handleToggleStatus(coupon)}
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold cursor-pointer transition-all ${
+                              isCurrentlyActive
+                                ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border border-emerald-200"
+                                : "bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200"
+                            }`}
+                          >
+                            {isCurrentlyActive ? <Check size={12} /> : <X size={12} />}
+                            {isCurrentlyActive ? "Active" : "Inactive"}
+                          </button>
+                        );
+                      })()}
                     </td>
 
                     {/* Actions */}

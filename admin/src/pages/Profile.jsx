@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { User, Shield, Key, BellRing, Check, AlertCircle } from "lucide-react";
 import { useData } from "../context/DataContext";
+import { getAdminImageUrl } from "../config";
 
 export const Profile = () => {
   const { adminProfile, updateAdminProfile } = useData();
@@ -10,6 +11,9 @@ export const Profile = () => {
   const [email, setEmail] = useState(adminProfile.email);
   const [phone, setPhone] = useState(adminProfile.phone);
   const [avatar, setAvatar] = useState(adminProfile.avatar);
+  const [imgError, setImgError] = useState(false);
+
+  const initials = (name || "Admin").split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
 
   // Security password states
   const [currentPassword, setCurrentPassword] = useState("");
@@ -95,11 +99,18 @@ export const Profile = () => {
         <div className="bg-white rounded-xl border border-primary/10 overflow-hidden shadow-xs flex flex-col justify-between">
           <div className="p-6 text-center space-y-4">
             <div className="relative inline-block">
-              <img
-                src={avatar}
-                alt={name}
-                className="w-24 h-24 rounded-full mx-auto object-cover border-4 border-secondary/20 shadow-md"
-              />
+              {avatar && !imgError ? (
+                <img
+                  src={getAdminImageUrl(avatar)}
+                  alt={name}
+                  onError={() => setImgError(true)}
+                  className="w-24 h-24 rounded-full mx-auto object-cover border-4 border-secondary/20 shadow-md"
+                />
+              ) : (
+                <div className="w-24 h-24 rounded-full mx-auto bg-primary text-secondary font-display font-bold text-2xl flex items-center justify-center border-4 border-secondary/20 shadow-md">
+                  {initials}
+                </div>
+              )}
               <span className="absolute bottom-1 right-1 p-1 bg-secondary text-primary rounded-full border border-white">
                 <Shield size={14} />
               </span>

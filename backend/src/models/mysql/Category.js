@@ -11,6 +11,10 @@ export const Category = sequelize.define("Category", {
     type: DataTypes.STRING,
     allowNull: false
   },
+  displayName: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
   slug: {
     type: DataTypes.STRING,
     allowNull: false,
@@ -18,6 +22,10 @@ export const Category = sequelize.define("Category", {
   },
   image: {
     type: DataTypes.TEXT("long"),
+    allowNull: true
+  },
+  description: {
+    type: DataTypes.TEXT,
     allowNull: true
   },
   status: {

@@ -58,6 +58,14 @@ const bannerSchema = new mongoose.Schema(
     endDate: {
       type: Date,
       default: null
+    },
+    targetCategory: {
+      type: String,
+      default: "All Categories"
+    },
+    discountPercentage: {
+      type: Number,
+      default: 0
     }
   },
   {

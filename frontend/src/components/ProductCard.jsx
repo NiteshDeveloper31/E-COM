@@ -4,14 +4,22 @@ import { Heart, Eye, ShoppingCart, Bell } from 'lucide-react';
 import { useReetSutra } from '../context/ReetSutraContext';
 import { motion } from 'framer-motion';
 import NotifyMeModal from './NotifyMeModal';
+import { handleFrontendImageError } from '../config';
 
 export default function ProductCard({ product, onQuickView }) {
-  const { addToCart, toggleWishlist, isInWishlist } = useReetSutra();
+  const { addToCart, toggleWishlist, isInWishlist, settings } = useReetSutra();
   const [isNotifyOpen, setIsNotifyOpen] = useState(false);
   const inWishlist = isInWishlist(product.id);
 
-  const discountedPrice = Math.round(product.price * (1 - product.discount / 100));
+  const displayPrice = product.price;
+  const originalPrice = product.originalPrice;
   const isOutOfStock = product.stock <= 0 || product.status === "Inactive";
+
+  const catName = product?.categoryName || (typeof product?.category === 'string' ? product.category : product?.category?.name) || '';
+  const normCat = catName.toLowerCase().trim();
+  const isSampleProduct = normCat === 'sample' || normCat === 'sample products' || normCat === 'samples' || normCat.includes('sample') || product?.isSample || product?.price === 0;
+
+  const isFreeSampleActive = settings?.freeSampleOffer !== false && settings?.freeSampleOffer !== 'false' && settings?.freeSampleOffer !== 0 && settings?.freeSampleOffer !== 'disabled';
 
   const handleAddToCart = (e) => {
     e.preventDefault();
@@ -56,14 +64,21 @@ export default function ProductCard({ product, onQuickView }) {
               </span>
             ) : (
               <>
+                {isFreeSampleActive && !isSampleProduct && (
+                  <span className="bg-[#143021] text-[#C5972E] text-[9px] font-extrabold tracking-wider px-2 py-0.5 uppercase rounded-sm shadow-xs border border-[#C5972E]/40 flex items-center gap-1">
+                    🎁 FREE SAMPLE GIFT
+                  </span>
+                )}
                 {product.bestseller && (
                   <span className="bg-brand-green text-brand-cream text-[9px] font-semibold tracking-wider px-2 py-0.5 uppercase rounded-sm">
                     Bestseller
                   </span>
                 )}
                 {product.discount > 0 && (
-                  <span className="bg-brand-gold text-brand-green text-[9px] font-semibold tracking-wider px-2 py-0.5 uppercase rounded-sm">
-                    {product.discount}% OFF
+                  <span className={`text-[9px] font-extrabold tracking-wider px-2 py-0.5 uppercase rounded-sm shadow-xs ${
+                    product.hasFloatingOffer ? 'bg-amber-600 text-white animate-pulse' : 'bg-brand-gold text-brand-green'
+                  }`}>
+                    {product.hasFloatingOffer ? `🔥 ${product.discount}% OFF` : `${product.discount}% OFF`}
                   </span>
                 )}
               </>
@@ -83,21 +98,48 @@ export default function ProductCard({ product, onQuickView }) {
             <Heart className={`w-4 h-4 ${inWishlist ? 'fill-current' : ''}`} />
           </button>
 
-          {/* Image */}
-          <Link to={`/product/${product.id}`} className="block w-full h-full">
-            <img
-              src={product.image}
-              alt={product.name}
-              loading="lazy"
-              className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 ${isOutOfStock ? 'grayscale-30 opacity-90' : ''}`}
-            />
-          </Link>
+          {/* Image with full-area click for Quick View / Details */}
+          <div 
+            className="w-full h-full cursor-pointer"
+            onClick={(e) => {
+              if (onQuickView) {
+                e.preventDefault();
+                e.stopPropagation();
+                onQuickView(product);
+              }
+            }}
+          >
+            <Link 
+              to={`/product/${product.id}`} 
+              className="block w-full h-full"
+              onClick={(e) => {
+                if (onQuickView) {
+                  e.preventDefault();
+                }
+              }}
+            >
+              <img
+                src={product.image}
+                alt={product.name}
+                loading="lazy"
+                onError={handleFrontendImageError}
+                className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 ${isOutOfStock ? 'grayscale-30 opacity-90' : ''}`}
+              />
+            </Link>
+          </div>
 
           {/* Hover Overlay Actions (Visible on larger screens) */}
-          <div className="absolute inset-0 bg-brand-green/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center space-x-3 pointer-events-none group-hover:pointer-events-auto">
+          <div 
+            onClick={(e) => {
+              if (e.target === e.currentTarget && onQuickView) {
+                onQuickView(product);
+              }
+            }}
+            className="absolute inset-0 bg-brand-green/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center space-x-3 cursor-pointer"
+          >
             
             <button
-              onClick={() => onQuickView(product)}
+              onClick={() => onQuickView && onQuickView(product)}
               className="p-3 bg-brand-ivory text-brand-green hover:bg-brand-gold hover:text-brand-green rounded-full shadow-md transition-all duration-300 hover:scale-110 pointer-events-auto cursor-pointer"
               title="Quick View"
             >
@@ -114,9 +156,9 @@ export default function ProductCard({ product, onQuickView }) {
               </button>
             ) : (
               <button
-                onClick={handleNotifyClick}
-                className="p-3 bg-rose-700 text-white hover:bg-rose-800 rounded-full shadow-md transition-all duration-300 hover:scale-110 pointer-events-auto cursor-pointer"
-                title="Notify Me When Restocked"
+                onClick={() => setIsNotifyOpen(true)}
+                className="p-3 bg-rose-800 text-white hover:bg-rose-900 rounded-full shadow-md transition-all duration-300 hover:scale-110 pointer-events-auto cursor-pointer"
+                title="Notify Me When Available"
               >
                 <Bell className="w-5 h-5" />
               </button>
@@ -150,11 +192,11 @@ export default function ProductCard({ product, onQuickView }) {
             {/* Price */}
             <div className="flex items-center justify-center space-x-2 pt-1.5">
               <span className="text-sm md:text-base font-bold text-[#A27A30]">
-                ₹{discountedPrice}
+                ₹{displayPrice}
               </span>
-              {product.discount > 0 && (
+              {originalPrice && (
                 <span className="text-xs text-brand-charcoalLight/65 line-through">
-                  ₹{product.price}
+                  ₹{originalPrice}
                 </span>
               )}
             </div>

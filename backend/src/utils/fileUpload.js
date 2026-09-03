@@ -20,7 +20,7 @@ export const saveBase64Image = (base64Str, subfolder = 'general') => {
   if (!base64Str || typeof base64Str !== 'string') return base64Str || '';
   
   // If not a base64 data URI, return as-is (e.g. existing /uploads/... path or http URL)
-  if (!base64Str.startsWith('data:image/')) {
+  if (!base64Str.startsWith('data:image/') && !base64Str.startsWith('data:video/')) {
     return base64Str;
   }
 
@@ -31,7 +31,7 @@ export const saveBase64Image = (base64Str, subfolder = 'general') => {
     }
 
     // Extract mime type & extension
-    const matches = base64Str.match(/^data:image\/([a-zA-Z0-9+-]+);base64,(.+)$/);
+    const matches = base64Str.match(/^data:(?:image|video)\/([a-zA-Z0-9+-]+);base64,(.+)$/);
     if (!matches || matches.length !== 3) {
       return base64Str;
     }
@@ -39,6 +39,7 @@ export const saveBase64Image = (base64Str, subfolder = 'general') => {
     let ext = matches[1].toLowerCase();
     if (ext === 'jpeg') ext = 'jpg';
     if (ext.includes('svg')) ext = 'svg';
+    if (ext === 'quicktime') ext = 'mov';
 
     const base64Data = matches[2];
     const buffer = Buffer.from(base64Data, 'base64');
@@ -63,4 +64,30 @@ export const saveBase64Image = (base64Str, subfolder = 'general') => {
 export const processImagesArray = (imagesArray, subfolder = 'general') => {
   if (!Array.isArray(imagesArray)) return [];
   return imagesArray.map(img => saveBase64Image(img, subfolder)).filter(Boolean);
+};
+
+/**
+ * Deletes a file from backend/uploads given its relative path (e.g. '/uploads/products/xyz.jpg')
+ */
+export const deleteLocalFile = (relativePath) => {
+  if (!relativePath || typeof relativePath !== 'string') return;
+  if (!relativePath.startsWith('/uploads/')) return; // Ignore external http/https URLs
+
+  try {
+    const fullPath = path.join(UPLOADS_BASE, relativePath.replace(/^\/uploads\//, ''));
+    if (fs.existsSync(fullPath)) {
+      fs.unlinkSync(fullPath);
+      console.log(`🗑️ Deleted local upload file: ${relativePath}`);
+    }
+  } catch (err) {
+    console.error(`❌ Failed to delete local upload file (${relativePath}):`, err.message);
+  }
+};
+
+/**
+ * Deletes an array of relative image paths
+ */
+export const deleteLocalFiles = (pathsArray) => {
+  if (!Array.isArray(pathsArray)) return;
+  pathsArray.forEach(img => deleteLocalFile(img));
 };

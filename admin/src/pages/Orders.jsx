@@ -4,6 +4,7 @@ import * as XLSX from "xlsx";
 import { useData } from "../context/DataContext";
 import { DataTable } from "../components/DataTable";
 import { Drawer } from "../components/Drawer";
+import { getAdminImageUrl, handleAdminImageError } from "../config";
 
 export const Orders = () => {
   const { orders, products, updateOrderStatus } = useData();
@@ -396,11 +397,13 @@ export const Orders = () => {
           "Item Type Brand": product.brand || "",
           "Channel Name": order.channelName || "Website",
           "HSN Code": product.hsnCode || "",
-          "MRP": product.price || item?.price || 0,
-          "Total Price": (item?.price || 0) * (item?.quantity || 0),
+          "MRP / Base Unit Price": item?.originalPrice || product.price || item?.price || 0,
           "Selling Price": item?.price || 0,
-          "Subtotal": isFirst ? (order.subtotal || 0) : "",
-          "Discount": isFirst ? (order.discount || 0) : "",
+          "Total Item Price": (item?.price || 0) * (item?.quantity || 0),
+          "Original Base Price Total": isFirst ? (order.originalSubtotal || order.subtotal || 0) : "",
+          "Floating Campaign Discount": isFirst ? (order.floatingDiscountTotal || 0) : "",
+          "Promo Coupon Discount": isFirst ? (order.discount || 0) : "",
+          "Subtotal After Discount": isFirst ? (order.subtotal || 0) : "",
           "CGST": isFirst ? (tb.cgst || 0) : "",
           "IGST": isFirst ? (tb.igst || 0) : "",
           "SGST": isFirst ? (tb.sgst || 0) : "",
@@ -507,8 +510,9 @@ export const Orders = () => {
         return (
           <div className="flex items-center gap-2">
             <img
-              src={first.image}
-              alt={first.productName}
+              src={getAdminImageUrl(first?.image)}
+              alt={first?.productName || "Item"}
+              onError={handleAdminImageError}
               className="w-9 h-9 rounded-lg object-cover border border-primary/5 shadow-xs shrink-0"
             />
             <div>
@@ -888,12 +892,17 @@ export const Orders = () => {
                     const itemKey = item.productId?._id || item.productId || item.productName;
                     const isVerified = Boolean(verifiedSkusMap[itemKey]);
 
+                    const itemOriginalPrice = item.originalPrice || item.price;
+                    const isSampleProduct = item.isSample || item.price === 0 || (item.productName || '').toLowerCase().includes('sample');
+                    const hasOffer = !isSampleProduct && (itemOriginalPrice > item.price || item.hasFloatingOffer);
+
                     return (
                       <div key={itemKey} className="p-4 flex items-center justify-between gap-3 hover:bg-background/20 transition-colors">
                         <div className="flex items-center gap-3">
                           <img
-                            src={item.image}
-                            alt={item.productName}
+                            src={getAdminImageUrl(item?.image)}
+                            alt={item?.productName || "Item"}
+                            onError={handleAdminImageError}
                             className="w-12 h-12 rounded-lg border border-primary/5 object-cover shrink-0"
                           />
                           <div>
@@ -902,9 +911,25 @@ export const Orders = () => {
                               <span className="bg-slate-100 border border-slate-300 text-slate-800 font-mono text-[9.5px] font-extrabold px-2 py-0.5 rounded">
                                 SKU: {itemSku}
                               </span>
+                              {isSampleProduct ? (
+                                <span className="bg-emerald-100 text-emerald-900 border border-emerald-300 text-[9px] font-extrabold px-1.5 py-0.5 rounded">
+                                  🎁 Free Sample Add-on
+                                </span>
+                              ) : hasOffer ? (
+                                <span className="bg-amber-100 text-amber-900 border border-amber-300 text-[9px] font-extrabold px-1.5 py-0.5 rounded">
+                                  ✨ Floating Offer
+                                </span>
+                              ) : null}
                             </div>
                             <p className="text-[10.5px] text-charcoal-light font-semibold mt-1">
-                              Price: {formatINR(item.price)} &times; {item.quantity} units
+                              Price: {isSampleProduct ? (
+                                <span className="text-emerald-700 font-bold">FREE (₹0)</span>
+                              ) : (
+                                <>
+                                  {hasOffer && <span className="line-through text-charcoal-light/70 mr-1.5">{formatINR(itemOriginalPrice)}</span>}
+                                  <span className="text-primary font-bold">{formatINR(item.price)}</span>
+                                </>
+                              )} &times; {item.quantity} units
                             </p>
                           </div>
                         </div>
@@ -929,35 +954,61 @@ export const Orders = () => {
                 </div>
 
                 {/* Subtotal calculations */}
-                <div className="bg-background/30 p-5 border-t border-primary/5 text-xs space-y-1.5">
-                  <div className="flex justify-between text-charcoal-light font-medium">
-                    <span>Subtotal</span>
-                    <span>{formatINR(selectedOrder.subtotal)}</span>
-                  </div>
-                  {(selectedOrder.couponCode || Number(selectedOrder.discount) > 0) && (
-                    <div className="flex justify-between items-center text-emerald-700 font-bold bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-200/80 my-1">
-                      <span className="flex items-center gap-1.5">
-                        <span className="px-1.5 py-0.5 bg-emerald-600 text-white rounded text-[10px] font-black uppercase tracking-wider">
-                          PROMO COUPON
-                        </span>
-                        <span>{selectedOrder.couponCode ? selectedOrder.couponCode : 'Applied'}</span>
-                      </span>
-                      <span>-{formatINR(selectedOrder.discount || 0)}</span>
+                {(() => {
+                  const floatingSavings = Number(selectedOrder.floatingDiscountTotal || 0);
+                  const baseSubtotal = Number(selectedOrder.originalSubtotal) || (selectedOrder.subtotal + floatingSavings);
+
+                  return (
+                    <div className="bg-background/30 p-5 border-t border-primary/5 text-xs space-y-2">
+                      <div className="flex justify-between text-charcoal-light font-medium">
+                        <span>Items Original Base Price</span>
+                        <span>{formatINR(baseSubtotal)}</span>
+                      </div>
+
+                      {floatingSavings > 0 && (
+                        <div className="flex justify-between items-center text-amber-950 font-bold bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-300 my-1">
+                          <span className="flex items-center gap-1.5">
+                            <span className="px-1.5 py-0.5 bg-amber-600 text-white rounded text-[10px] font-black uppercase tracking-wider">
+                              ✨ FLOATING CAMPAIGN OFFER
+                            </span>
+                            <span>Direct Category Discount</span>
+                          </span>
+                          <span className="text-amber-900 font-extrabold">-{formatINR(floatingSavings)}</span>
+                        </div>
+                      )}
+
+                      {(selectedOrder.couponCode || Number(selectedOrder.discount) > 0) && (
+                        <div className="flex justify-between items-center text-emerald-700 font-bold bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-200/80 my-1">
+                          <span className="flex items-center gap-1.5">
+                            <span className="px-1.5 py-0.5 bg-emerald-600 text-white rounded text-[10px] font-black uppercase tracking-wider">
+                              🎫 PROMO COUPON
+                            </span>
+                            <span>{selectedOrder.couponCode ? selectedOrder.couponCode : 'Applied'}</span>
+                          </span>
+                          <span className="text-emerald-800 font-extrabold">-{formatINR(selectedOrder.discount || 0)}</span>
+                        </div>
+                      )}
+
+                      <div className="flex justify-between text-charcoal-light font-semibold pt-1 border-t border-primary/5">
+                        <span>Subtotal After Discount</span>
+                        <span>{formatINR(selectedOrder.subtotal)}</span>
+                      </div>
+
+                      <div className="flex justify-between text-charcoal-light font-medium">
+                        <span>GST (5% tax rate)</span>
+                        <span>{formatINR(selectedOrder.tax)}</span>
+                      </div>
+                      <div className="flex justify-between text-charcoal-light font-medium">
+                        <span>Shipping fee</span>
+                        <span>{formatINR(selectedOrder.shipping)}</span>
+                      </div>
+                      <div className="flex justify-between text-primary font-bold text-sm border-t border-primary/5 pt-2.5 mt-2.5">
+                        <span>Grand Total Paid</span>
+                        <span className="text-emerald-700 font-extrabold">{formatINR(selectedOrder.total)}</span>
+                      </div>
                     </div>
-                  )}
-                  <div className="flex justify-between text-charcoal-light font-medium">
-                    <span>GST (5% tax rate)</span>
-                    <span>{formatINR(selectedOrder.tax)}</span>
-                  </div>
-                  <div className="flex justify-between text-charcoal-light font-medium">
-                    <span>Shipping fee</span>
-                    <span>{formatINR(selectedOrder.shipping)}</span>
-                  </div>
-                  <div className="flex justify-between text-primary font-bold text-sm border-t border-primary/5 pt-2.5 mt-2.5">
-                    <span>Grand Total</span>
-                    <span className="text-emerald-700 font-extrabold">{formatINR(selectedOrder.total)}</span>
-                  </div>
-                </div>
+                  );
+                })()}
               </div>
             </div>
 

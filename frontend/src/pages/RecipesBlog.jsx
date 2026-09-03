@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Clock, Utensils, Sparkles, ChefHat, ArrowRight, X, CheckCircle, Search, Share2 } from "lucide-react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import { API_BASE_URL, BACKEND_URL } from "../config";
 
 export default function RecipesBlog() {
   const [recipes, setRecipes] = useState([]);
@@ -14,9 +15,6 @@ export default function RecipesBlog() {
   useEffect(() => {
     fetchRecipes();
   }, []);
-
-  const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
-  const BACKEND_URL = API_BASE_URL.replace(/\/api\/?$/, "");
 
   const fetchRecipes = async () => {
     try {

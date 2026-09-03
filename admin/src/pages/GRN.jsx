@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Search, PackageCheck, AlertTriangle, CheckCircle2, FileText, ArrowRight, RefreshCw, ShieldAlert, Boxes } from "lucide-react";
 import { useData } from "../context/DataContext";
 import { DataTable } from "../components/DataTable";
+import { getAdminImageUrl, handleAdminImageError } from "../config";
 
 export const GRN = () => {
   const { products, grnLogs, fetchGRNLogs, submitGRN, showToast } = useData();
@@ -227,8 +228,9 @@ export const GRN = () => {
                         className="p-3 hover:bg-primary/5 transition-colors cursor-pointer flex items-center gap-3"
                       >
                         <img
-                          src={p.image || "/images/placeholder.jpg"}
+                          src={getAdminImageUrl(p.image)}
                           alt={p.name}
+                          onError={(e) => handleAdminImageError(e, "/images/placeholder.jpg")}
                           className="w-9 h-9 rounded-lg object-cover border border-primary/10 shrink-0"
                         />
                         <div className="flex-1 min-w-0">
@@ -252,8 +254,9 @@ export const GRN = () => {
               <div className="p-4 bg-primary/5 rounded-xl border border-primary/10 space-y-3">
                 <div className="flex items-center gap-3">
                   <img
-                    src={selectedProduct.image || "/images/placeholder.jpg"}
+                    src={getAdminImageUrl(selectedProduct.image)}
                     alt={selectedProduct.name}
+                    onError={(e) => handleAdminImageError(e, "/images/placeholder.jpg")}
                     className="w-12 h-12 rounded-xl object-cover border border-primary/15 shadow-2xs shrink-0"
                   />
                   <div>

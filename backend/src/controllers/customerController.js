@@ -46,9 +46,10 @@ export const getCustomerListing = async (req, res, next) => {
           { email: { $regex: search, $options: "i" } }
         ];
       }
-      const pagination = getPaginationMeta(page, limit, await User.countDocuments(query));
-      customers = await User.find(query).sort({ createdAt: -1 }).skip(pagination.skip).limit(pagination.limit);
-      totalCustomers = customers.length;
+      const totalCount = await User.countDocuments(query).catch(() => 0);
+      const pagination = getPaginationMeta(page, limit, totalCount);
+      customers = await User.find(query).sort({ createdAt: -1 }).skip(pagination.skip).limit(pagination.limit).catch(() => []);
+      totalCustomers = totalCount;
     }
 
     const pagination = getPaginationMeta(pageNum, limitNum, totalCustomers);

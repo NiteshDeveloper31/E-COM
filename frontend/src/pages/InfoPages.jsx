@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, Phone, MapPin, Send, MessageCircle, Heart, Award, ShieldCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+import { useReetSutra } from '../context/ReetSutraContext';
+import { API_BASE_URL } from '../config';
 
 // ==========================================
 // 1. ABOUT US
 // ==========================================
 export function AboutUs() {
+  const { settings } = useReetSutra();
   const [storyData, setStoryData] = useState(null);
 
   useEffect(() => {
@@ -21,15 +22,22 @@ export function AboutUs() {
       .catch(() => {});
   }, []);
 
-  const subtitle = storyData?.ourStorySubtitle || "OUR MISSION";
-  const title = storyData?.ourStoryTitle || "Restoring the Forgotten Flavors of Bihar";
-  const desc = storyData?.ourStoryDescription || "ReetSutra is built on three pillars: Heritage preservation, premium natural quality, and direct empowerment of rural women collectives. We believe traditional recipes are sacred cultural trusts that deserve to be celebrated globally.";
-  const womenTitle = storyData?.womenTitle || "Empowering Rural Women Collectives";
-  const womenDesc1 = storyData?.womenDesc1 || "At the heart of ReetSutra is our collaboration with local Self-Help Groups (SHGs) across districts like Nalanda, Gaya, Madhubani, and Patna. These home chefs are master guardians of culinary methods developed over centuries.";
-  const womenDesc2 = storyData?.womenDesc2 || "By offering complete infrastructure training, fair pricing, and direct digital supply chains, we enable local women to achieve absolute financial security. When you buy a pack of Thekua or hand-pounded Tilkut, your money goes directly into a woman artisan's bank account.";
-  const artisanCount = storyData?.artisanCount || "150+";
-  const districtsCount = storyData?.districtsCount || "12+";
-  const storyImg = storyData?.ourStoryImage || "https://images.unsplash.com/photo-1541832676-9b763b0239ab?auto=format&fit=crop&w=700&q=80";
+  const activeData = (settings && settings.ourStoryTitle) ? settings : storyData;
+
+  const subtitle = activeData?.ourStorySubtitle || "OUR MISSION";
+  const title = activeData?.ourStoryTitle || "Restoring the Forgotten Flavors of Bihar";
+  const desc = activeData?.ourStoryDescription || "ReetSutra is built on three pillars: Heritage preservation, premium natural quality, and direct empowerment of rural women collectives. We believe traditional recipes are sacred cultural trusts that deserve to be celebrated globally.";
+  const womenTitle = activeData?.womenTitle || "Empowering Rural Women Collectives";
+  const womenDesc1 = activeData?.womenDesc1 || "At the heart of ReetSutra is our collaboration with local Self-Help Groups (SHGs) across districts like Nalanda, Gaya, Madhubani, and Patna. These home chefs are master guardians of culinary methods developed over centuries.";
+  const womenDesc2 = activeData?.womenDesc2 || "By offering complete infrastructure training, fair pricing, and direct digital supply chains, we enable local women to achieve absolute financial security. When you buy a pack of Thekua or hand-pounded Tilkut, your money goes directly into a woman artisan's bank account.";
+  const artisanCount = activeData?.artisanCount || "150+";
+  const districtsCount = activeData?.districtsCount || "12+";
+
+  const rawImg = activeData?.ourStoryImage || "https://images.unsplash.com/photo-1541832676-9b763b0239ab?auto=format&fit=crop&w=700&q=80";
+  const backendBase = API_BASE_URL.replace(/\/api$/, '');
+  const storyImg = (rawImg.startsWith('http://') || rawImg.startsWith('https://') || rawImg.startsWith('data:'))
+    ? rawImg
+    : `${backendBase}${rawImg.startsWith('/') ? '' : '/'}${rawImg}`;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-16">
@@ -131,6 +139,7 @@ export function AboutUs() {
 // 2. CONTACT US
 // ==========================================
 export function ContactUs() {
+  const { settings } = useReetSutra();
   const [submitted, setSubmitted] = useState(false);
   const [formData, setFormData] = useState({ name: '', email: '', message: '' });
 
@@ -224,9 +233,8 @@ export function ContactUs() {
           )}
         </div>
 
-        {/* Contact Coordinates */}
-        <div className="space-y-8">
-          
+        {/* Info Column */}
+        <div className="space-y-6">
           <div className="bg-brand-ivory border border-brand-gold/10 rounded-lg p-6 shadow-premium space-y-6">
             <h3 className="font-bold text-sm text-brand-green tracking-wider uppercase font-serif border-b border-brand-creamDark pb-2.5">
               Contact Details
@@ -236,22 +244,22 @@ export function ContactUs() {
               <li className="flex items-start space-x-3">
                 <MapPin className="w-5 h-5 text-brand-gold shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-bold text-brand-green">Corporate Headquarters:</p>
-                  <p>Vrindesha Private Limited, Boring Road, Patna, Bihar - 800001, India</p>
+                  <p className="font-bold text-brand-green">Corporate Address:</p>
+                  <p>{settings?.contactAddress || "Patna, Bihar, India"}</p>
                 </div>
               </li>
               <li className="flex items-center space-x-3">
                 <Phone className="w-4.5 h-4.5 text-brand-gold shrink-0" />
                 <div>
                   <p className="font-bold text-brand-green inline-block mr-1">Phone:</p>
-                  <span>+91 98765 43210</span>
+                  <span>{settings?.contactPhone || "+91 91234 56789"}</span>
                 </div>
               </li>
               <li className="flex items-center space-x-3">
                 <Mail className="w-4.5 h-4.5 text-brand-gold shrink-0" />
                 <div>
                   <p className="font-bold text-brand-green inline-block mr-1">Email Support:</p>
-                  <span>sutra@reetsutra.com</span>
+                  <span>{settings?.contactEmail || "hello@reetsutra.com"}</span>
                 </div>
               </li>
             </ul>
@@ -266,7 +274,7 @@ export function ContactUs() {
               </p>
             </div>
             <a 
-              href="https://wa.me/919876543210" 
+              href={settings?.socialWhatsapp || "https://wa.me/919123456789"} 
               target="_blank" 
               rel="noopener noreferrer" 
               className="bg-green-600 hover:bg-green-700 text-white p-3 rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-110 shrink-0"

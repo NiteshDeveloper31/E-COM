@@ -5,8 +5,8 @@ import { API_BASE_URL } from "../config";
 
 export const Login = ({ onLoginSuccess }) => {
   const [loginType, setLoginType] = useState("superadmin"); // "superadmin" | "admin"
-  const [email, setEmail] = useState("admin@reetsutra.com");
-  const [password, setPassword] = useState("admin123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -76,8 +76,6 @@ export const Login = ({ onLoginSuccess }) => {
             onClick={() => {
               setLoginType("superadmin");
               setError("");
-              setEmail("admin@reetsutra.com");
-              setPassword("admin123");
             }}
             className={`py-2 px-3 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               loginType === "superadmin"
@@ -127,7 +125,7 @@ export const Login = ({ onLoginSuccess }) => {
             </label>
             <input
               type="email"
-              placeholder={loginType === "superadmin" ? "admin@reetsutra.com" : "subadmin@reetsutra.com"}
+              placeholder="Enter your email address"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background placeholder-charcoal-light focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
@@ -140,7 +138,7 @@ export const Login = ({ onLoginSuccess }) => {
             </label>
             <input
               type="password"
-              placeholder="••••••••"
+              placeholder="Enter password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background placeholder-charcoal-light focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"

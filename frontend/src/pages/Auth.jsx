@@ -140,13 +140,13 @@ export default function Auth({ initialMode = 'login' }) {
         }
       } else if (mode === 'register') {
         const addressPayload = {
-          name: address.name.trim() || name.trim(),
-          type: address.type,
+          name: (address.name && address.name.trim().length > 1) ? address.name.trim() : name.trim(),
+          type: address.type || 'Home',
           street: address.street.trim(),
-          city: address.city.trim(),
+          city: address.city.trim() || 'Patna',
           state: address.state.trim() || 'Bihar',
-          zip: address.zip.trim(),
-          phone: address.phone.trim() || cleanPhone
+          zip: address.zip.trim() || '800001',
+          phone: (address.phone && address.phone.trim().length >= 10) ? address.phone.trim() : cleanPhone
         };
 
         const success = await registerWithOTP(
@@ -275,8 +275,9 @@ export default function Auth({ initialMode = 'login' }) {
                       placeholder="e.g. Nikhil Kumar"
                       value={name}
                       onChange={(e) => {
-                        setName(e.target.value);
-                        if (!address.name) setAddress((prev) => ({ ...prev, name: e.target.value }));
+                        const val = e.target.value;
+                        setName(val);
+                        setAddress((prev) => ({ ...prev, name: val }));
                       }}
                       className="w-full bg-[#FAF6EF]/50 border border-[#B8934E]/30 rounded-xl pl-10 pr-4 py-2.5 text-xs focus:outline-none focus:border-[#1E3926] focus:bg-white text-[#1E3926] font-semibold transition-all"
                     />
@@ -318,8 +319,9 @@ export default function Auth({ initialMode = 'login' }) {
                   placeholder="98765 43210"
                   value={phone}
                   onChange={(e) => {
-                    setPhone(e.target.value.replace(/[^0-9]/g, ''));
-                    if (!address.phone) setAddress((prev) => ({ ...prev, phone: e.target.value }));
+                    const val = e.target.value.replace(/[^0-9]/g, '');
+                    setPhone(val);
+                    setAddress((prev) => ({ ...prev, phone: val }));
                   }}
                   className="w-full bg-[#FAF6EF]/50 border border-[#B8934E]/30 rounded-xl pl-20 pr-4 py-2.5 text-xs focus:outline-none focus:border-[#1E3926] focus:bg-white text-[#1E3926] font-bold tracking-wider transition-all"
                 />
@@ -403,7 +405,7 @@ export default function Auth({ initialMode = 'login' }) {
                         type="text"
                         required
                         placeholder="Recipient Name"
-                        value={address.name || name}
+                        value={address.name}
                         onChange={(e) => setAddress({ ...address, name: e.target.value })}
                         className="w-full bg-white border border-[#B8934E]/30 rounded-lg px-2.5 py-2 text-xs font-medium"
                       />

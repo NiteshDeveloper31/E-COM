@@ -3,6 +3,7 @@ import { Plus, Edit2, Trash2, Loader, Eye, AlertTriangle, Upload, FileSpreadshee
 import { useData } from "../context/DataContext";
 import { DataTable } from "../components/DataTable";
 import { Modal } from "../components/Modal";
+import { getAdminImageUrl, handleAdminImageError } from "../config";
 import * as XLSX from "xlsx";
 
 export const Products = () => {
@@ -28,6 +29,7 @@ export const Products = () => {
   const [formStatus, setFormStatus] = useState("Active");
   const [formImage, setFormImage] = useState("");
   const [formImages, setFormImages] = useState(["", "", "", "", ""]);
+  const [formImageNames, setFormImageNames] = useState(["", "", "", "", ""]); // Track original filenames per slot
   const [activeImageSlot, setActiveImageSlot] = useState(0);
   const [formVideo, setFormVideo] = useState("");
   const [formWeight, setFormWeight] = useState("");
@@ -49,6 +51,7 @@ export const Products = () => {
   const [formBadInventory, setFormBadInventory] = useState("");
   const [formShelfLife, setFormShelfLife] = useState("");
   const [formError, setFormError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Gift Box / Combo Bundle state
   const [formIsBundle, setFormIsBundle] = useState(false);
@@ -154,6 +157,7 @@ export const Products = () => {
     setFormStatus("Active");
     setFormImage("");
     setFormImages(["", "", "", "", ""]);
+    setFormImageNames(["", "", "", "", ""]);
     setActiveImageSlot(0);
     setFormVideo("");
     setFormWeight("");
@@ -188,7 +192,23 @@ export const Products = () => {
     setFormName(product.name);
     setFormDescription(product.description || "");
     setFormPrice(product.price);
-    setFormCategory(product.category?._id || product.category?.id || product.category || "");
+    
+    // Robust category matching by ID, Name, or Object
+    let targetCatId = "";
+    if (product.category) {
+      const rawCat = typeof product.category === "object" ? (product.category._id || product.category.id || product.category.name || "") : product.category;
+      const matchedCat = categories.find(c =>
+        String(c._id || c.id) === String(rawCat) ||
+        String(c.name).toLowerCase() === String(rawCat).toLowerCase() ||
+        String(c.displayName || "").toLowerCase() === String(rawCat).toLowerCase()
+      );
+      if (matchedCat) {
+        targetCatId = String(matchedCat._id || matchedCat.id);
+      } else {
+        targetCatId = String(rawCat);
+      }
+    }
+    setFormCategory(targetCatId);
     setFormStock(product.stock);
     setFormStatus(product.status || "Active");
     setFormImage(product.image || "");
@@ -206,6 +226,7 @@ export const Products = () => {
       imgs[0] = product.image;
     }
     setFormImages(imgs);
+    setFormImageNames(["", "", "", "", ""]); // reset filenames when editing (existing images are URLs)
     setActiveImageSlot(0);
     setFormVideo(product.video || "");
 
@@ -390,24 +411,92 @@ export const Products = () => {
     setIsDeleteOpen(true);
   };
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        showToast("File size is too large (max 2MB to prevent heavy database load).");
+  const compressImage = (base64Str, maxWidthPx = 1200, quality = 0.82) => {
+    return new Promise((resolve) => {
+      if (!base64Str || !base64Str.startsWith("data:image/")) {
+        resolve(base64Str);
         return;
       }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const updated = [...formImages];
-        updated[activeImageSlot] = reader.result;
-        setFormImages(updated);
-        if (activeImageSlot === 0) {
-          setFormImage(reader.result);
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let { width, height } = img;
+        if (width > maxWidthPx) {
+          height = Math.round((height * maxWidthPx) / width);
+          width = maxWidthPx;
         }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
       };
-      reader.readAsDataURL(file);
+      img.onerror = () => resolve(base64Str);
+      img.src = base64Str;
+    });
+  };
+
+  // Max size per image after compression (in KB). Keeps total payload manageable.
+  const MAX_IMAGE_SIZE_KB = 800;
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Raw file pre-check: reject files larger than 10MB before even reading
+    if (file.size > 10 * 1024 * 1024) {
+      showToast(`"${file.name}" bahut badi file hai (max 10MB). Chhoti image use karein.`);
+      e.target.value = "";
+      return;
     }
+
+    const slotToFill = activeImageSlot; // capture current slot synchronously
+    const fileName = file.name; // capture original filename
+
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const compressed = await compressImage(reader.result);
+
+      // Check compressed base64 size
+      // base64 string mein har 4 chars = 3 bytes, so actual KB = (length * 3/4) / 1024
+      const base64Data = compressed.split(",")[1] || compressed;
+      const sizeKB = Math.round((base64Data.length * 3) / 4 / 1024);
+
+      if (sizeKB > MAX_IMAGE_SIZE_KB) {
+        const sizeLabel = sizeKB >= 1024 ? `${(sizeKB / 1024).toFixed(1)} MB` : `${sizeKB} KB`;
+        const errorText = `Image #${slotToFill + 1} ("${fileName}") ki size ${sizeLabel} hai (Max limit: ${MAX_IMAGE_SIZE_KB} KB). Kripya is photo ko badlein ya 800 KB se chhoti image upload karein.`;
+        setFormError(errorText);
+        showToast(errorText, "error");
+        e.target.value = "";
+        return;
+      }
+
+      setFormError("");
+
+      // Save compressed image into the captured slot
+      const newImages = [...formImages];
+      newImages[slotToFill] = compressed;
+      setFormImages(newImages);
+
+      // Save filename for this slot
+      const newNames = [...formImageNames];
+      newNames[slotToFill] = fileName;
+      setFormImageNames(newNames);
+
+      if (slotToFill === 0) {
+        setFormImage(compressed);
+      }
+
+      // Auto-advance to next empty slot so the next Choose File goes to next slot
+      const nextEmpty = newImages.findIndex((img, i) => i > slotToFill && !img);
+      if (nextEmpty !== -1) {
+        setActiveImageSlot(nextEmpty);
+      }
+
+      // Reset file input
+      e.target.value = "";
+    };
+    reader.readAsDataURL(file);
   };
 
   const MAX_VIDEO_SECONDS = 30;
@@ -473,7 +562,7 @@ export const Products = () => {
   };
 
   // Handle Form Submit (Add/Edit)
-  const handleSubmitProduct = (e) => {
+  const handleSubmitProduct = async (e) => {
     e.preventDefault();
 
     const activeImages = formImages.filter((img) => img.trim() !== "");
@@ -482,6 +571,27 @@ export const Products = () => {
     if (!formName || !formPrice || !formStock || !primaryImg || !formCategory) {
       setFormError("Please fill out all required fields (*). Make sure a category is selected and at least one product image is uploaded.");
       return;
+    }
+
+    // Per-image size validation at submit time (safety net)
+    // Only check base64 data URIs — URL images don't count toward payload size
+    for (let i = 0; i < formImages.length; i++) {
+      const img = formImages[i];
+      if (!img || !img.startsWith("data:")) continue;
+
+      const base64Data = img.split(",")[1] || img;
+      const sizeKB = Math.round((base64Data.length * 3) / 4 / 1024);
+
+      if (sizeKB > MAX_IMAGE_SIZE_KB) {
+        const slotLabel = `Image #${i + 1}`;
+        const nameLabel = formImageNames[i] ? ` ("${formImageNames[i]}")` : "";
+        const sizeLabel = sizeKB >= 1024 ? `${(sizeKB / 1024).toFixed(1)} MB` : `${sizeKB} KB`;
+        setFormError(
+          `${slotLabel}${nameLabel} ki size ${sizeLabel} hai (Max limit: ${MAX_IMAGE_SIZE_KB} KB). Kripya is image ko badlein ya remove karke 800 KB se chhoti image upload karein.`
+        );
+        setActiveImageSlot(i);
+        return;
+      }
     }
 
     const payload = {
@@ -520,13 +630,28 @@ export const Products = () => {
       bundleItems: formBundleItems
     };
 
-    if (currentProduct) {
-      updateProduct(currentProduct.id, payload);
-    } else {
-      addProduct(payload);
-    }
+    setFormError("");
+    setIsSubmitting(true);
 
-    setIsAddEditOpen(false);
+    try {
+      if (currentProduct) {
+        await updateProduct(currentProduct.id, payload);
+      } else {
+        await addProduct(payload);
+      }
+      // ONLY CLOSE MODAL ON SUCCESS!
+      setIsAddEditOpen(false);
+    } catch (err) {
+      // Modal stays OPEN on error so user can fix issues!
+      const errMsg = err.message || "Failed to publish product.";
+      if (errMsg.includes("413") || errMsg.includes("Too Large") || errMsg.includes("large")) {
+        setFormError("Server error 413: Images overall size is too large for web server. Please remove or compress heavy images.");
+      } else {
+        setFormError(`Error: ${errMsg}`);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Handle Delete Confirmation
@@ -558,8 +683,9 @@ export const Products = () => {
       header: "Preview",
       render: (row) => (
         <img
-          src={row.image}
+          src={getAdminImageUrl(row.image)}
           alt={row.name}
+          onError={handleAdminImageError}
           className="w-12 h-12 object-cover rounded-lg border border-primary/5 shadow-xs"
         />
       )
@@ -953,6 +1079,7 @@ export const Products = () => {
                   </label>
                   <input
                     type="date"
+                    max="9999-12-31"
                     value={formExpiryDate}
                     onChange={(e) => setFormExpiryDate(e.target.value)}
                     className="w-full px-3.5 py-2 border border-primary/10 rounded-lg text-sm bg-background placeholder-charcoal-light focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary transition-all"
@@ -1099,7 +1226,7 @@ export const Products = () => {
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-bold text-primary mb-1">
-                  Product Images (Up to 5) *
+                  Product Images (Up to 5) * <span className="font-normal text-charcoal-light">(max {MAX_IMAGE_SIZE_KB}KB per image)</span>
                 </label>
                 <div className="grid grid-cols-5 gap-2 mb-2">
                   {formImages.map((img, idx) => (
@@ -1112,21 +1239,48 @@ export const Products = () => {
                         }`}
                     >
                       {img ? (
-                        <img src={img} alt={`Slot ${idx + 1}`} className="w-full h-full object-cover" />
+                        <img
+                          src={getAdminImageUrl(img)}
+                          alt={`Slot ${idx + 1}`}
+                          onError={handleAdminImageError}
+                          className="w-full h-full object-cover"
+                        />
                       ) : (
                         <span className="text-[10px] font-bold text-charcoal-light/75">#{idx + 1}</span>
                       )}
+                      {/* Size badge — only shown for local base64 uploads */}
+                      {img && img.startsWith("data:") && (() => {
+                        const b64 = img.split(",")[1] || img;
+                        const kb = Math.round((b64.length * 3) / 4 / 1024);
+                        const isOver = kb > MAX_IMAGE_SIZE_KB;
+                        return (
+                          <span
+                            className={`absolute bottom-0.5 left-0.5 text-[8px] font-black px-1 py-0.5 rounded leading-none ${
+                              isOver
+                                ? "bg-rose-600 text-white"
+                                : "bg-black/50 text-white"
+                            }`}
+                            title={isOver ? `Too large! Max ${MAX_IMAGE_SIZE_KB}KB` : `${kb}KB`}
+                          >
+                            {kb >= 1024 ? `${(kb / 1024).toFixed(1)}M` : `${kb}K`}
+                          </span>
+                        );
+                      })()}
                       {img && (
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            const updated = [...formImages];
-                            updated[idx] = "";
-                            setFormImages(updated);
-                            if (idx === 0) {
-                              setFormImage("");
-                            }
+                            // Compact images array so remaining images shift left
+                            const remImgs = formImages.filter((_, i) => i !== idx);
+                            const remNames = formImageNames.filter((_, i) => i !== idx);
+                            while (remImgs.length < 5) remImgs.push("");
+                            while (remNames.length < 5) remNames.push("");
+
+                            setFormImages(remImgs);
+                            setFormImageNames(remNames);
+                            setFormImage(remImgs[0] || "");
+                            setActiveImageSlot(0);
                           }}
                           className="absolute top-0.5 right-0.5 bg-rose-600 text-white rounded-full p-0.5 hover:bg-rose-700 transition-colors shadow-xs"
                           title="Remove image"
@@ -1169,13 +1323,10 @@ export const Products = () => {
               <div className="h-28 border border-dashed border-primary/15 bg-background rounded-lg flex items-center justify-center overflow-hidden">
                 {formImages[activeImageSlot] ? (
                   <img
-                    src={formImages[activeImageSlot]}
+                    src={getAdminImageUrl(formImages[activeImageSlot])}
                     alt={`Slot ${activeImageSlot + 1} Preview`}
+                    onError={handleAdminImageError}
                     className="w-full h-full object-cover"
-                    onError={(e) => {
-                      e.target.src = "";
-                      showToast("Invalid image URL, please verify link.");
-                    }}
                   />
                 ) : (
                   <div className="text-center p-2 text-charcoal-light">
@@ -1259,15 +1410,25 @@ export const Products = () => {
             <button
               type="button"
               onClick={() => setIsAddEditOpen(false)}
-              className="px-4 py-2 text-xs font-bold text-charcoal-light hover:bg-primary/5 hover:text-primary rounded-lg transition-colors cursor-pointer"
+              disabled={isSubmitting}
+              className="px-4 py-2 text-xs font-bold text-charcoal-light hover:bg-primary/5 hover:text-primary rounded-lg transition-colors cursor-pointer disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 text-xs font-display font-bold text-secondary bg-primary hover:bg-primary-light rounded-lg shadow-sm transition-colors cursor-pointer"
+              disabled={isSubmitting}
+              className="px-4 py-2 text-xs font-display font-bold text-secondary bg-primary hover:bg-primary-light rounded-lg shadow-sm transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
             >
-              {currentProduct ? "Save Changes" : "Publish Product"}
+              {isSubmitting ? (
+                <>
+                  <Loader size={14} className="animate-spin" /> Saving...
+                </>
+              ) : currentProduct ? (
+                "Save Changes"
+              ) : (
+                "Publish Product"
+              )}
             </button>
           </div>
         </form>

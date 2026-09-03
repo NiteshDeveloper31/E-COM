@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useReetSutra } from '../context/ReetSutraContext';
 import ProductCard from '../components/ProductCard';
 import QuickViewModal from '../components/QuickViewModal';
+import { handleFrontendImageError } from '../config';
 import { 
   Star, 
   Heart, 
@@ -13,7 +14,8 @@ import {
   MessageSquare,
   Sparkles,
   Play,
-  Bell
+  Bell,
+  Gift
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -23,7 +25,7 @@ import NotifyMeModal from '../components/NotifyMeModal';
 export default function ProductDetails() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { products, addToCart, toggleWishlist, isInWishlist, user, fetchProducts, showToast } = useReetSutra();
+  const { products, addToCart, toggleWishlist, isInWishlist, user, fetchProducts, showToast, settings } = useReetSutra();
   const [quantity, setQuantity] = useState(1);
   const [quickViewProduct, setQuickViewProduct] = useState(null);
   const [isNotifyOpen, setIsNotifyOpen] = useState(false);
@@ -211,6 +213,7 @@ export default function ProductDetails() {
               <img
                 src={selectedImage || product.image}
                 alt={product.name}
+                onError={handleFrontendImageError}
                 className="w-full h-full object-cover transition-all duration-300"
               />
             )}
@@ -304,15 +307,15 @@ export default function ProductDetails() {
           {/* Pricing */}
           <div className="flex items-baseline space-x-4 border-y border-brand-creamDark py-4">
             <span className="text-2xl md:text-3xl font-black text-brand-green">
-              ₹{discountedPrice}
+              ₹{product.price}
             </span>
-            {product.discount > 0 && (
+            {product.originalPrice && (
               <>
                 <span className="text-sm md:text-base text-brand-charcoalLight line-through">
-                  ₹{product.price}
+                  ₹{product.originalPrice}
                 </span>
-                <span className="text-xs text-brand-gold font-bold bg-brand-gold/10 px-2.5 py-1 rounded">
-                  SAVE ₹{product.price - discountedPrice} ({product.discount}% OFF)
+                <span className={`text-xs font-bold px-2.5 py-1 rounded ${product.hasFloatingOffer ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'text-brand-gold bg-brand-gold/10'}`}>
+                  SAVE ₹{product.originalPrice - product.price} ({product.discount}% OFF)
                 </span>
               </>
             )}
@@ -345,6 +348,26 @@ export default function ProductDetails() {
               🥣 Small Batches
             </span>
           </div>
+
+          {/* Dynamic Free Sample Offer Banner for Regular Products */}
+          {(() => {
+            const catName = product?.categoryName || (typeof product?.category === 'string' ? product.category : product?.category?.name) || '';
+            const normCat = catName.toLowerCase().trim();
+            const isSampleProduct = normCat === 'sample' || normCat === 'sample products' || normCat === 'samples' || normCat.includes('sample') || product?.isSample || product?.price === 0;
+            const isFreeSampleActive = settings?.freeSampleOffer !== false && settings?.freeSampleOffer !== 'false' && settings?.freeSampleOffer !== 0 && settings?.freeSampleOffer !== 'disabled';
+
+            if (!isFreeSampleActive || isSampleProduct) return null;
+
+            return (
+              <div className="bg-[#143021]/10 border border-[#C5972E]/40 rounded-lg p-3.5 flex items-center space-x-3 text-xs text-[#143021] my-3">
+                <Gift className="w-5 h-5 text-[#C5972E] shrink-0" />
+                <div>
+                  <span className="font-serif font-bold text-[#143021] block text-sm">🎁 FREE SAMPLE GIFT OFFER</span>
+                  <span className="text-[11px] text-brand-charcoalLight/90">Select 1 free sample product (₹0) during checkout with this order!</span>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Selection Actions */}
           <div className="space-y-4 pt-4">

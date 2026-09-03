@@ -1,4 +1,5 @@
-import Review from "../models/Review.js";
+import ReviewMongo from "../models/Review.js";
+import ReviewMySQL from "../models/mysql/Review.js";
 import Product from "../models/Product.js";
 import ProductMySQL from "../models/mysql/Product.js";
 import { sendSuccess, sendError } from "../utils/response.js";
@@ -7,12 +8,18 @@ import { sendSuccess, sendError } from "../utils/response.js";
  * Helper to recalculate and update product's overall rating and total review count.
  */
 const updateProductRatingMeta = async (productId) => {
-  const reviews = await Review.find({ productId: String(productId) });
+  let reviews = [];
+  try {
+    reviews = await ReviewMySQL.findAll({ where: { productId: String(productId) } });
+  } catch (mysqlErr) {
+    reviews = await ReviewMongo.find({ productId: String(productId) }).catch(() => []);
+  }
+
   const reviewsCount = reviews.length;
   let rating = 5.0;
   
   if (reviewsCount > 0) {
-    const sum = reviews.reduce((acc, r) => acc + r.rating, 0);
+    const sum = reviews.reduce((acc, r) => acc + (r.rating || 5), 0);
     rating = parseFloat((sum / reviewsCount).toFixed(1));
   }
   
@@ -34,7 +41,12 @@ const updateProductRatingMeta = async (productId) => {
 export const getProductReviews = async (req, res, next) => {
   try {
     const { productId } = req.params;
-    const reviews = await Review.find({ productId: String(productId) }).sort({ createdAt: -1 });
+    let reviews = [];
+    try {
+      reviews = await ReviewMySQL.findAll({ where: { productId: String(productId) }, order: [["id", "DESC"]] });
+    } catch (mysqlErr) {
+      reviews = await ReviewMongo.find({ productId: String(productId) }).sort({ createdAt: -1 }).catch(() => []);
+    }
     return sendSuccess(res, "Reviews retrieved successfully.", reviews);
   } catch (error) {
     next(error);
@@ -78,20 +90,38 @@ export const addProductReview = async (req, res, next) => {
     const userName = req.user.name || "Customer";
 
     // Check if user has already reviewed this product
-    const existingReview = await Review.findOne({ productId: String(productId), userId: String(userId) });
+    let existingReview = null;
+    try {
+      existingReview = await ReviewMySQL.findOne({ where: { productId: String(productId), userId: String(userId) } });
+    } catch (e) {
+      existingReview = await ReviewMongo.findOne({ productId: String(productId), userId: String(userId) }).catch(() => null);
+    }
+
     if (existingReview) {
       return sendError(res, "You have already reviewed this product. Delete your existing review to submit a new one.", 400);
     }
 
     // Create the review
-    const review = await Review.create({
-      productId: String(productId),
-      userId: String(userId),
-      userName: userName,
-      userAvatar: req.user.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80",
-      rating: ratingVal,
-      comment: comment.trim()
-    });
+    let review = null;
+    try {
+      review = await ReviewMySQL.create({
+        productId: String(productId),
+        userId: String(userId),
+        userName: userName,
+        userAvatar: req.user.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80",
+        rating: ratingVal,
+        comment: comment.trim()
+      });
+    } catch (mysqlErr) {
+      review = await ReviewMongo.create({
+        productId: String(productId),
+        userId: String(userId),
+        userName: userName,
+        userAvatar: req.user.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80",
+        rating: ratingVal,
+        comment: comment.trim()
+      }).catch(() => null);
+    }
 
     // Update Product's rating metadata
     await updateProductRatingMeta(productId);
@@ -110,7 +140,14 @@ export const deleteProductReview = async (req, res, next) => {
     const { reviewId } = req.params;
     const userId = req.user.id || req.user._id;
 
-    const review = await Review.findById(reviewId);
+    let review = null;
+    if (!isNaN(reviewId)) {
+      review = await ReviewMySQL.findByPk(Number(reviewId));
+    }
+    if (!review) {
+      review = await ReviewMongo.findById(reviewId).catch(() => null);
+    }
+
     if (!review) {
       return sendError(res, "Review not found.", 404);
     }
@@ -123,7 +160,10 @@ export const deleteProductReview = async (req, res, next) => {
     }
 
     const productId = review.productId;
-    await Review.findByIdAndDelete(reviewId);
+    if (!isNaN(reviewId)) {
+      await ReviewMySQL.destroy({ where: { id: Number(reviewId) } }).catch(() => {});
+    }
+    await ReviewMongo.findByIdAndDelete(reviewId).catch(() => {});
     await updateProductRatingMeta(productId);
 
     return sendSuccess(res, "Review deleted successfully.", { id: reviewId });
@@ -137,9 +177,12 @@ export const deleteProductReview = async (req, res, next) => {
  */
 export const getHomepageReviews = async (req, res, next) => {
   try {
-    const reviews = await Review.find()
-      .sort({ createdAt: -1 })
-      .limit(6);
+    let reviews = [];
+    try {
+      reviews = await ReviewMySQL.findAll({ order: [["id", "DESC"]], limit: 6 });
+    } catch (mysqlErr) {
+      reviews = await ReviewMongo.find().sort({ createdAt: -1 }).limit(6).catch(() => []);
+    }
     return sendSuccess(res, "Homepage customer reviews retrieved successfully.", reviews);
   } catch (error) {
     next(error);

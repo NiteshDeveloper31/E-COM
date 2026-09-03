@@ -13,7 +13,8 @@ import {
   Leaf,
   Truck,
   Phone,
-  MapPin
+  MapPin,
+  Headphones
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import logoImg from '../assets/rs_monogram_logo.png';
@@ -84,6 +85,21 @@ export default function Header() {
               <MapPin className="w-3 h-3 text-[#C5972E] shrink-0" />
               Store Locator
             </span>
+            <span className="text-[#C5972E]/40">|</span>
+            <button
+              onClick={() => {
+                const el = document.getElementById('footer-contact');
+                if (el) {
+                  el.scrollIntoView({ behavior: 'smooth' });
+                } else {
+                  window.location.href = '#footer-contact';
+                }
+              }}
+              className="flex items-center gap-1.5 hover:text-[#C5972E] transition-colors cursor-pointer"
+            >
+              <Headphones className="w-3 h-3 text-[#C5972E] shrink-0" />
+              24/7 SUPPORT
+            </button>
           </div>
         </div>
       </div>

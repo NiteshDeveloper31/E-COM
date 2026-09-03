@@ -52,16 +52,27 @@ export const createOrder = async (req, res, next) => {
     const orderCode = `RS_${nextNumber}`;
     const invoiceCode = `INV_RS_${nextNumber}`;
 
+const findProductByIdOrSku = async (rawId) => {
+  if (rawId === undefined || rawId === null || rawId === "") return null;
+  let product = null;
+  if (!isNaN(rawId)) {
+    product = await ProductMySQL.findByPk(Number(rawId)).catch(() => null);
+  }
+  if (!product && typeof rawId === "string") {
+    product = await ProductMySQL.findOne({ where: { sku: rawId } }).catch(() => null);
+  }
+  if (!product && typeof rawId === "string" && mongoose.Types.ObjectId.isValid(rawId)) {
+    product = await Product.findById(rawId).catch(() => null);
+  }
+  if (!product && typeof rawId === "string") {
+    product = await Product.findOne({ sku: rawId }).catch(() => null);
+  }
+  return product;
+};
+
     for (const item of items) {
       const rawId = item.productId || item.product?.id || item.product?._id || item.product;
-      let product = null;
-
-      if (!isNaN(rawId)) {
-        product = await ProductMySQL.findByPk(Number(rawId));
-      }
-      if (!product) {
-        product = await Product.findById(rawId).catch(() => null);
-      }
+      const product = await findProductByIdOrSku(rawId);
 
       if (!product) {
         return sendError(res, `Product not found: ${rawId}`, 404);
@@ -82,7 +93,12 @@ export const createOrder = async (req, res, next) => {
         await product.save().catch(() => {});
       }
 
-      const itemCost = product.price * item.quantity;
+      const itemUnitPrice = item.price !== undefined ? Number(item.price) : product.price;
+      const itemOriginalPrice = item.originalPrice !== undefined ? Number(item.originalPrice) : (product.compareAtPrice && product.compareAtPrice > itemUnitPrice ? product.compareAtPrice : itemUnitPrice);
+      const hasOffer = itemOriginalPrice > itemUnitPrice;
+      const offerDiscountUnit = hasOffer ? (itemOriginalPrice - itemUnitPrice) : 0;
+
+      const itemCost = itemUnitPrice * item.quantity;
       subtotal += itemCost;
 
       processedItems.push({
@@ -90,7 +106,10 @@ export const createOrder = async (req, res, next) => {
         productId: product.id || product._id,
         productName: product.name,
         sku: product.sku || `RS-${product.name.slice(0, 3).toUpperCase()}-9015`,
-        price: product.price,
+        price: itemUnitPrice,
+        originalPrice: itemOriginalPrice,
+        hasFloatingOffer: hasOffer,
+        floatingOfferDiscount: offerDiscountUnit * item.quantity,
         quantity: item.quantity,
         image: product.image,
         gst: product.gst || 0
@@ -134,6 +153,10 @@ export const createOrder = async (req, res, next) => {
     }
 
     const finalSubtotal = req.body.subtotal !== undefined ? Number(req.body.subtotal) : subtotal;
+    const computedOriginalSubtotal = processedItems.reduce((acc, it) => acc + (it.originalPrice * it.quantity), 0);
+    const originalSubtotal = req.body.originalSubtotal !== undefined ? Number(req.body.originalSubtotal) : computedOriginalSubtotal;
+    const floatingDiscountTotal = req.body.floatingDiscountTotal !== undefined ? Number(req.body.floatingDiscountTotal) : Math.max(0, originalSubtotal - finalSubtotal);
+
     const couponDiscount = Number(req.body.couponDiscount || req.body.discount || 0);
     const couponCode = String(req.body.couponCode || req.body.voucherCode || req.body.coupon || "").trim().toUpperCase();
     const shipping = req.body.shipping !== undefined ? Number(req.body.shipping) : (req.body.deliveryCharge !== undefined ? Number(req.body.deliveryCharge) : (finalSubtotal >= 1000 ? 0 : 50));
@@ -149,53 +172,67 @@ export const createOrder = async (req, res, next) => {
       if (u) validUserId = u.id;
     }
 
+    const orderDataObj = {
+      orderCode,
+      invoiceCode,
+      userId: validUserId,
+      customerName: req.user.name || "Customer",
+      customerEmail: req.user.email || "",
+      customerPhone: req.user.phone || "",
+      items: processedItems,
+      subtotal: finalSubtotal,
+      originalSubtotal,
+      floatingDiscountTotal,
+      tax,
+      shipping,
+      discount: couponDiscount,
+      couponCode: couponCode,
+      total,
+      shippingAddress,
+      billingAddress: req.body.billingAddress || shippingAddress,
+      paymentMethod,
+      paymentStatus: paymentMethod === "COD" ? "Pending" : "Paid",
+      orderStatus: "Pending"
+    };
+
     try {
-      newOrder = await OrderMySQL.create({
-        orderCode,
-        invoiceCode,
-        userId: validUserId,
-        customerName: req.user.name || "Customer",
-        customerEmail: req.user.email || "",
-        customerPhone: req.user.phone || "",
-        items: processedItems,
-        subtotal,
-        tax,
-        shipping,
-        discount: couponDiscount,
-        couponCode: couponCode,
-        total,
-        shippingAddress,
-        billingAddress: req.body.billingAddress || shippingAddress,
-        paymentMethod,
-        paymentStatus: paymentMethod === "COD" ? "Pending" : "Paid",
-        orderStatus: "Pending"
-      });
+      newOrder = await OrderMySQL.create(orderDataObj);
+    } catch (mysqlErr) {
+      console.warn("OrderMySQL.create initial attempt failed, attempting auto-migration:", mysqlErr.message);
+      const sequelize = OrderMySQL.sequelize;
+      if (sequelize) {
+        await sequelize.query("ALTER TABLE orders ADD COLUMN originalSubtotal FLOAT DEFAULT 0;").catch(() => {});
+        await sequelize.query("ALTER TABLE orders ADD COLUMN floatingDiscountTotal FLOAT DEFAULT 0;").catch(() => {});
+      }
+      try {
+        newOrder = await OrderMySQL.create(orderDataObj);
+      } catch (retryErr) {
+        console.warn("OrderMySQL.create retry without extra fields:", retryErr.message);
+        const fallbackObj = { ...orderDataObj };
+        delete fallbackObj.originalSubtotal;
+        delete fallbackObj.floatingDiscountTotal;
+        newOrder = await OrderMySQL.create(fallbackObj);
+      }
+    }
 
       // Increment coupon usage count and per-user count
       if (couponCode) {
         try {
-          const couponDoc = await Coupon.findOne({ code: couponCode });
+          let couponDoc = await CouponMySQL.findOne({ where: { code: couponCode } }).catch(() => null);
           if (couponDoc) {
             couponDoc.usedCount = (couponDoc.usedCount || 0) + 1;
-            const userIdStr = String(validUserId || req.user.id || req.user._id || "");
-            if (userIdStr) {
-              const existingUsage = (couponDoc.usedByUsers || []).find(u => String(u.userId) === userIdStr);
-              if (existingUsage) {
-                existingUsage.count += 1;
-              } else {
-                couponDoc.usedByUsers.push({ userId: userIdStr, count: 1 });
-              }
-            }
             await couponDoc.save().catch(() => {});
+          } else {
+            const mongoCoupon = await Coupon.findOne({ code: couponCode }).catch(() => null);
+            if (mongoCoupon) {
+              mongoCoupon.usedCount = (mongoCoupon.usedCount || 0) + 1;
+              await mongoCoupon.save().catch(() => {});
+            }
           }
         } catch (err) {
           console.error("Failed to update coupon usage count:", err);
         }
       }
-    } catch (mysqlErr) {
-      console.error("OrderMySQL creation failed:", mysqlErr.message);
-      return sendError(res, `Failed to place order: ${mysqlErr.message}`, 500);
-    }
 
     return sendSuccess(res, "Order placed successfully.", newOrder, 201);
   } catch (error) {
@@ -209,15 +246,30 @@ export const createOrder = async (req, res, next) => {
 export const getUserOrders = async (req, res, next) => {
   try {
     const { page = 1, limit = 10 } = req.query;
-    
-    const totalOrders = await Order.countDocuments({ userId: req.user._id });
+    const userId = req.user?.id || req.user?._id;
+
+    let orders = [];
+    let totalOrders = 0;
+
+    try {
+      const { rows, count } = await OrderMySQL.findAndCountAll({
+        where: { userId: String(userId) },
+        order: [["id", "DESC"]],
+        limit: Number(limit),
+        offset: (Number(page) - 1) * Number(limit)
+      });
+      orders = rows;
+      totalOrders = count;
+    } catch (mysqlErr) {
+      totalOrders = await Order.countDocuments({ userId }).catch(() => 0);
+      orders = await Order.find({ userId })
+        .sort({ createdAt: -1 })
+        .skip((Number(page) - 1) * Number(limit))
+        .limit(Number(limit))
+        .catch(() => []);
+    }
+
     const pagination = getPaginationMeta(page, limit, totalOrders);
-
-    const orders = await Order.find({ userId: req.user._id })
-      .sort({ createdAt: -1 })
-      .skip(pagination.skip)
-      .limit(pagination.limit);
-
     return sendSuccess(res, "Orders retrieved successfully.", { orders, pagination });
   } catch (error) {
     next(error);
@@ -506,7 +558,7 @@ export const createRazorpayOrder = async (req, res, next) => {
     const processedItems = [];
 
     for (const item of items) {
-      const product = await Product.findById(item.productId);
+      const product = await findProductByIdOrSku(item.productId || item.product?.id || item.product?._id);
       if (!product) {
         return sendError(res, `Product not found: ${item.productId}`, 404);
       }

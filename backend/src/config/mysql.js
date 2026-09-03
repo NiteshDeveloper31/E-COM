@@ -58,7 +58,15 @@ export const connectMySQL = async () => {
     console.log("✅ MySQL Database Connected Successfully.");
 
     // Sync all models with database schema
-    await sequelize.sync({ alter: true });
+    await sequelize.sync();
+    await sequelize.query("ALTER TABLE users ADD COLUMN permissions JSON NULL;").catch(() => {});
+    await sequelize.query("ALTER TABLE categories ADD COLUMN displayName VARCHAR(255) NULL;").catch(() => {});
+    await sequelize.query("ALTER TABLE categories ADD COLUMN description TEXT NULL;").catch(() => {});
+    await sequelize.query("ALTER TABLE banners ADD COLUMN targetCategory VARCHAR(255) DEFAULT 'All Categories';").catch(() => {});
+    await sequelize.query("ALTER TABLE banners ADD COLUMN discountPercentage FLOAT DEFAULT 0;").catch(() => {});
+    await sequelize.query("ALTER TABLE orders ADD COLUMN originalSubtotal FLOAT DEFAULT 0;").catch(() => {});
+    await sequelize.query("ALTER TABLE orders ADD COLUMN floatingDiscountTotal FLOAT DEFAULT 0;").catch(() => {});
+    await sequelize.query("ALTER TABLE coupons ADD COLUMN perUserLimit INT DEFAULT 1;").catch(() => {});
     console.log("✅ MySQL Models Synchronized.");
   } catch (error) {
     console.error(`❌ MySQL Connection Error: ${error.message}`);

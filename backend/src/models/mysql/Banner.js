@@ -47,6 +47,16 @@ export const Banner = sequelize.define("Banner", {
     type: DataTypes.DATE,
     allowNull: true
   },
+  targetCategory: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    defaultValue: "All Categories"
+  },
+  discountPercentage: {
+    type: DataTypes.FLOAT,
+    allowNull: true,
+    defaultValue: 0
+  },
   status: {
     type: DataTypes.STRING,
     defaultValue: "Active"

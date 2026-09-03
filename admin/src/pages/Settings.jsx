@@ -1,16 +1,19 @@
 import React, { useState } from "react";
-import { Settings as SettingsIcon, Globe, Phone, ShieldCheck, Check, Info, BookOpen, Plus, Trash2, Edit3, Clock, Sparkles, Utensils, Eye, X } from "lucide-react";
+import { Settings as SettingsIcon, Globe, Phone, ShieldCheck, Check, Info, BookOpen, Plus, Trash2, Edit3, Clock, Sparkles, Utensils, Eye, X, Gift, Tag } from "lucide-react";
 import { useData } from "../context/DataContext";
+import { getAdminImageUrl as getAdminImageUrlConfig } from "../config";
 
 export const Settings = () => {
   const { settings, updateSettings, recipes, addRecipe, updateRecipe, deleteRecipe } = useData();
   const [activeTab, setActiveTab] = useState("general");
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Form states initialized from context settings
   const [storeName, setStoreName] = useState(settings.storeName);
   const [storeTagline, setStoreTagline] = useState(settings.storeTagline);
   const [storeLogo, setStoreLogo] = useState(settings.storeLogo);
+  const [freeSampleOffer, setFreeSampleOffer] = useState(() => settings?.freeSampleOffer !== false);
   const [currency, setCurrency] = useState(settings.currency);
   const [timezone, setTimezone] = useState(settings.timezone);
   const [taxRate, setTaxRate] = useState(settings.taxRate);
@@ -59,10 +62,15 @@ export const Settings = () => {
   const [recipeTag, setRecipeTag] = useState("Festive Special");
   const [recipeAuthor, setRecipeAuthor] = useState("ReetSutra Kitchen");
   const [recipeStatus, setRecipeStatus] = useState("Active");
+  const [isRecipeSaving, setIsRecipeSaving] = useState(false);
 
   React.useEffect(() => {
     if (settings) {
       if (settings.storeName) setStoreName(settings.storeName);
+      if (settings.freeSampleOffer !== undefined) {
+        const isOfferActive = settings.freeSampleOffer === true || settings.freeSampleOffer === 'true' || settings.freeSampleOffer === 1 || settings.freeSampleOffer === '1';
+        setFreeSampleOffer(isOfferActive);
+      }
       if (settings.contactEmail) setContactEmail(settings.contactEmail);
       if (settings.contactPhone) setContactPhone(settings.contactPhone);
       if (settings.contactAddress) setContactAddress(settings.contactAddress);
@@ -87,42 +95,48 @@ export const Settings = () => {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    const payload = {
-      storeName,
-      storeTagline,
-      storeLogo,
-      currency,
-      timezone,
-      taxRate: parseFloat(taxRate),
-      orderPrefix,
-      contactEmail,
-      contactPhone,
-      contactAddress,
-      socialInstagram,
-      socialFacebook,
-      socialYoutube,
-      socialTelegram,
-      socialWhatsapp,
-      socialTwitter,
-      socialLinkedin,
-      seoTitle,
-      seoMetaDescription,
-      seoKeywords,
-      robotsTxt,
-      ourStoryTitle,
-      ourStorySubtitle,
-      ourStoryDescription,
-      womenTitle,
-      womenDesc1,
-      womenDesc2,
-      artisanCount,
-      districtsCount,
-      ourStoryImage
-    };
+    try {
+      setIsSaving(true);
+      const payload = {
+        storeName,
+        storeTagline,
+        storeLogo,
+        freeSampleOffer,
+        currency,
+        timezone,
+        taxRate: parseFloat(taxRate),
+        orderPrefix,
+        contactEmail,
+        contactPhone,
+        contactAddress,
+        socialInstagram,
+        socialFacebook,
+        socialYoutube,
+        socialTelegram,
+        socialWhatsapp,
+        socialTwitter,
+        socialLinkedin,
+        seoTitle,
+        seoMetaDescription,
+        seoKeywords,
+        robotsTxt,
+        ourStoryTitle,
+        ourStorySubtitle,
+        ourStoryDescription,
+        womenTitle,
+        womenDesc1,
+        womenDesc2,
+        artisanCount,
+        districtsCount,
+        ourStoryImage
+      };
 
-    await updateSettings(payload);
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 3000);
+      await updateSettings(payload);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const openNewRecipeModal = () => {
@@ -176,27 +190,37 @@ export const Settings = () => {
 
   const handleRecipeSubmit = async (e) => {
     e.preventDefault();
-    const payload = {
-      title: recipeTitle,
-      category: recipeCategory,
-      image: recipeImage,
-      prepTime: recipePrepTime,
-      cookTime: recipeCookTime,
-      servings: recipeServings,
-      shortDescription: recipeShortDesc,
-      ingredients: recipeIngredients.split("\n").map(i => i.trim()).filter(Boolean),
-      instructions: recipeInstructions,
-      tag: recipeTag,
-      author: recipeAuthor,
-      status: recipeStatus
-    };
+    if (isRecipeSaving) return;
+    setIsRecipeSaving(true);
 
-    if (editingRecipe) {
-      await updateRecipe(editingRecipe._id || editingRecipe.id, payload);
-    } else {
-      await addRecipe(payload);
+    try {
+      const payload = {
+        title: recipeTitle,
+        category: recipeCategory,
+        image: recipeImage,
+        prepTime: recipePrepTime,
+        cookTime: recipeCookTime,
+        servings: recipeServings,
+        shortDescription: recipeShortDesc || "Traditional Bihari Delicacy Recipe",
+        description: recipeShortDesc || "Traditional Bihari Delicacy Recipe",
+        ingredients: recipeIngredients ? recipeIngredients.split("\n").map(i => i.trim()).filter(Boolean) : [],
+        instructions: recipeInstructions || "Prepared following traditional handcrafting steps.",
+        tag: recipeTag,
+        author: recipeAuthor,
+        status: recipeStatus
+      };
+
+      if (editingRecipe) {
+        await updateRecipe(editingRecipe._id || editingRecipe.id, payload);
+      } else {
+        await addRecipe(payload);
+      }
+      setIsRecipeModalOpen(false);
+    } catch (err) {
+      console.error("Failed to save recipe:", err);
+    } finally {
+      setIsRecipeSaving(false);
     }
-    setIsRecipeModalOpen(false);
   };
 
   const tabs = [
@@ -209,7 +233,7 @@ export const Settings = () => {
   const getAdminImageUrl = (url) => {
     if (!url) return "";
     if (url.startsWith("data:") || url.startsWith("http")) return url;
-    return `http://localhost:5000${url}`;
+    return getAdminImageUrlConfig(url);
   };
 
   return (
@@ -435,6 +459,48 @@ export const Settings = () => {
                         )}
                       </div>
                     </div>
+
+                    {/* FREE SAMPLE OFFER MASTER TOGGLE CARD */}
+                    <div className="mt-6 pt-5 border-t border-primary/10 space-y-3">
+                      <h3 className="font-display font-semibold text-base text-primary border-b border-primary/5 pb-2 flex items-center gap-2">
+                        <Gift size={18} className="text-secondary" /> Free Sample Offer Configuration
+                      </h3>
+
+                      <div className="p-4 bg-background border border-primary/15 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
+                        <div className="space-y-1">
+                          <div className="font-display font-bold text-sm text-primary flex items-center gap-2">
+                            <span>Enable Free Sample Selection at Checkout</span>
+                            <span className={`px-2 py-0.5 text-[10px] font-extrabold uppercase rounded-full ${
+                              freeSampleOffer
+                                ? "bg-emerald-500 text-white"
+                                : "bg-rose-500 text-white"
+                            }`}>
+                              {freeSampleOffer ? "ACTIVE (ON)" : "DISABLED (OFF)"}
+                            </span>
+                          </div>
+                          <p className="text-xs text-charcoal-light font-medium">
+                            When enabled, customers can select 1 free sample product during checkout. Switch OFF anytime to disable free samples.
+                          </p>
+                        </div>
+
+                        {/* ON / OFF Toggle Switch Button */}
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const nextState = !freeSampleOffer;
+                            setFreeSampleOffer(nextState);
+                            await updateSettings({ ...settings, freeSampleOffer: nextState });
+                          }}
+                          className={`px-5 py-2.5 rounded-lg text-xs font-bold font-mono tracking-wider transition-all shadow-sm cursor-pointer shrink-0 ${
+                            freeSampleOffer
+                              ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                              : "bg-rose-600 hover:bg-rose-700 text-white"
+                          }`}
+                        >
+                          {freeSampleOffer ? "TURN OFFER OFF" : "TURN OFFER ON"}
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
 
@@ -636,9 +702,21 @@ export const Settings = () => {
               <div className="bg-background px-6 py-4 border-t border-primary/5 flex justify-end">
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-primary text-secondary rounded-lg font-display font-bold text-sm shadow-md hover:bg-primary-light transition-all cursor-pointer"
+                  disabled={isSaving}
+                  className={`px-6 py-2.5 rounded-lg font-display font-bold text-sm shadow-md transition-all flex items-center gap-2 ${
+                    isSaving
+                      ? "bg-slate-400 text-white cursor-not-allowed opacity-85"
+                      : "bg-primary text-secondary hover:bg-primary-light cursor-pointer"
+                  }`}
                 >
-                  Save Configuration
+                  {isSaving ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                      <span>Saving Configuration...</span>
+                    </>
+                  ) : (
+                    <span>Save Configuration</span>
+                  )}
                 </button>
               </div>
             </form>
@@ -837,9 +915,10 @@ export const Settings = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 bg-primary text-secondary rounded-lg font-bold text-xs shadow-md hover:bg-primary-light transition-all cursor-pointer"
+                  disabled={isRecipeSaving}
+                  className="px-6 py-2.5 bg-primary text-secondary rounded-lg font-bold text-xs shadow-md hover:bg-primary-light transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {editingRecipe ? "Update Recipe Card" : "Create Recipe Card"}
+                  {isRecipeSaving ? "Saving..." : (editingRecipe ? "Update Recipe Card" : "Create Recipe Card")}
                 </button>
               </div>
             </form>

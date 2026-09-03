@@ -2,7 +2,7 @@ import Banner from "../models/Banner.js";
 import BannerMySQL from "../models/mysql/Banner.js";
 import { sendSuccess, sendError } from "../utils/response.js";
 import { checkRequiredFields } from "../validations/validator.js";
-import { saveBase64Image } from "../utils/fileUpload.js";
+import { saveBase64Image, deleteLocalFile } from "../utils/fileUpload.js";
 
 /**
  * Add Banner (Admin only).
@@ -48,6 +48,8 @@ export const addBanner = async (req, res, next) => {
         buttonLink: buttonLink || "/shop",
         startDate: req.body.startDate || null,
         endDate: req.body.endDate || null,
+        targetCategory: req.body.targetCategory || "All Categories",
+        discountPercentage: req.body.discountPercentage ? parseFloat(req.body.discountPercentage) : 0,
         status: status || "Active",
         order: 1
       });
@@ -65,7 +67,9 @@ export const addBanner = async (req, res, next) => {
         status: status || "Active",
         placement: placement || "Main Hero",
         startDate: req.body.startDate || null,
-        endDate: req.body.endDate || null
+        endDate: req.body.endDate || null,
+        targetCategory: req.body.targetCategory || "All Categories",
+        discountPercentage: req.body.discountPercentage ? parseFloat(req.body.discountPercentage) : 0
       });
     }
 
@@ -92,7 +96,8 @@ export const editBanner = async (req, res, next) => {
       if (banner) {
         const fieldsToUpdate = [
           "title", "bannerType", "targetDevice", "desktopImage", "mobileImage",
-          "image", "link", "buttonLink", "startDate", "endDate", "status"
+          "image", "link", "buttonLink", "startDate", "endDate", "status",
+          "targetCategory", "discountPercentage"
         ];
         fieldsToUpdate.forEach((field) => {
           if (req.body[field] !== undefined) banner[field] = req.body[field];
@@ -115,7 +120,8 @@ export const editBanner = async (req, res, next) => {
     const fieldsToUpdate = [
       "title", "subtitle", "bannerType", "targetDevice",
       "desktopImage", "mobileImage", "image", "buttonText",
-      "buttonLink", "status", "placement", "startDate", "endDate"
+      "buttonLink", "status", "placement", "startDate", "endDate",
+      "targetCategory", "discountPercentage"
     ];
     fieldsToUpdate.forEach((field) => {
       if (req.body[field] !== undefined) banner[field] = req.body[field];
@@ -135,9 +141,25 @@ export const deleteBanner = async (req, res, next) => {
   try {
     const { id } = req.params;
     if (!isNaN(id)) {
-      await BannerMySQL.destroy({ where: { id: Number(id) } });
+      const ban = await BannerMySQL.findByPk(Number(id));
+      if (ban) {
+        if (ban.image) deleteLocalFile(ban.image);
+        if (ban.desktopImage) deleteLocalFile(ban.desktopImage);
+        if (ban.mobileImage) deleteLocalFile(ban.mobileImage);
+        await ban.destroy();
+        return sendSuccess(res, "Banner campaign deleted successfully.", { id });
+      }
     }
-    await Banner.findByIdAndDelete(id).catch(() => {});
+
+    const banMongo = await Banner.findById(id).catch(() => null);
+    if (banMongo) {
+      if (banMongo.image) deleteLocalFile(banMongo.image);
+      if (banMongo.desktopImage) deleteLocalFile(banMongo.desktopImage);
+      if (banMongo.mobileImage) deleteLocalFile(banMongo.mobileImage);
+      await Banner.findByIdAndDelete(id);
+      return sendSuccess(res, "Banner campaign deleted successfully.", { id });
+    }
+
     return sendSuccess(res, "Banner campaign deleted successfully.", { id });
   } catch (error) {
     next(error);
@@ -162,19 +184,20 @@ export const getBanners = async (req, res, next) => {
       const query = {};
       if (status) query.status = status;
       mongoBanners = await Promise.race([
-        Banner.find(query).sort({ createdAt: -1 }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Mongo timeout")), 1500))
+        Banner.find(query).sort({ createdAt: -1 }).catch(() => []),
+        new Promise((resolve) => setTimeout(() => resolve([]), 1500))
       ]).catch(() => []);
     } catch (e) {}
 
-    const titleSet = new Set();
+    const idSet = new Set();
     const banners = [];
 
     for (const b of [...mysqlBanners, ...mongoBanners]) {
-      const titleClean = String(b.title || "").toLowerCase().trim();
-      if (titleClean && !titleSet.has(titleClean)) {
-        titleSet.add(titleClean);
-        banners.push(b);
+      const bannerObj = b.toJSON ? b.toJSON() : b;
+      const key = String(bannerObj.id || bannerObj._id || bannerObj.title || Math.random());
+      if (!idSet.has(key)) {
+        idSet.add(key);
+        banners.push(bannerObj);
       }
     }
 

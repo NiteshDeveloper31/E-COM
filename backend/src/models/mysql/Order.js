@@ -48,6 +48,16 @@ export const Order = sequelize.define("Order", {
     type: DataTypes.FLOAT,
     defaultValue: 0
   },
+  originalSubtotal: {
+    type: DataTypes.FLOAT,
+    allowNull: true,
+    defaultValue: 0
+  },
+  floatingDiscountTotal: {
+    type: DataTypes.FLOAT,
+    allowNull: true,
+    defaultValue: 0
+  },
   couponCode: {
     type: DataTypes.STRING,
     allowNull: true

@@ -99,7 +99,16 @@ export const DataProvider = ({ children }) => {
         throw new Error("Unauthorized access");
       }
 
-      const resJson = await response.json();
+      if (response.status === 413) {
+        throw new Error("Product images size is too large for the server (413 Content Too Large). Please remove or replace large images.");
+      }
+
+      let resJson;
+      try {
+        resJson = await response.json();
+      } catch (jsonErr) {
+        throw new Error(`Server returned status ${response.status} (${response.statusText}).`);
+      }
 
       if (!response.ok) {
         throw new Error(resJson.message || "API request failed.");
@@ -229,15 +238,25 @@ export const DataProvider = ({ children }) => {
       fetchSettings()
     ]).finally(() => setLoading(false));
 
-    // Setup 30s Polling for admin metrics & permissions sync
+    // Smart Polling (20s for Orders, Dashboard & Profile stats when tab is active)
     const pollingInterval = setInterval(() => {
+      if (document.hidden) return;
       fetchCurrentProfile();
       fetchDashboardStats();
       fetchOrders();
       fetchCustomers();
-    }, 30000);
+    }, 20000);
 
-    return () => clearInterval(pollingInterval);
+    // Smart Polling (60s for Products & Inventory stock sync when tab is active)
+    const inventoryInterval = setInterval(() => {
+      if (document.hidden) return;
+      fetchProducts();
+    }, 60000);
+
+    return () => {
+      clearInterval(pollingInterval);
+      clearInterval(inventoryInterval);
+    };
   }, [token]);
 
   // --- CRUD HANDLERS ---
@@ -261,8 +280,10 @@ export const DataProvider = ({ children }) => {
       addNotification("Product Added", `${newProduct.name} has been published.`);
       showToast(`${newProduct.name} published successfully.`, "success");
       fetchCategories(); // Refresh product counts on categories
+      return newProduct;
     } catch (err) {
       showToast(`Error publishing product: ${err.message}`);
+      throw err;
     }
   };
 
@@ -273,8 +294,10 @@ export const DataProvider = ({ children }) => {
       addNotification("Product Updated", `${updated.name} changes saved.`);
       showToast("Product updates saved successfully.", "success");
       fetchCategories(); // Refresh categories counts
+      return updated;
     } catch (err) {
       showToast(`Error saving changes: ${err.message}`);
+      throw err;
     }
   };
 
@@ -296,8 +319,10 @@ export const DataProvider = ({ children }) => {
       const newCat = await apiRequest("/categories", "POST", categoryData);
       setCategories((prev) => [...prev, newCat]);
       showToast("Category created successfully.", "success");
+      return newCat;
     } catch (err) {
       showToast(`Error creating category: ${err.message}`);
+      throw err;
     }
   };
 
@@ -306,8 +331,10 @@ export const DataProvider = ({ children }) => {
       const updated = await apiRequest(`/categories/${id}`, "PUT", updatedFields);
       setCategories((prev) => prev.map((c) => (c._id === id || c.id === id ? updated : c)));
       showToast("Category updated successfully.", "success");
+      return updated;
     } catch (err) {
       showToast(`Error updating category: ${err.message}`);
+      throw err;
     }
   };
 
@@ -467,8 +494,10 @@ export const DataProvider = ({ children }) => {
 
   const updateSettings = async (newSettings) => {
     try {
-      const updated = await apiRequest("/settings", "PUT", newSettings);
-      setSettings(updated);
+      const merged = { ...settings, ...newSettings };
+      setSettings(merged);
+      const updated = await apiRequest("/settings", "PUT", merged);
+      if (updated) setSettings(prev => ({ ...prev, ...updated }));
       showToast("Settings & Social Media links saved successfully!", "success");
     } catch (err) {
       showToast(`Failed to save settings: ${err.message}`);

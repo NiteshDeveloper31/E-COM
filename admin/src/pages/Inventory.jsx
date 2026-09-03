@@ -3,6 +3,7 @@ import { Edit2, Download, Package, AlertTriangle, CheckCircle, Boxes, ShieldAler
 import { useData } from "../context/DataContext";
 import { DataTable } from "../components/DataTable";
 import { Modal } from "../components/Modal";
+import { getAdminImageUrl, handleAdminImageError } from "../config";
 import * as XLSX from "xlsx";
 
 export const Inventory = () => {
@@ -29,6 +30,12 @@ export const Inventory = () => {
     const map = {};
     if (!orders || !Array.isArray(orders)) return map;
 
+    // Initialize zero for all current products
+    products.forEach((p) => {
+      const pId = String(p._id || p.id);
+      map[pId] = 0;
+    });
+
     orders.forEach((order) => {
       // Consider orders that are Pending, Processing, or On Hold as "Blocked in Orders"
       if (order.orderStatus === "Pending" || order.orderStatus === "Processing" || order.orderStatus === "On Hold") {
@@ -44,17 +51,17 @@ export const Inventory = () => {
     });
 
     return map;
-  }, [orders]);
+  }, [orders, products]);
 
   // Transform products with inventory stats
   const inventoryData = useMemo(() => {
     return products.map((p) => {
       const pId = String(p._id || p.id);
       const goodStock = Number(p.stock || 0);
-      const blocked = Number(blockedStockMap[pId] !== undefined ? blockedStockMap[pId] : (p.blockedInOrders || 0));
+      const blocked = Number(blockedStockMap[pId] !== undefined ? blockedStockMap[pId] : 0);
       const bad = Number(p.badInventory || 0);
       const totalStock = goodStock;
-      const available = Math.max(0, goodStock - blocked);
+      const available = Math.max(0, totalStock - blocked - bad);
       const categoryName = p.category?.name || (typeof p.category === "string" ? p.category : "Uncategorized");
       const categoryId = p.category?._id || p.category?.id || (typeof p.category === "string" ? p.category : "");
 
@@ -215,8 +222,9 @@ export const Inventory = () => {
       render: (row) => (
         <div className="flex items-center gap-3">
           <img
-            src={row.image}
+            src={getAdminImageUrl(row.image)}
             alt={row.name}
+            onError={handleAdminImageError}
             className="w-10 h-10 object-cover rounded-lg border border-primary/5 shadow-xs shrink-0"
           />
           <div>

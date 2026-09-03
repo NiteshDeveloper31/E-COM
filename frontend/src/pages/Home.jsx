@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useReetSutra } from '../context/ReetSutraContext';
 import ProductCard from '../components/ProductCard';
@@ -16,11 +16,15 @@ import {
   RotateCcw,
   Truck,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Volume2,
+  VolumeX,
+  Play,
+  Pause
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import { API_BASE_URL, BACKEND_URL } from '../config';
+import { API_BASE_URL, BACKEND_URL, handleFrontendImageError } from '../config';
 
 import heroBg from '../assets/Final_Banner_Img_web.png';
 import mobileHeroBg from '../assets/Mobile_view_Banner_image.jpg';
@@ -142,13 +146,24 @@ const FreshShieldIcon = () => (
 );
 
 export default function Home() {
-  const { products } = useReetSutra();
+  const { products, settings } = useReetSutra();
   const [quickViewProduct, setQuickViewProduct] = useState(null);
   const [selectedBestsellerCategory, setSelectedBestsellerCategory] = useState('All Products');
   const bestsellerCategories = ['All Products', 'Ghee', 'Pickles', 'Makhana', 'Thekua', 'Combos', 'Gift Boxes'];
   const scrollRef = useRef(null);
 
-  const [heroBanners, setHeroBanners] = useState([]);
+  const DEFAULT_FALLBACK_BANNER = {
+    id: "default_permanent",
+    image: "/assets/Final_Banner_Img_web.png",
+    desktopImage: "/assets/Final_Banner_Img_web.png",
+    mobileImage: "/assets/Mobile_view_Banner_image.jpg",
+    buttonText: "SHOP NOW",
+    buttonLink: "/shop",
+    status: "Active",
+    targetDevice: "Both"
+  };
+
+  const [heroBanners, setHeroBanners] = useState([DEFAULT_FALLBACK_BANNER]);
   const [dynamicCategories, setDynamicCategories] = useState([]);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [showFloatingBanner, setShowFloatingBanner] = useState(true);
@@ -200,72 +215,42 @@ export default function Home() {
   // Filter banners for desktop vs mobile views & date validity
   const now = new Date();
 
-  const activeFloatingBanner = heroBanners.find(b => {
+  const [currentFloatingIndex, setCurrentFloatingIndex] = useState(0);
+  const [isFloatingMuted, setIsFloatingMuted] = useState(true);
+
+  // 1. All Active Banners for Top Hero Carousel (Images & Videos)
+  const activeBanners = heroBanners.filter(b => b.status === "Active");
+
+  // Desktop Banners for top hero: Include all banners unless explicitly tagged Mobile
+  const displayDesktopBanners = activeBanners.filter(b => b.targetDevice !== "Mobile");
+
+  // Mobile Banners for top hero: Include all banners unless explicitly tagged Desktop
+  const displayMobileBanners = activeBanners.filter(b => b.targetDevice !== "Desktop");
+
+  // 2. Floating Banners array for Corner Floating Video Widget
+  const floatingBanners = heroBanners.filter(b => {
     if (b.status !== "Active") return false;
     const isFloating = b.bannerType === "Floating" || b.placement?.includes("Floating");
-    if (!isFloating) return false;
-    if (b.startDate && new Date(b.startDate) > now) return false;
-    if (b.endDate && new Date(b.endDate) < now) return false;
-    return true;
+    return isFloating;
   });
 
-  // Top Hero Slider is exclusively for Active Permanent Banners
-  const permanentBanners = heroBanners.filter(b => {
-    if (b.status !== "Active") return false;
-    const isFloating = b.bannerType === "Floating" || b.placement?.includes("Floating");
-    return !isFloating;
-  });
-
-  // Desktop Banners for top hero
-  const hasDedicatedDesktopBanners = permanentBanners.some(b => b.targetDevice === "Desktop");
-  const displayDesktopBanners = permanentBanners.filter(b => {
-    if (b.targetDevice === "Mobile") return false;
-    if (hasDedicatedDesktopBanners) {
-      return b.targetDevice === "Desktop";
-    }
-    return b.targetDevice === "Both" || !b.targetDevice;
-  });
-
-  // Mobile Banners for top hero: If user created dedicated Mobile banner, ONLY show Mobile banners on Mobile!
-  const hasDedicatedMobileBanners = permanentBanners.some(b => b.targetDevice === "Mobile");
-  const displayMobileBanners = permanentBanners.filter(b => {
-    if (b.targetDevice === "Desktop") return false;
-    if (hasDedicatedMobileBanners) {
-      return b.targetDevice === "Mobile";
-    }
-    return b.targetDevice === "Both" || !b.targetDevice;
-  });
-
-  const currentDesktopBanner = displayDesktopBanners.length > 0 ? displayDesktopBanners[currentSlideIndex % displayDesktopBanners.length] : null;
-  const currentMobileBanner = displayMobileBanners.length > 0 ? displayMobileBanners[currentSlideIndex % displayMobileBanners.length] : null;
-
-  // Auto-slide every 3.5 seconds only if multiple permanent banners exist for that view
-  useEffect(() => {
-    const maxLen = Math.max(displayDesktopBanners.length, displayMobileBanners.length);
-    if (maxLen <= 1) return;
-    const timer = setInterval(() => {
-      setCurrentSlideIndex(prev => (prev + 1) % maxLen);
-    }, 3500);
-    return () => clearInterval(timer);
-  }, [displayDesktopBanners.length, displayMobileBanners.length]);
-
-  const nextSlide = () => {
-    const maxLen = Math.max(displayDesktopBanners.length, displayMobileBanners.length);
-    if (maxLen <= 1) return;
-    setCurrentSlideIndex(prev => (prev + 1) % maxLen);
-  };
-
-  const prevSlide = () => {
-    const maxLen = Math.max(displayDesktopBanners.length, displayMobileBanners.length);
-    if (maxLen <= 1) return;
-    setCurrentSlideIndex(prev => (prev - 1 + maxLen) % maxLen);
+  const isVideoUrl = (url) => {
+    if (!url || typeof url !== "string") return false;
+    return (
+      url.startsWith("data:video/") ||
+      url.endsWith(".mp4") ||
+      url.endsWith(".webm") ||
+      url.endsWith(".ogg") ||
+      url.includes(".mp4") ||
+      url.includes("video")
+    );
   };
 
   const getBannerImage = (banner) => {
-    if (!banner) return "";
+    if (!banner) return heroBg;
     const imgPath = banner.desktopImage || banner.image;
-    if (!imgPath) return "";
-    if (imgPath === "/assets/Final_Banner_Img_web.png") return heroBg;
+    if (!imgPath) return heroBg;
+    if (imgPath.includes("Final_Banner_Img_web") || imgPath.includes("heroBg") || imgPath.includes("Desktop")) return heroBg;
     if (imgPath.startsWith("data:") || imgPath.startsWith("http://") || imgPath.startsWith("https://")) {
       return imgPath;
     }
@@ -273,15 +258,71 @@ export default function Home() {
   };
 
   const getMobileBannerImage = (banner) => {
-    if (!banner) return "";
+    if (!banner) return mobileHeroBg;
     const imgPath = banner.mobileImage || banner.image || banner.desktopImage;
-    if (!imgPath) return "";
-    if (imgPath === "/assets/Mobile_view_Banner_image.jpg") return mobileHeroBg;
+    if (!imgPath) return mobileHeroBg;
+    if (imgPath.includes("Mobile_view_Banner_image") || imgPath.includes("mobileHeroBg") || imgPath.includes("Mobile")) return mobileHeroBg;
     if (imgPath.startsWith("data:") || imgPath.startsWith("http://") || imgPath.startsWith("https://")) {
       return imgPath;
     }
     return `${BACKEND_URL}${imgPath.startsWith("/") ? "" : "/"}${imgPath}`;
   };
+
+  const currentDesktopBanner = displayDesktopBanners.length > 0 ? displayDesktopBanners[currentSlideIndex % displayDesktopBanners.length] : null;
+  const currentMobileBanner = displayMobileBanners.length > 0 ? displayMobileBanners[currentSlideIndex % displayMobileBanners.length] : null;
+
+  const activeFloatingBanner = floatingBanners.length > 0
+    ? floatingBanners[currentFloatingIndex % floatingBanners.length]
+    : null;
+
+  const nextSlide = useCallback(() => {
+    const maxLen = Math.max(displayDesktopBanners.length, displayMobileBanners.length);
+    if (maxLen <= 1) return;
+    setCurrentSlideIndex(prev => (prev + 1) % maxLen);
+  }, [displayDesktopBanners.length, displayMobileBanners.length]);
+
+  const prevSlide = useCallback(() => {
+    const maxLen = Math.max(displayDesktopBanners.length, displayMobileBanners.length);
+    if (maxLen <= 1) return;
+    setCurrentSlideIndex(prev => (prev - 1 + maxLen) % maxLen);
+  }, [displayDesktopBanners.length, displayMobileBanners.length]);
+
+  const nextFloatingSlide = useCallback(() => {
+    if (floatingBanners.length <= 1) return;
+    setCurrentFloatingIndex(prev => (prev + 1) % floatingBanners.length);
+  }, [floatingBanners.length]);
+
+  // Top Hero Auto-slide (3s for images; video onEnded handles transitions)
+  useEffect(() => {
+    const maxLen = Math.max(displayDesktopBanners.length, displayMobileBanners.length);
+    if (maxLen <= 1) return;
+
+    const isCurrentVideo =
+      isVideoUrl(getBannerImage(currentDesktopBanner)) ||
+      isVideoUrl(getMobileBannerImage(currentMobileBanner));
+
+    if (isCurrentVideo) return;
+
+    const timer = setInterval(() => {
+      nextSlide();
+    }, 7000);
+
+    return () => clearInterval(timer);
+  }, [displayDesktopBanners.length, displayMobileBanners.length, currentSlideIndex, currentDesktopBanner, currentMobileBanner, nextSlide]);
+
+  // Floating Corner Widget Auto-slide (7s for images; video onEnded handles transitions)
+  useEffect(() => {
+    if (floatingBanners.length <= 1 || !activeFloatingBanner) return;
+
+    const isCurrentFloatingVideo = isVideoUrl(getBannerImage(activeFloatingBanner));
+    if (isCurrentFloatingVideo) return; // Video onEnded triggers transition when full video finishes!
+
+    const timer = setInterval(() => {
+      nextFloatingSlide();
+    }, 7000);
+
+    return () => clearInterval(timer);
+  }, [floatingBanners.length, activeFloatingBanner, currentFloatingIndex, nextFloatingSlide]);
 
   // Filter bestsellers dynamically
   const filteredBestsellers = products.filter(p => {
@@ -316,19 +357,7 @@ export default function Home() {
     return fixed;
   };
 
-  // Default fallback categories
-  const defaultCategories = [
-    { name: 'Pickles', displayName: 'Pickle', image: '/images/mixed_pickle.jpg' },
-    { name: 'Ghee', displayName: 'Ghee', image: '/images/desi_cow_ghee.jpeg' },
-    { name: 'Makhana', displayName: 'Makhana', image: '/images/makhana.jpg' },
-    { name: 'Thekua', displayName: 'Thekua', image: '/images/thekua.jpeg' },
-    { name: 'Honey', displayName: 'Theney', image: '/images/honey.jpg' },
-    { name: 'Sattu', displayName: 'Sattu', image: '/images/sattu.jpg' },
-    { name: 'Snacks', displayName: 'Snacks', image: '/images/snacks.jpg' },
-    { name: 'Gift Boxes', displayName: 'Gift Boxes', image: '/images/premium_combo_box.jpg' }
-  ];
-
-  const categories = dynamicCategories.length > 0 ? dynamicCategories : defaultCategories;
+  const categories = dynamicCategories;
 
   // Testimonials
   const testimonials = [
@@ -369,13 +398,13 @@ export default function Home() {
   // Instagram Social Gallery items with real product images & category links
   const socialGalleryItems = [
     {
-      image: '/images/desi_cow_ghee.jpeg',
+      image: '/images/new_rs_ghee.webp',
       title: 'Pure A2 Cow Ghee',
       category: 'Ghee',
       link: '/shop?category=Ghee'
     },
     {
-      image: '/images/mixed_pickle.jpg',
+      image: '/images/new_rs_pickle.webp',
       title: 'Traditional Mango Pickle',
       category: 'Pickles',
       link: '/shop?category=Pickles'
@@ -399,7 +428,7 @@ export default function Home() {
       link: '/shop?category=Gift Boxes'
     },
     {
-      image: '/images/sattu.jpg',
+      image: '/images/nnew_rs_sattu.webp',
       title: 'Authentic Chana Sattu',
       category: 'Sattu',
       link: '/shop?category=Sattu'
@@ -426,36 +455,67 @@ export default function Home() {
       {displayMobileBanners.length > 0 && (
         <div className="block lg:hidden relative w-full overflow-hidden border-b border-brand-gold/15 bg-[#FAF6EF]">
           <div className="relative w-full overflow-hidden">
-            {/* Mobile Banner Image */}
-            {getMobileBannerImage(currentMobileBanner) && (
-              <img
-                src={getMobileBannerImage(currentMobileBanner)}
-                alt="ReetSutra Mobile Banner"
-                className="w-full h-auto object-contain block"
-              />
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentSlideIndex}
+                initial={{ opacity: 0, x: 50 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -50 }}
+                transition={{ duration: 0.4 }}
+                className="w-full h-full"
+              >
+                {/* Mobile Banner Image / Video */}
+                {getMobileBannerImage(currentMobileBanner) && (
+                  isVideoUrl(getMobileBannerImage(currentMobileBanner)) ? (
+                    <video
+                      src={getMobileBannerImage(currentMobileBanner)}
+                      autoPlay
+                      muted
+                      playsInline
+                      onEnded={nextSlide}
+                      className="w-full h-auto object-contain block cursor-pointer"
+                      onClick={() => window.location.href = currentMobileBanner?.buttonLink || "/shop"}
+                    />
+                  ) : (
+                    <img
+                      src={getMobileBannerImage(currentMobileBanner)}
+                      alt="ReetSutra Mobile Banner"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = mobileHeroBg;
+                      }}
+                      loading="eager"
+                      fetchPriority="high"
+                      className="w-full h-auto object-contain block"
+                    />
+                  )
+                )}
+              </motion.div>
+            </AnimatePresence>
+
+            {/* Buttons Overlay for Mobile View - Stacked vertically in empty space (Hidden for Video Banners) */}
+            {!isVideoUrl(getMobileBannerImage(currentMobileBanner)) && (
+              <div className="absolute left-[4%] xs:left-[4.5%] sm:left-[5%] bottom-[25%] xs:bottom-[26%] sm:bottom-[27%] z-20 flex flex-col items-start space-y-1.5 xs:space-y-2">
+                {/* SHOP NOW Button (Top) */}
+                <Link
+                  to={currentMobileBanner?.buttonLink || "/shop"}
+                  className="bg-[#143021] hover:bg-[#0E2317] text-[#C5972E] font-extrabold text-[9.5px] xs:text-[10.5px] tracking-[0.08em] uppercase py-1.5 px-3.5 xs:px-4 rounded shadow-xs flex items-center justify-center space-x-1 border border-[#C5972E]/40 active:scale-95 transition-all min-w-[125px] xs:min-w-[140px]"
+                >
+                  <span>{currentMobileBanner?.buttonText || "SHOP NOW"}</span>
+                  <Leaf className="w-3 h-3 text-[#C5972E] fill-current shrink-0" />
+                </Link>
+
+                {/* EXPLORE COLLECTION Button (Below SHOP NOW) */}
+                <Link
+                  to={currentMobileBanner?.buttonLink || "/shop"}
+                  className="bg-[#FAF6EF]/95 hover:bg-[#FAF6EF] border border-[#C5972E]/60 text-[#7A5822] font-extrabold text-[9.5px] xs:text-[10.5px] tracking-[0.08em] uppercase py-1.5 px-3.5 xs:px-4 rounded shadow-2xs flex items-center justify-center active:scale-95 transition-all min-w-[140px] xs:min-w-[155px]"
+                >
+                  <span>EXPLORE COLLECTION</span>
+                </Link>
+              </div>
             )}
 
-            {/* Buttons Overlay for Mobile View - Stacked vertically in empty space above feature bar */}
-            <div className="absolute left-[4%] xs:left-[4.5%] sm:left-[5%] bottom-[25%] xs:bottom-[26%] sm:bottom-[27%] z-20 flex flex-col items-start space-y-1.5 xs:space-y-2">
-              {/* SHOP NOW Button (Top) */}
-              <Link
-                to={currentMobileBanner?.buttonLink || "/shop"}
-                className="bg-[#143021] hover:bg-[#0E2317] text-[#C5972E] font-extrabold text-[9.5px] xs:text-[10.5px] tracking-[0.08em] uppercase py-1.5 px-3.5 xs:px-4 rounded shadow-xs flex items-center justify-center space-x-1 border border-[#C5972E]/40 active:scale-95 transition-all min-w-[125px] xs:min-w-[140px]"
-              >
-                <span>{currentMobileBanner?.buttonText || "SHOP NOW"}</span>
-                <Leaf className="w-3 h-3 text-[#C5972E] fill-current shrink-0" />
-              </Link>
-
-              {/* EXPLORE COLLECTION Button (Below SHOP NOW) */}
-              <Link
-                to={currentMobileBanner?.buttonLink || "/shop"}
-                className="bg-[#FAF6EF]/95 hover:bg-[#FAF6EF] border border-[#C5972E]/60 text-[#7A5822] font-extrabold text-[9.5px] xs:text-[10.5px] tracking-[0.08em] uppercase py-1.5 px-3.5 xs:px-4 rounded shadow-2xs flex items-center justify-center active:scale-95 transition-all min-w-[140px] xs:min-w-[155px]"
-              >
-                <span>EXPLORE COLLECTION</span>
-              </Link>
-            </div>
-
-            {/* Mobile Slider Controls */}
+            {/* Mobile Slider Controls & Dots */}
             {displayMobileBanners.length > 1 && (
               <>
                 <button
@@ -472,45 +532,92 @@ export default function Home() {
                 >
                   <ChevronRight className="w-4 h-4 text-[#C5972E]" />
                 </button>
+
+                {/* Mobile Slide Dots */}
+                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-20 flex items-center space-x-1.5">
+                  {displayMobileBanners.map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setCurrentSlideIndex(idx)}
+                      className={`h-1.5 rounded-full transition-all duration-300 ${
+                        (currentSlideIndex % displayMobileBanners.length) === idx
+                          ? "w-6 bg-[#C5972E]"
+                          : "w-1.5 bg-[#143021]/40"
+                      }`}
+                      aria-label={`Go to slide ${idx + 1}`}
+                    />
+                  ))}
+                </div>
               </>
             )}
           </div>
         </div>
       )}
 
-      {/* 1B. DESKTOP VIEW: Clean Full-Width Banner Image */}
+      {/* 1B. DESKTOP VIEW: Clean Full-Width Banner Image / Video */}
       {displayDesktopBanners.length > 0 && (
         <section className="hidden lg:block relative w-full overflow-hidden border-b border-brand-gold/15 bg-[#FAF6EF]">
-          <div className="relative w-full overflow-hidden">
-            {getBannerImage(currentDesktopBanner) && (
-              <img
-                src={getBannerImage(currentDesktopBanner)}
-                alt="ReetSutra Desktop Banner"
-                className="w-full h-auto object-contain block"
-              />
+          <div className="relative w-full overflow-hidden min-h-[350px]">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentSlideIndex}
+                initial={{ opacity: 0, x: 50 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -50 }}
+                transition={{ duration: 0.4 }}
+                className="w-full h-full"
+              >
+                {getBannerImage(currentDesktopBanner) && (
+                  isVideoUrl(getBannerImage(currentDesktopBanner)) ? (
+                    <video
+                      src={getBannerImage(currentDesktopBanner)}
+                      autoPlay
+                      muted
+                      playsInline
+                      onEnded={nextSlide}
+                      className="w-full h-auto object-contain block cursor-pointer"
+                      onClick={() => window.location.href = currentDesktopBanner?.buttonLink || "/shop"}
+                    />
+                  ) : (
+                    <img
+                      src={getBannerImage(currentDesktopBanner)}
+                      alt="ReetSutra Desktop Banner"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = heroBg;
+                      }}
+                      loading="eager"
+                      fetchPriority="high"
+                      className="w-full h-auto object-contain block"
+                    />
+                  )
+                )}
+              </motion.div>
+            </AnimatePresence>
+
+            {/* Overlay Buttons for Desktop Banner (Hidden for Video Banners) */}
+            {!isVideoUrl(getBannerImage(currentDesktopBanner)) && (
+              <div className="absolute left-[5%] lg:left-[6%] xl:left-[6.5%] bottom-[15%] lg:bottom-[16.5%] xl:bottom-[18%] z-20 flex flex-row items-center space-x-3.5 lg:space-x-4 xl:space-x-5">
+                {/* SHOP NOW Button */}
+                <Link
+                  to={currentDesktopBanner?.buttonLink || "/shop"}
+                  className="bg-[#143021] hover:bg-[#0A1A12] text-[#C5972E] font-extrabold text-xs lg:text-sm xl:text-[15px] tracking-[0.1em] uppercase py-2.5 lg:py-3.5 xl:py-4 px-6 lg:px-8 xl:px-10 rounded-lg shadow-md hover:shadow-xl hover:scale-[1.03] transition-all duration-300 flex items-center justify-center space-x-2 border border-[#C5972E]/50 cursor-pointer active:scale-95 min-w-[165px] lg:min-w-[200px] xl:min-w-[225px]"
+                >
+                  <span>{currentDesktopBanner?.buttonText || "SHOP NOW"}</span>
+                  <Leaf className="w-3.5 h-3.5 lg:w-4 lg:h-4 xl:w-4.5 xl:h-4.5 text-[#C5972E] fill-current shrink-0" />
+                </Link>
+
+                {/* EXPLORE COLLECTION Button */}
+                <Link
+                  to={currentDesktopBanner?.buttonLink || "/shop"}
+                  className="bg-[#FAF6EF]/95 hover:bg-[#FAF6EF] text-[#7A5822] hover:text-[#4A3412] font-extrabold text-xs lg:text-sm xl:text-[15px] tracking-[0.1em] uppercase py-2.5 lg:py-3.5 xl:py-4 px-6 lg:px-8 xl:px-10 rounded-lg shadow-sm hover:shadow-md hover:scale-[1.03] transition-all duration-300 flex items-center justify-center space-x-2 border-2 border-[#C5972E]/70 cursor-pointer active:scale-95 min-w-[190px] lg:min-w-[230px] xl:min-w-[260px]"
+                >
+                  <span>EXPLORE COLLECTION</span>
+                </Link>
+              </div>
             )}
 
-            {/* Overlay Buttons for Desktop Banner - Standard Luxury E-Commerce Size */}
-            <div className="absolute left-[5%] lg:left-[6%] xl:left-[6.5%] bottom-[15%] lg:bottom-[16.5%] xl:bottom-[18%] z-20 flex flex-row items-center space-x-3.5 lg:space-x-4 xl:space-x-5">
-              {/* SHOP NOW Button */}
-              <Link
-                to={currentDesktopBanner?.buttonLink || "/shop"}
-                className="bg-[#143021] hover:bg-[#0A1A12] text-[#C5972E] font-extrabold text-xs lg:text-sm xl:text-[15px] tracking-[0.1em] uppercase py-2.5 lg:py-3.5 xl:py-4 px-6 lg:px-8 xl:px-10 rounded-lg shadow-md hover:shadow-xl hover:scale-[1.03] transition-all duration-300 flex items-center justify-center space-x-2 border border-[#C5972E]/50 cursor-pointer active:scale-95 min-w-[165px] lg:min-w-[200px] xl:min-w-[225px]"
-              >
-                <span>{currentDesktopBanner?.buttonText || "SHOP NOW"}</span>
-                <Leaf className="w-3.5 h-3.5 lg:w-4 lg:h-4 xl:w-4.5 xl:h-4.5 text-[#C5972E] fill-current shrink-0" />
-              </Link>
-
-              {/* EXPLORE COLLECTION Button */}
-              <Link
-                to={currentDesktopBanner?.buttonLink || "/shop"}
-                className="bg-[#FAF6EF]/95 hover:bg-[#FAF6EF] text-[#7A5822] hover:text-[#4A3412] font-extrabold text-xs lg:text-sm xl:text-[15px] tracking-[0.1em] uppercase py-2.5 lg:py-3.5 xl:py-4 px-6 lg:px-8 xl:px-10 rounded-lg shadow-sm hover:shadow-md hover:scale-[1.03] transition-all duration-300 flex items-center justify-center space-x-2 border-2 border-[#C5972E]/70 cursor-pointer active:scale-95 min-w-[190px] lg:min-w-[230px] xl:min-w-[260px]"
-              >
-                <span>EXPLORE COLLECTION</span>
-              </Link>
-            </div>
-
-            {/* Desktop Slider Controls */}
+            {/* Desktop Slider Controls & Dots */}
             {displayDesktopBanners.length > 1 && (
               <>
                 <button
@@ -527,6 +634,22 @@ export default function Home() {
                 >
                   <ChevronRight className="w-5 h-5 text-[#C5972E]" />
                 </button>
+
+                {/* Slide Indicators (- - - - - -) */}
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center space-x-2">
+                  {displayDesktopBanners.map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setCurrentSlideIndex(idx)}
+                      className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
+                        (currentSlideIndex % displayDesktopBanners.length) === idx
+                          ? "w-8 bg-[#C5972E] shadow-sm"
+                          : "w-2 bg-[#143021]/30 hover:bg-[#143021]/60"
+                      }`}
+                      aria-label={`Go to slide ${idx + 1}`}
+                    />
+                  ))}
+                </div>
               </>
             )}
           </div>
@@ -634,6 +757,7 @@ export default function Home() {
                     <img
                       src={fixImageUrl(cat.image)}
                       alt={cat.name}
+                      onError={handleFrontendImageError}
                       className="w-full h-full object-cover rounded-full group-hover:scale-105 transition-transform duration-500"
                     />
                   </div>
@@ -808,7 +932,11 @@ export default function Home() {
             <div className="bg-brand-green text-brand-cream rounded-lg overflow-hidden flex flex-col justify-between border border-brand-gold/15 shadow-2xl relative min-h-[420px]">
               <div className="absolute inset-0 z-0">
                 <img
-                  src={storyImage}
+                  src={settings?.ourStoryImage ? (
+                    (settings.ourStoryImage.startsWith('http://') || settings.ourStoryImage.startsWith('https://') || settings.ourStoryImage.startsWith('data:'))
+                      ? settings.ourStoryImage
+                      : `${BACKEND_URL}${settings.ourStoryImage.startsWith('/') ? '' : '/'}${settings.ourStoryImage}`
+                  ) : storyImage}
                   alt="From Bihar's Kitchens"
                   className="w-full h-full object-cover opacity-30"
                 />
@@ -817,13 +945,13 @@ export default function Home() {
 
               <div className="p-8 md:p-10 space-y-6 relative z-10 my-auto flex flex-col items-start justify-center h-full">
                 <span className="text-[10px] text-brand-gold font-bold tracking-[0.25em] uppercase">
-                  HERITAGE & TRADITION
+                  {settings?.ourStorySubtitle || "HERITAGE & TRADITION"}
                 </span>
                 <h2 className="text-3xl font-extrabold font-serif leading-tight">
-                  From Bihar's Kitchens <br />to Your Home
+                  {settings?.ourStoryTitle || "From Bihar's Kitchens \nto Your Home"}
                 </h2>
                 <p className="text-xs md:text-sm text-brand-cream/80 leading-relaxed font-sans font-medium max-w-md">
-                  Our recipes have been passed down through generations. Every jar is prepared with patience, purity and love.
+                  {settings?.ourStoryDescription || "Our recipes have been passed down through generations. Every jar is prepared with patience, purity and love."}
                 </p>
                 <Link
                   to="/about"
@@ -1074,62 +1202,7 @@ export default function Home() {
 
       </div>
 
-      {/* Floating Offer Banner Modal (Only if Floating Banner is created in Admin) */}
-      <AnimatePresence>
-        {showFloatingBanner && activeFloatingBanner && (
-          <motion.div
-            initial={{ opacity: 0, y: 50, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 50, scale: 0.9 }}
-            transition={{ duration: 0.3 }}
-            className="fixed bottom-6 left-6 z-[9999] max-w-xs sm:max-w-sm w-full bg-[#1E3926] text-white p-4 rounded-2xl border-2 border-[#C8A25D] shadow-2xl overflow-hidden"
-          >
-            {/* Glowing Accent Top Bar */}
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#C8A25D] via-[#FAF7F2] to-[#C8A25D]" />
 
-            <button
-              onClick={() => setShowFloatingBanner(false)}
-              className="absolute top-2.5 right-2.5 text-[#C8A25D] hover:text-white bg-black/30 hover:bg-black/60 rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold transition-all cursor-pointer z-10"
-              title="Close Banner"
-            >
-              ✕
-            </button>
-
-            <div className="flex items-center space-x-3.5">
-              {/* Banner Image Thumbnail */}
-              {activeFloatingBanner?.image && (
-                <div className="w-16 h-16 rounded-xl overflow-hidden border border-[#C8A25D]/40 shrink-0 bg-black/20">
-                  <img
-                    src={getBannerImage(activeFloatingBanner)}
-                    alt={activeFloatingBanner.title}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              )}
-
-              <div className="flex-1 min-w-0 pr-3 space-y-1">
-                <span className="inline-block text-[9px] font-extrabold text-[#1E3926] bg-[#C8A25D] px-2 py-0.5 rounded uppercase tracking-widest shadow-xs">
-                  ⚡ FESTIVE OFFER
-                </span>
-                <h4 className="font-serif font-extrabold text-xs text-white truncate leading-tight">
-                  {activeFloatingBanner?.title || 'Special Heritage Discount'}
-                </h4>
-                <p className="text-[10px] text-[#FAF7F2]/80 line-clamp-1 font-sans">
-                  {activeFloatingBanner?.subtitle || 'Order now and enjoy fresh Bihari delicacies!'}
-                </p>
-                <Link
-                  to={activeFloatingBanner?.buttonLink || '/shop'}
-                  onClick={() => setShowFloatingBanner(false)}
-                  className="inline-flex items-center space-x-1 text-[10px] font-extrabold text-[#C8A25D] hover:underline uppercase tracking-wider pt-0.5"
-                >
-                  <span>{activeFloatingBanner?.buttonText || 'Shop Now'}</span>
-                  <ArrowRight size={11} />
-                </Link>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Quick View Modal Overlay */}
       {quickViewProduct && (
