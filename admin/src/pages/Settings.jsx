@@ -20,14 +20,14 @@ export const Settings = () => {
   const [orderPrefix, setOrderPrefix] = useState(settings.orderPrefix);
 
   const [contactEmail, setContactEmail] = useState(settings?.contactEmail || "hello@reetsutra.com");
-  const [contactPhone, setContactPhone] = useState(settings?.contactPhone || "+91 91234 56789");
+  const [contactPhone, setContactPhone] = useState(settings?.contactPhone || "+91 76439 30659");
   const [contactAddress, setContactAddress] = useState(settings?.contactAddress || "Patna, Bihar, India");
 
   const [socialInstagram, setSocialInstagram] = useState(settings?.socialInstagram || "https://instagram.com/reetsutra");
   const [socialFacebook, setSocialFacebook] = useState(settings?.socialFacebook || "https://facebook.com/reetsutra");
   const [socialYoutube, setSocialYoutube] = useState(settings?.socialYoutube || "https://youtube.com/@reetsutra");
   const [socialTelegram, setSocialTelegram] = useState(settings?.socialTelegram || "https://t.me/reetsutra");
-  const [socialWhatsapp, setSocialWhatsapp] = useState(settings?.socialWhatsapp || "https://wa.me/919123456789");
+  const [socialWhatsapp, setSocialWhatsapp] = useState(settings?.socialWhatsapp || "https://wa.me/917643930659");
   const [socialTwitter, setSocialTwitter] = useState(settings?.socialTwitter || "https://twitter.com/reetsutra");
   const [socialLinkedin, setSocialLinkedin] = useState(settings?.socialLinkedin || "https://linkedin.com/company/reetsutra");
 

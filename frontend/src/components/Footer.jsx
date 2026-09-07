@@ -91,7 +91,7 @@ export default function Footer() {
     { label: "Facebook", href: settings?.socialFacebook || "https://facebook.com/reetsutra", icon: <FacebookIcon /> },
     { label: "YouTube", href: settings?.socialYoutube || "https://youtube.com/@reetsutra", icon: <YoutubeIcon /> },
     { label: "Telegram", href: settings?.socialTelegram || "https://t.me/reetsutra", icon: <TelegramIcon /> },
-    { label: "WhatsApp", href: settings?.socialWhatsapp || "https://wa.me/919123456789", icon: <WhatsappIcon /> },
+    { label: "WhatsApp", href: settings?.socialWhatsapp || "https://wa.me/917643930659", icon: <WhatsappIcon /> },
     { label: "X (Twitter)", href: settings?.socialTwitter || "https://x.com/reetsutra", icon: <XTwitterIcon /> },
     { label: "LinkedIn", href: settings?.socialLinkedin || "https://linkedin.com/company/reetsutra", icon: <LinkedinIcon /> }
   ].filter(soc => Boolean(soc.href));
@@ -165,7 +165,7 @@ export default function Footer() {
           <ul className="space-y-3 text-xs text-brand-cream/80 font-sans font-medium">
             <li className="flex items-center space-x-2">
               <Phone className="w-3.5 h-3.5 text-brand-gold shrink-0" />
-              <span>{settings?.contactPhone || "+91 91234 56789"}</span>
+              <span>{settings?.contactPhone || "+91 76439 30659"}</span>
             </li>
             <li className="flex items-center space-x-2">
               <Mail className="w-3.5 h-3.5 text-brand-gold shrink-0" />

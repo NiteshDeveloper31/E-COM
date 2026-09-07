@@ -4,8 +4,8 @@ import { useReetSutra } from '../context/ReetSutraContext';
 export default function WhatsAppButton() {
   const { settings } = useReetSutra();
 
-  // Clean WhatsApp URL or fallback to +91 91234 56789
-  const whatsappNumber = "919123456789";
+  // Clean WhatsApp URL or fallback to +91 76439 30659
+  const whatsappNumber = "917643930659";
   const defaultMsg = encodeURIComponent("Hello ReetSutra! I have a query about your traditional Bihari products.");
   
   let whatsappUrl = `https://wa.me/${whatsappNumber}?text=${defaultMsg}`;
@@ -20,7 +20,7 @@ export default function WhatsAppButton() {
       rel="noopener noreferrer"
       aria-label="Chat on WhatsApp"
       className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 bg-[#25D366] text-white px-4 py-3 rounded-full shadow-2xl hover:bg-[#20ba59] hover:scale-105 active:scale-95 transition-all duration-300 group cursor-pointer border-2 border-white/20"
-      title="Need Help? Chat with us on WhatsApp (+91 91234 56789)"
+      title="Need Help? Chat with us on WhatsApp (+91 76439 30659)"
     >
       {/* WhatsApp Pulse Animation Ring */}
       <span className="absolute -inset-1 rounded-full bg-[#25D366]/40 animate-ping opacity-75 group-hover:opacity-100 pointer-events-none" />

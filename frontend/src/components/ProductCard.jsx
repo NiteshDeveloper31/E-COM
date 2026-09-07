@@ -12,8 +12,9 @@ export default function ProductCard({ product, onQuickView }) {
   const inWishlist = isInWishlist(product.id);
 
   const displayPrice = product.price;
-  const originalPrice = product.originalPrice;
-  const isOutOfStock = product.stock <= 0 || product.status === "Inactive";
+  const originalPrice = product.originalPrice || product.compareAtPrice;
+  const availableStock = product.available !== undefined ? product.available : Math.max(0, (product.stock || 0) - (product.blockedInOrders || 0));
+  const isOutOfStock = product.stock <= 0 || availableStock <= 0 || product.status === "Inactive";
 
   const catName = product?.categoryName || (typeof product?.category === 'string' ? product.category : product?.category?.name) || '';
   const normCat = catName.toLowerCase().trim();

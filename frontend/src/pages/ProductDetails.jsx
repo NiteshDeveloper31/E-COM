@@ -370,11 +370,14 @@ export default function ProductDetails() {
           })()}
 
           {/* Selection Actions */}
-          <div className="space-y-4 pt-4">
-            
-            <div className="flex flex-col sm:flex-row gap-4">
-              
-              {!(product.stock <= 0 || product.status === "Inactive") ? (
+          {(() => {
+            const availStock = product.available !== undefined ? product.available : Math.max(0, (product.stock || 0) - (product.blockedInOrders || 0));
+            const isProdOutOfStock = product.stock <= 0 || availStock <= 0 || product.status === "Inactive";
+
+            return (
+              <div className="space-y-4 pt-4">
+                <div className="flex flex-col sm:flex-row gap-4">
+                  {!isProdOutOfStock ? (
                 <>
                   {/* Quantity selector */}
                   <div className="flex items-center justify-between border border-brand-gold/30 rounded w-full sm:w-32 bg-white">
@@ -454,6 +457,8 @@ export default function ProductDetails() {
             </div>
 
           </div>
+        );
+      })()}
 
         </div>
 

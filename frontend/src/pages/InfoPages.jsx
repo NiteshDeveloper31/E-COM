@@ -252,7 +252,7 @@ export function ContactUs() {
                 <Phone className="w-4.5 h-4.5 text-brand-gold shrink-0" />
                 <div>
                   <p className="font-bold text-brand-green inline-block mr-1">Phone:</p>
-                  <span>{settings?.contactPhone || "+91 91234 56789"}</span>
+                  <span>{settings?.contactPhone || "+91 76439 30659"}</span>
                 </div>
               </li>
               <li className="flex items-center space-x-3">
@@ -274,7 +274,7 @@ export function ContactUs() {
               </p>
             </div>
             <a 
-              href={settings?.socialWhatsapp || "https://wa.me/919123456789"} 
+              href={settings?.socialWhatsapp || "https://wa.me/917643930659"} 
               target="_blank" 
               rel="noopener noreferrer" 
               className="bg-green-600 hover:bg-green-700 text-white p-3 rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-110 shrink-0"

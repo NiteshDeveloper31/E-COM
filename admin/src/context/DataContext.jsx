@@ -481,13 +481,13 @@ export const DataProvider = ({ children }) => {
     storeName: "ReetSutra Traditional Foods",
     storeTagline: "रीत हमारी, स्वाद हमारा, साथ अपनों का",
     contactEmail: "hello@reetsutra.com",
-    contactPhone: "+91 91234 56789",
+    contactPhone: "+91 76439 30659",
     contactAddress: "Patna, Bihar, India",
     socialInstagram: "https://instagram.com/reetsutra",
     socialFacebook: "https://facebook.com/reetsutra",
     socialYoutube: "https://youtube.com/@reetsutra",
     socialTelegram: "https://t.me/reetsutra",
-    socialWhatsapp: "https://wa.me/919123456789",
+    socialWhatsapp: "https://wa.me/917643930659",
     socialTwitter: "https://twitter.com/reetsutra",
     socialLinkedin: "https://linkedin.com/company/reetsutra"
   });

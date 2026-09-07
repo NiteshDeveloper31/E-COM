@@ -4,7 +4,7 @@ const settingsSchema = new mongoose.Schema({
   storeName: { type: String, default: "ReetSutra Traditional Foods" },
   storeTagline: { type: String, default: "रीत हमारी, स्वाद हमारा, साथ अपनों का" },
   contactEmail: { type: String, default: "hello@reetsutra.com" },
-  contactPhone: { type: String, default: "+91 91234 56789" },
+  contactPhone: { type: String, default: "+91 76439 30659" },
   contactAddress: { type: String, default: "Patna, Bihar, India" },
   freeSampleOffer: { type: Boolean, default: true },
 
@@ -13,7 +13,7 @@ const settingsSchema = new mongoose.Schema({
   socialFacebook: { type: String, default: "https://facebook.com/reetsutra" },
   socialYoutube: { type: String, default: "https://youtube.com/@reetsutra" },
   socialTelegram: { type: String, default: "https://t.me/reetsutra" },
-  socialWhatsapp: { type: String, default: "https://wa.me/919123456789" },
+  socialWhatsapp: { type: String, default: "https://wa.me/917643930659" },
   socialTwitter: { type: String, default: "https://twitter.com/reetsutra" },
   socialLinkedin: { type: String, default: "https://linkedin.com/company/reetsutra" },
 

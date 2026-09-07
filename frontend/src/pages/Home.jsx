@@ -152,18 +152,8 @@ export default function Home() {
   const bestsellerCategories = ['All Products', 'Ghee', 'Pickles', 'Makhana', 'Thekua', 'Combos', 'Gift Boxes'];
   const scrollRef = useRef(null);
 
-  const DEFAULT_FALLBACK_BANNER = {
-    id: "default_permanent",
-    image: "/assets/Final_Banner_Img_web.png",
-    desktopImage: "/assets/Final_Banner_Img_web.png",
-    mobileImage: "/assets/Mobile_view_Banner_image.jpg",
-    buttonText: "SHOP NOW",
-    buttonLink: "/shop",
-    status: "Active",
-    targetDevice: "Both"
-  };
-
-  const [heroBanners, setHeroBanners] = useState([DEFAULT_FALLBACK_BANNER]);
+  const [heroBanners, setHeroBanners] = useState([]);
+  const [isBannersLoading, setIsBannersLoading] = useState(true);
   const [dynamicCategories, setDynamicCategories] = useState([]);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [showFloatingBanner, setShowFloatingBanner] = useState(true);
@@ -175,11 +165,13 @@ export default function Home() {
       try {
         const response = await fetch(`${API_BASE_URL}/banners?status=Active`);
         const resJson = await response.json();
-        if (response.ok && resJson.success && Array.isArray(resJson.data) && resJson.data.length > 0) {
+        if (response.ok && resJson.success && Array.isArray(resJson.data)) {
           setHeroBanners(resJson.data);
         }
       } catch (err) {
         console.error("Failed to fetch banners:", err);
+      } finally {
+        setIsBannersLoading(false);
       }
     };
 
@@ -247,10 +239,9 @@ export default function Home() {
   };
 
   const getBannerImage = (banner) => {
-    if (!banner) return heroBg;
+    if (!banner) return "";
     const imgPath = banner.desktopImage || banner.image;
-    if (!imgPath) return heroBg;
-    if (imgPath.includes("Final_Banner_Img_web") || imgPath.includes("heroBg") || imgPath.includes("Desktop")) return heroBg;
+    if (!imgPath) return "";
     if (imgPath.startsWith("data:") || imgPath.startsWith("http://") || imgPath.startsWith("https://")) {
       return imgPath;
     }
@@ -258,10 +249,9 @@ export default function Home() {
   };
 
   const getMobileBannerImage = (banner) => {
-    if (!banner) return mobileHeroBg;
+    if (!banner) return "";
     const imgPath = banner.mobileImage || banner.image || banner.desktopImage;
-    if (!imgPath) return mobileHeroBg;
-    if (imgPath.includes("Mobile_view_Banner_image") || imgPath.includes("mobileHeroBg") || imgPath.includes("Mobile")) return mobileHeroBg;
+    if (!imgPath) return "";
     if (imgPath.startsWith("data:") || imgPath.startsWith("http://") || imgPath.startsWith("https://")) {
       return imgPath;
     }
@@ -481,8 +471,7 @@ export default function Home() {
                       src={getMobileBannerImage(currentMobileBanner)}
                       alt="ReetSutra Mobile Banner"
                       onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = mobileHeroBg;
+                        e.target.style.display = 'none';
                       }}
                       loading="eager"
                       fetchPriority="high"
@@ -583,8 +572,7 @@ export default function Home() {
                       src={getBannerImage(currentDesktopBanner)}
                       alt="ReetSutra Desktop Banner"
                       onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = heroBg;
+                        e.target.style.display = 'none';
                       }}
                       loading="eager"
                       fetchPriority="high"

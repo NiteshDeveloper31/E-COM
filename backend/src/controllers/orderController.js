@@ -55,13 +55,20 @@ export const createOrder = async (req, res, next) => {
 const findProductByIdOrSku = async (rawId) => {
   if (rawId === undefined || rawId === null || rawId === "") return null;
   let product = null;
+  // 1. Prioritize MySQL Primary Key (numeric ID)
   if (!isNaN(rawId)) {
     product = await ProductMySQL.findByPk(Number(rawId)).catch(() => null);
   }
+  // 2. Prioritize MySQL SKU
   if (!product && typeof rawId === "string") {
     product = await ProductMySQL.findOne({ where: { sku: rawId } }).catch(() => null);
   }
-  if (!product && typeof rawId === "string" && mongoose.Types.ObjectId.isValid(rawId)) {
+  // 3. Prioritize MySQL Name
+  if (!product && typeof rawId === "string" && !mongoose.Types.ObjectId.isValid(rawId)) {
+    product = await ProductMySQL.findOne({ where: { name: rawId } }).catch(() => null);
+  }
+  // 4. Fallback to MongoDB only if not found in MySQL
+  if (!product && mongoose.Types.ObjectId.isValid(rawId)) {
     product = await Product.findById(rawId).catch(() => null);
   }
   if (!product && typeof rawId === "string") {
@@ -82,7 +89,7 @@ const findProductByIdOrSku = async (rawId) => {
         return sendError(res, `Product ${product.name} is currently unavailable.`, 400);
       }
 
-      const availableToSell = Math.max(0, product.stock - (product.blockedInOrders || 0));
+      const availableToSell = Math.max(0, Number(product.stock || 0));
       if (availableToSell < item.quantity) {
         return sendError(res, `Insufficient stock for: ${product.name}. Available to sell: ${availableToSell}`, 400);
       }

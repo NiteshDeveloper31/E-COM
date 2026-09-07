@@ -23,7 +23,7 @@ const SettingsMySQL = sequelize.define(
     },
     contactPhone: {
       type: DataTypes.STRING,
-      defaultValue: "+91 91234 56789"
+      defaultValue: "+91 76439 30659"
     },
     contactAddress: {
       type: DataTypes.STRING,
@@ -51,7 +51,7 @@ const SettingsMySQL = sequelize.define(
     },
     socialWhatsapp: {
       type: DataTypes.STRING,
-      defaultValue: "https://wa.me/919123456789"
+      defaultValue: "https://wa.me/917643930659"
     },
     socialTwitter: {
       type: DataTypes.STRING,
