@@ -134,16 +134,20 @@ export default function ProductDetails() {
   const [selectedImage, setSelectedImage] = useState(product?.image || '');
   const [isVideoSelected, setIsVideoSelected] = useState(false);
 
-  // Scroll to top on id change and load reviews
+  // Scroll to top strictly when product ID changes
   useEffect(() => {
     window.scrollTo(0, 0);
     setQuantity(1);
+  }, [id]);
+
+  // Sync selected image and load reviews when product loads
+  useEffect(() => {
     if (product) {
-      setSelectedImage(product.image);
+      setSelectedImage(prev => prev || product.image);
       setIsVideoSelected(false);
       loadReviews();
     }
-  }, [id, product, loadReviews]);
+  }, [product?.id, product?._id, loadReviews]);
 
   if (!product) {
     return (
