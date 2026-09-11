@@ -210,18 +210,30 @@ export default function Home() {
   const [currentFloatingIndex, setCurrentFloatingIndex] = useState(0);
   const [isFloatingMuted, setIsFloatingMuted] = useState(true);
 
-  // 1. All Active Banners for Top Hero Carousel (Images & Videos)
-  const activeBanners = heroBanners.filter(b => b.status === "Active");
+  // 1. All Active & Valid Banners (Date Check: includes full end date till 23:59:59)
+  const activeBanners = heroBanners.filter(b => {
+    if (b.status !== "Active") return false;
+    if (b.startDate && new Date(b.startDate) > now) return false;
+    if (b.endDate) {
+      const endD = new Date(b.endDate);
+      endD.setHours(23, 59, 59, 999);
+      if (endD < now) return false;
+    }
+    return true;
+  });
+
+  // Top Hero Banners: Prefer Hero/Both banners, or all active banners if no specific Hero banner exists
+  const heroSpecificBanners = activeBanners.filter(b => b.bannerType !== "Floating");
+  const bannersForHero = heroSpecificBanners.length > 0 ? heroSpecificBanners : activeBanners;
 
   // Desktop Banners for top hero: Include all banners unless explicitly tagged Mobile
-  const displayDesktopBanners = activeBanners.filter(b => b.targetDevice !== "Mobile");
+  const displayDesktopBanners = bannersForHero.filter(b => b.targetDevice !== "Mobile");
 
   // Mobile Banners for top hero: Include all banners unless explicitly tagged Desktop
-  const displayMobileBanners = activeBanners.filter(b => b.targetDevice !== "Desktop");
+  const displayMobileBanners = bannersForHero.filter(b => b.targetDevice !== "Desktop");
 
-  // 2. Floating Banners array for Corner Floating Video Widget
-  const floatingBanners = heroBanners.filter(b => {
-    if (b.status !== "Active") return false;
+  // 2. Floating Banners array for Corner Floating Video/Image Widget
+  const floatingBanners = activeBanners.filter(b => {
     const isFloating = b.bannerType === "Floating" || b.placement?.includes("Floating");
     return isFloating;
   });
